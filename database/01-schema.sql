@@ -1,6 +1,6 @@
 /*
 Created: 09/05/2026
-Modified: 23/05/2026
+Modified: 27/05/2026
 Model: PostgreSQL
 */
 
@@ -157,16 +157,6 @@ CREATE TABLE cat_tipo_centro
 );
 
 -- =========================
--- modulo
--- =========================
-
-CREATE TABLE modulo
-(
-  id_modulo SERIAL PRIMARY KEY,
-  nombre_modulo TEXT NOT NULL
-);
-
--- =========================
 -- locales
 -- =========================
 
@@ -178,7 +168,21 @@ CREATE TABLE locales
 
   id_tipo_centro INTEGER NOT NULL,
 
-  id_modulo INTEGER NOT NULL
+    nombre_local TEXT NOT NULL
+
+);
+
+-- =========================
+-- modulo
+-- =========================
+
+CREATE TABLE modulo
+(
+  id_modulo SERIAL PRIMARY KEY,
+
+  nombre_modulo TEXT NOT NULL,
+
+  id_local INTEGER NOT NULL
 );
 
 -- =========================
@@ -381,10 +385,10 @@ ADD CONSTRAINT fk_local_tipo
 FOREIGN KEY (id_tipo_centro)
 REFERENCES cat_tipo_centro(id_tipo_centro);
 
-ALTER TABLE locales
-ADD CONSTRAINT fk_local_modulo
-FOREIGN KEY (id_modulo)
-REFERENCES modulo(id_modulo);
+ALTER TABLE modulo
+ADD CONSTRAINT fk_modulo_local
+FOREIGN KEY (id_local)
+REFERENCES locales(id_local);
 
 ALTER TABLE registro_ninos
 ADD CONSTRAINT fk_registro_local
