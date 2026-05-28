@@ -23,11 +23,11 @@ public class LocalServiceImpl implements LocalService {
     private final TipoCentroRepository tipoCentroRepository;
 
     @Override
-    public LocalResponseDTO registrar(LocalRequestDTO dto) {
+    public LocalResponseDTO registrarLocal(LocalRequestDTO request) {
 
-        boolean existe =
-                localRepository.existsByLocalNombreIgnoreCase(
-                        dto.getLocalNombre()
+        boolean existe = localRepository
+                .existsByLocalNombreIgnoreCase(
+                        request.getLocalNombre().trim()
                 );
 
         if (existe) {
@@ -37,13 +37,13 @@ public class LocalServiceImpl implements LocalService {
         }
 
         DireccionEntity direccion =
-                direccionRepository.findById(dto.getIdDireccion())
+                direccionRepository.findById(request.getIdDireccion())
                         .orElseThrow(() ->
                                 new RuntimeException("Dirección no encontrada")
                         );
 
         TipoCentroEntity tipoCentro =
-                tipoCentroRepository.findById(dto.getIdTipoCentro())
+                tipoCentroRepository.findById(request.getIdTipoCentro())
                         .orElseThrow(() ->
                                 new RuntimeException("Tipo centro no encontrado")
                         );
@@ -51,7 +51,7 @@ public class LocalServiceImpl implements LocalService {
         LocalEntity local = new LocalEntity();
 
         local.setLocalNombre(
-                dto.getLocalNombre().trim()
+                request.getLocalNombre().trim()
         );
 
         local.setDireccion(direccion);

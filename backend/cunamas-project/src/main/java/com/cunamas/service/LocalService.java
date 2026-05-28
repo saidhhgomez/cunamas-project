@@ -1,4 +1,9 @@
 package com.cunamas.service;
 
-public class LocalService {
+import com.cunamas.dto.LocalRequestDTO;
+import com.cunamas.dto.LocalResponseDTO;
+
+public interface LocalService {
+
+    LocalResponseDTO registrarLocal(LocalRequestDTO request);
 }
