@@ -9,13 +9,9 @@ public class DistritoResponseDTO {
 
     private String distrito;
 
-    private Integer ubigeo;
-
-    private Integer idProvincia;
-
     private String provincia;
 
-    private Integer idDepartamento;
-
     private String departamento;
+
+    private Integer ubigeo;
 }

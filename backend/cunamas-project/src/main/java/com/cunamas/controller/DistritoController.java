@@ -5,6 +5,8 @@ import com.cunamas.service.DistritoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("distritos")
 @RequiredArgsConstructor
@@ -12,10 +14,10 @@ public class DistritoController {
 
     private final DistritoService distritoService;
 
-    @GetMapping("/{nombreDistrito}")
-    public DistritoResponseDTO obtenerDistrito(
-            @PathVariable String nombreDistrito
+    @GetMapping
+    public List<DistritoResponseDTO> buscarDistritos(
+            @RequestParam String search
     ) {
-        return distritoService.obtenerPorDistrito(nombreDistrito);
+        return distritoService.buscarDistritos(search);
     }
 }

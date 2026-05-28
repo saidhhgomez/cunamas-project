@@ -2,8 +2,10 @@ package com.cunamas.service;
 
 import com.cunamas.dto.DistritoResponseDTO;
 
+import java.util.List;
+
 public interface DistritoService {
 
-    DistritoResponseDTO obtenerPorDistrito(String nombreDistrito);
+    List<DistritoResponseDTO> buscarDistritos(String nombreDistrito);
 
 }
