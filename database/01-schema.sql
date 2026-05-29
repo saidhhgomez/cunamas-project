@@ -1,6 +1,6 @@
 /*
 Created: 09/05/2026
-Modified: 27/05/2026
+Modified: 28/05/2026
 Model: PostgreSQL
 */
 
@@ -78,7 +78,9 @@ CREATE TABLE distrito
 CREATE TABLE direcciones
 (
   id_direccion SERIAL PRIMARY KEY,
+
   nombre_direccion TEXT NOT NULL,
+
   id_distrito INTEGER NOT NULL,
 
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -141,6 +143,7 @@ CREATE TABLE cuenta_acceso
 CREATE TABLE persona_rol
 (
   id_persona INTEGER,
+
   id_rol INTEGER,
 
   PRIMARY KEY (id_persona, id_rol)
@@ -153,6 +156,7 @@ CREATE TABLE persona_rol
 CREATE TABLE cat_tipo_centro
 (
   id_tipo_centro SERIAL PRIMARY KEY,
+
   nombre_tipo_centro TEXT NOT NULL
 );
 
@@ -168,8 +172,7 @@ CREATE TABLE locales
 
   id_tipo_centro INTEGER NOT NULL,
 
-    nombre_local TEXT NOT NULL
-
+  nombre_local TEXT NOT NULL
 );
 
 -- =========================
@@ -208,22 +211,13 @@ CREATE TABLE registro_ninos
 (
   id_registro_ninos SERIAL PRIMARY KEY,
 
-  id_local INTEGER NOT NULL,
+  id_modulo INTEGER NOT NULL,
 
   id_categoria_nino INTEGER NOT NULL,
 
   fecha DATE NOT NULL,
 
   cantidad INTEGER NOT NULL DEFAULT 0
-);
-
--- UNIQUE
-ALTER TABLE registro_ninos
-ADD CONSTRAINT uq_registro_ninos
-UNIQUE (
-    fecha,
-    id_local,
-    id_categoria_nino
 );
 
 -- =========================
@@ -233,6 +227,7 @@ UNIQUE (
 CREATE TABLE estado_asistencia
 (
   id_estado_asistencia SERIAL PRIMARY KEY,
+
   nombre_estado TEXT NOT NULL
 );
 
@@ -391,9 +386,9 @@ FOREIGN KEY (id_local)
 REFERENCES locales(id_local);
 
 ALTER TABLE registro_ninos
-ADD CONSTRAINT fk_registro_local
-FOREIGN KEY (id_local)
-REFERENCES locales(id_local);
+ADD CONSTRAINT fk_registro_modulo
+FOREIGN KEY (id_modulo)
+REFERENCES modulo(id_modulo);
 
 ALTER TABLE registro_ninos
 ADD CONSTRAINT fk_registro_categoria
