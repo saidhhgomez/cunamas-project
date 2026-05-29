@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 public class LocalController {
 
     private final LocalService localService;
-
     @PostMapping
     public LocalResponseDTO registrarLocal(
             @RequestBody LocalRequestDTO request
