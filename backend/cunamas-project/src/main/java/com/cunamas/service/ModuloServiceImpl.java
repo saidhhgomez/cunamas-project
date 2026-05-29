@@ -33,8 +33,9 @@ public class ModuloServiceImpl implements ModuloService {
 
         boolean existe =
                 moduloRepository
-                        .existsByNombreModuloIgnoreCase(
-                                nombreModulo
+                        .existsByNombreModuloIgnoreCaseAndLocal_IdLocal(
+                                nombreModulo,
+                                request.getIdLocal()
                         );
 
         if (existe) {
