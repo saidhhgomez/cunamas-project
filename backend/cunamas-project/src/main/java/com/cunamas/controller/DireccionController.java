@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@CrossOrigin(origins = "*")
 @RequestMapping("direcciones")
 @RequiredArgsConstructor
 public class DireccionController {
