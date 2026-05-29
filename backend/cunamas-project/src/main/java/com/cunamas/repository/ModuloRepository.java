@@ -6,6 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ModuloRepository
         extends JpaRepository<ModuloEntity, Integer> {
 
-    boolean existsByNombreModuloIgnoreCase(String nombreModulo);
+    boolean existsByNombreModuloIgnoreCaseAndLocal_IdLocal(
+            String nombreModulo,
+            Integer idLocal
+    );
 
 }
