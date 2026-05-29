@@ -1,10 +1,13 @@
 package com.cunamas.controller;
 
+import com.cunamas.dto.LocalListadoDTO;
 import com.cunamas.dto.LocalRequestDTO;
 import com.cunamas.dto.LocalResponseDTO;
 import com.cunamas.service.LocalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("locales")
@@ -18,5 +21,11 @@ public class LocalController {
             @RequestBody LocalRequestDTO request
     ) {
         return localService.registrarLocal(request);
+    }
+
+    @GetMapping
+    public List<LocalListadoDTO> obtenerLocales() {
+
+        return localService.obtenerLocales();
     }
 }

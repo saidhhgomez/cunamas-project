@@ -1,5 +1,6 @@
 package com.cunamas.service;
 
+import com.cunamas.dto.ModuloListadoDTO;
 import com.cunamas.dto.ModuloRequestDTO;
 import com.cunamas.dto.ModuloResponseDTO;
 import com.cunamas.entity.LocalEntity;
@@ -8,6 +9,8 @@ import com.cunamas.repository.LocalRepository;
 import com.cunamas.repository.ModuloRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -66,5 +69,20 @@ public class ModuloServiceImpl implements ModuloService {
                 "Módulo registrado correctamente",
                 moduloGuardado.getIdModulo()
         );
+    }
+
+    @Override
+    public List<ModuloListadoDTO> obtenerModulosPorLocal(
+            Integer idLocal
+    ) {
+
+        if (idLocal == null || idLocal <= 0) {
+            throw new RuntimeException(
+                    "El idLocal es inválido"
+            );
+        }
+
+        return moduloRepository
+                .listarModulosPorLocal(idLocal);
     }
 }

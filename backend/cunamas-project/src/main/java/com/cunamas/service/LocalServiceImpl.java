@@ -1,5 +1,6 @@
 package com.cunamas.service;
 
+import com.cunamas.dto.LocalListadoDTO;
 import com.cunamas.dto.LocalRequestDTO;
 import com.cunamas.dto.LocalResponseDTO;
 import com.cunamas.entity.DireccionEntity;
@@ -11,6 +12,8 @@ import com.cunamas.repository.TipoCentroRepository;
 import com.cunamas.service.LocalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -65,5 +68,11 @@ public class LocalServiceImpl implements LocalService {
                 "Local registrado correctamente",
                 localGuardado.getIdLocal()
         );
+    }
+
+    @Override
+    public List<LocalListadoDTO> obtenerLocales() {
+
+        return localRepository.listarLocales();
     }
 }
