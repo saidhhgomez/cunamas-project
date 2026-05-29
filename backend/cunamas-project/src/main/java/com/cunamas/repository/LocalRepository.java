@@ -15,6 +15,7 @@ public interface LocalRepository
     @Query("""
         SELECT new com.cunamas.dto.LocalListadoDTO(
             l.idLocal,
+            l.localNombre,
 
             CONCAT(
                 d.nombreDistrito,
