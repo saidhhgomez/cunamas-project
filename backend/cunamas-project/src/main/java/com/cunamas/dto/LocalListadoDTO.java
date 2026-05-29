@@ -9,6 +9,8 @@ public class LocalListadoDTO {
 
     private Integer idLocal;
 
+    private String localNombre;
+
     private String direccion;
 
     private String tipoCentro;
