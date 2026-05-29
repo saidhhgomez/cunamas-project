@@ -220,6 +220,17 @@ CREATE TABLE registro_ninos
   cantidad INTEGER NOT NULL DEFAULT 0
 );
 
+-- UN REGISTRO DIARIO
+-- POR MODULO Y CATEGORIA
+
+ALTER TABLE registro_ninos
+ADD CONSTRAINT uq_registro_ninos
+UNIQUE (
+    fecha,
+    id_modulo,
+    id_categoria_nino
+);
+
 -- =========================
 -- estado_asistencia
 -- =========================
