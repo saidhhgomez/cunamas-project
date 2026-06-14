@@ -5,9 +5,9 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class LocalResponseDTO {
+public class RegistroAsistenciaCIAIResponseDTO {
 
     private String mensaje;
 
-    private Integer idLocal;
+    private Integer totalRegistros;
 }

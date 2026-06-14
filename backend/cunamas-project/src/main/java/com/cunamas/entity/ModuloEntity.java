@@ -15,10 +15,13 @@ public class ModuloEntity {
     @Column(name = "id_modulo")
     private Integer idModulo;
 
-    @Column(name = "nombre_modulo", nullable = false)
+    @Column(name = "nombre_modulo")
     private String nombreModulo;
 
     @ManyToOne
-    @JoinColumn(name = "id_local", nullable = false)
-    private LocalEntity local;
+    @JoinColumn(name = "id_local")
+    private CentroAtencionInfantilEntity local;
+
+    @Column(name = "id_usuario_modificacion")
+    private Integer idUsuarioModificacion;
 }

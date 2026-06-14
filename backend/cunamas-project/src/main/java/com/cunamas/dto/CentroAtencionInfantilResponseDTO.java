@@ -5,9 +5,9 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class RegistroNinosResponseDTO {
+public class CentroAtencionInfantilResponseDTO {
 
     private String mensaje;
 
-    private Integer idRegistroNinos;
+    private Integer idGenerado;
 }

@@ -1,13 +1,18 @@
 package com.cunamas.service;
 
 import com.cunamas.dto.ModuloListadoDTO;
+import com.cunamas.dto.ModuloPageDTO;
 import com.cunamas.dto.ModuloRequestDTO;
 import com.cunamas.dto.ModuloResponseDTO;
-import com.cunamas.entity.LocalEntity;
+import com.cunamas.entity.CentroAtencionInfantilEntity;
 import com.cunamas.entity.ModuloEntity;
-import com.cunamas.repository.LocalRepository;
+import com.cunamas.repository.CentroAtencionInfantilRepository;
 import com.cunamas.repository.ModuloRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,7 +23,7 @@ public class ModuloServiceImpl implements ModuloService {
 
     private final ModuloRepository moduloRepository;
 
-    private final LocalRepository localRepository;
+    private final CentroAtencionInfantilRepository centroAtencionInfantilRepository;
 
     @Override
     public ModuloResponseDTO registrarModulo(
@@ -29,6 +34,7 @@ public class ModuloServiceImpl implements ModuloService {
                 request.getNombreModulo().trim();
 
         if (nombreModulo.isEmpty()) {
+
             throw new RuntimeException(
                     "El nombre del módulo no puede estar vacío"
             );
@@ -42,19 +48,20 @@ public class ModuloServiceImpl implements ModuloService {
                         );
 
         if (existe) {
+
             throw new RuntimeException(
-                    "Ya existe un módulo con ese nombre"
+                    "Ya existe un módulo con ese nombre para este centro"
             );
         }
 
-        LocalEntity local =
-                localRepository.findById(
-                        request.getIdLocal()
-                ).orElseThrow(() ->
-                        new RuntimeException(
-                                "Local no encontrado"
-                        )
-                );
+        CentroAtencionInfantilEntity local =
+                centroAtencionInfantilRepository
+                        .findById(request.getIdLocal())
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Centro de atención infantil no encontrado"
+                                )
+                        );
 
         ModuloEntity modulo = new ModuloEntity();
 
@@ -62,27 +69,62 @@ public class ModuloServiceImpl implements ModuloService {
 
         modulo.setLocal(local);
 
-        ModuloEntity moduloGuardado =
+        modulo.setIdUsuarioModificacion(
+                request.getIdUsuario()
+        );
+
+        ModuloEntity guardado =
                 moduloRepository.save(modulo);
 
         return new ModuloResponseDTO(
                 "Módulo registrado correctamente",
-                moduloGuardado.getIdModulo()
+                guardado.getIdModulo()
         );
     }
 
     @Override
-    public List<ModuloListadoDTO> obtenerModulosPorLocal(
-            Integer idLocal
+    public ModuloPageDTO obtenerModulosPorLocal(
+            Integer idLocal,
+            int page,
+            int size
     ) {
 
         if (idLocal == null || idLocal <= 0) {
+
             throw new RuntimeException(
                     "El idLocal es inválido"
             );
         }
 
-        return moduloRepository
-                .listarModulosPorLocal(idLocal);
+        Pageable pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by("nombreModulo")
+                );
+
+        Page<ModuloEntity> resultado =
+                moduloRepository.findByLocal_IdLocal(
+                        idLocal,
+                        pageable
+                );
+
+        List<ModuloListadoDTO> contenido =
+                resultado.getContent()
+                        .stream()
+                        .map(m ->
+                                new ModuloListadoDTO(
+                                        m.getIdModulo(),
+                                        m.getNombreModulo()
+                                )
+                        )
+                        .toList();
+
+        return new ModuloPageDTO(
+                contenido,
+                resultado.getTotalElements(),
+                resultado.getTotalPages(),
+                resultado.getNumber()
+        );
     }
 }

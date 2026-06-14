@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class LocalListadoDTO {
+public class CentroAtencionInfantilListadoDTO {
 
     private Integer idLocal;
 
@@ -13,5 +13,5 @@ public class LocalListadoDTO {
 
     private String direccion;
 
-    private String tipoCentro;
+    private String servicioAlimentario;
 }

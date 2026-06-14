@@ -1,11 +1,9 @@
 package com.cunamas.repository;
 
-import com.cunamas.dto.ModuloListadoDTO;
 import com.cunamas.entity.ModuloEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-
-import java.util.List;
 
 public interface ModuloRepository
         extends JpaRepository<ModuloEntity, Integer> {
@@ -15,20 +13,8 @@ public interface ModuloRepository
             Integer idLocal
     );
 
-    @Query("""
-        SELECT new com.cunamas.dto.ModuloListadoDTO(
-            m.idModulo,
-            m.nombreModulo
-        )
-
-        FROM ModuloEntity m
-
-        WHERE m.local.idLocal = :idLocal
-
-        ORDER BY m.nombreModulo ASC
-    """)
-    List<ModuloListadoDTO> listarModulosPorLocal(
-            Integer idLocal
+    Page<ModuloEntity> findByLocal_IdLocal(
+            Integer idLocal,
+            Pageable pageable
     );
-
 }
