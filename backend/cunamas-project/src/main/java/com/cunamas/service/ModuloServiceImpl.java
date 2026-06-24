@@ -40,20 +40,6 @@ public class ModuloServiceImpl implements ModuloService {
             );
         }
 
-        boolean existe =
-                moduloRepository
-                        .existsByNombreModuloIgnoreCaseAndLocal_IdLocal(
-                                nombreModulo,
-                                request.getIdLocal()
-                        );
-
-        if (existe) {
-
-            throw new RuntimeException(
-                    "Ya existe un módulo con ese nombre para este centro"
-            );
-        }
-
         CentroAtencionInfantilEntity local =
                 centroAtencionInfantilRepository
                         .findById(request.getIdLocal())

@@ -1,8 +1,6 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.CentroAtencionInfantilPageDTO;
-import com.cunamas.dto.CentroAtencionInfantilRequestDTO;
-import com.cunamas.dto.CentroAtencionInfantilResponseDTO;
+import com.cunamas.dto.*;
 import com.cunamas.service.CentroAtencionInfantilService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -50,5 +48,16 @@ public class CentroAtencionInfantilController {
                 page,
                 size
         );
+    }
+
+    @PostMapping("/completo")
+    public CentroConModulosResponseDTO registrarCompleto(
+            @Valid
+            @RequestBody
+            CentroConModulosRequestDTO request
+    ) {
+
+        return centroService
+                .registrarCentroConModulos(request);
     }
 }

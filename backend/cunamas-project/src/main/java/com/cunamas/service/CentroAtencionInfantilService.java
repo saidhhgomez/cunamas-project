@@ -1,8 +1,6 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.CentroAtencionInfantilPageDTO;
-import com.cunamas.dto.CentroAtencionInfantilRequestDTO;
-import com.cunamas.dto.CentroAtencionInfantilResponseDTO;
+import com.cunamas.dto.*;
 
 public interface CentroAtencionInfantilService {
 
@@ -14,5 +12,9 @@ public interface CentroAtencionInfantilService {
             Integer idCentroAlimentario,
             int page,
             int size
+    );
+
+    CentroConModulosResponseDTO registrarCentroConModulos(
+            CentroConModulosRequestDTO request
     );
 }
