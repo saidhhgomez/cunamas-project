@@ -1,10 +1,6 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.ModuloListadoDTO;
-import com.cunamas.dto.ModuloRequestDTO;
-import com.cunamas.dto.ModuloResponseDTO;
-
-import java.util.List;
+import com.cunamas.dto.*;
 
 public interface ModuloService {
 
@@ -12,7 +8,9 @@ public interface ModuloService {
             ModuloRequestDTO request
     );
 
-    List<ModuloListadoDTO> obtenerModulosPorLocal(
-            Integer idLocal
+    ModuloPageDTO obtenerModulosPorLocal(
+            Integer idLocal,
+            int page,
+            int size
     );
 }
