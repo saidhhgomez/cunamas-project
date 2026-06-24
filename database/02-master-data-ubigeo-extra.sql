@@ -1,4 +1,4 @@
-INSERT INTO departamento (nombre_depto)
+INSERT INTO departamento (nombre_dpto)
 VALUES
 ('AMAZONAS'),
 ('ANCASH'),
@@ -2100,3 +2100,23 @@ VALUES
 (194, 'NESHUYA', '250304'),
 (194, 'ALEXANDER VON HUMBOLDT', '250305'),
 (195, 'PURUS', '250401');
+
+INSERT INTO categorias_dosificacion (nombre_categoria)
+VALUES
+('6-8 m'),
+('9-11 m'),
+('12 - 23 m'),
+('24 - 36 m'),
+('Actor Comunal');
+
+INSERT INTO cat_genero (nombre_genero)
+VALUES
+('Masculino'),
+('Femenino'),
+('Prefiero No Decirlo');
+
+INSERT INTO cat_tipo_documento (nombre_documento)
+VALUES
+('DNI'),
+('CE'),
+('Pasaporte');

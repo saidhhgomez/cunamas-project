@@ -5,9 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class LocalResponseDTO {
+public class ActualizarCantidadResponseDTO {
 
     private String mensaje;
-
-    private Integer idLocal;
 }

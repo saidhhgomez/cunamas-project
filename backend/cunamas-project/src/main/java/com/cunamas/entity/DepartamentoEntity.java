@@ -13,6 +13,6 @@ public class DepartamentoEntity {
     @Column(name = "id_departamento")
     private Integer idDepartamento;
 
-    @Column(name = "nombre_depto", nullable = false)
+    @Column(name = "nombre_dpto", nullable = false)
     private String nombreDepto;
 }
