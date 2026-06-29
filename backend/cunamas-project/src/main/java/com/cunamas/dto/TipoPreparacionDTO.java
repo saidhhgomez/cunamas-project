@@ -9,6 +9,6 @@ public class TipoPreparacionDTO {
 
     private String nombrePreparacion;
 
-    private Double porcionComestible;
+    private Integer porcionComestible;
 
 }
