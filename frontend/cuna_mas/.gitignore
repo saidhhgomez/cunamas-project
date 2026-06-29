@@ -41,6 +41,3 @@ yarn-error.*
 /ios
 /android
 
-
-# Frontend
-app/cuidadora/

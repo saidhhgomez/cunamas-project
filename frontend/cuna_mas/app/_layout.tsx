@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 // Importamos tus componentes de pantalla directamente
 import LoginScreen from './auth/login'; 
 import InicioCuidadora from './cuidadora/inicio';
+import ServicioAlimentarioScreen from './asistente';
 
 function RootLayoutProtected() {
   const { user, isLoading } = useAuth();
@@ -18,6 +19,7 @@ function RootLayoutProtected() {
     );
   }
 
+/*
   // 2. Control de flujo directo (Sin rutas dinámicas ni vigilantes de posición)
   if (!user) {
     return <LoginScreen />;
@@ -27,10 +29,13 @@ function RootLayoutProtected() {
     return <InicioCuidadora />;
   }
 
+  if (user.rol === 'asistente') {
+    return <ServicioAlimentarioScreen />;
+  }
 
-
+*/
   // Respaldo por si el usuario no tiene un rol válido
-  return <LoginScreen />;
+return <Slot />;
 }
 
 export default function RootLayout() {
