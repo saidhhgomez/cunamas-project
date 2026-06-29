@@ -19,6 +19,7 @@ function RootLayoutProtected() {
     );
   }
 
+/*
   // 2. Control de flujo directo (Sin rutas dinámicas ni vigilantes de posición)
   if (!user) {
     return <LoginScreen />;
@@ -32,9 +33,9 @@ function RootLayoutProtected() {
     return <ServicioAlimentarioScreen />;
   }
 
-
+*/
   // Respaldo por si el usuario no tiene un rol válido
-  return <LoginScreen />;
+return <Slot />;
 }
 
 export default function RootLayout() {
