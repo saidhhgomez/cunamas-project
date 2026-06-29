@@ -28,6 +28,6 @@ public class RacionDosificacionEntity {
 
 
     @Column(name = "gr_ml")
-    private Double grMl;
+    private Integer grMl;
 
 }

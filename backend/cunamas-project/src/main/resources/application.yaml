@@ -3,20 +3,18 @@ spring:
     name: cunamas-project
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/db_cunamas
-    username: postgres
-    password: root
+    url: jdbc:postgresql://aws-1-us-west-2.pooler.supabase.com:5432/postgres
+    username: postgres.igezbdjyjnkurxtawmvw
+    password: CunaMas_12345
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
-
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   jackson:
     time-zone: America/Lima

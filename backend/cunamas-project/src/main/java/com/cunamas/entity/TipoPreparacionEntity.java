@@ -30,6 +30,6 @@ public class TipoPreparacionEntity {
 
 
     @Column(name = "porcion_comestible")
-    private Double porcionComestible;
+    private Integer porcionComestible;
 
 }
