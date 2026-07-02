@@ -111,6 +111,7 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
     @Override
     public CentroAtencionInfantilPageDTO listar(
             Integer idCentroAlimentario,
+            String distrito,
             int page,
             int size
     ) {
@@ -138,19 +139,44 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                 );
             }
 
-            resultado =
-                    centroRepository
-                            .findByServicioAlimentario_IdCentroAlimentario(
-                                    idCentroAlimentario,
-                                    pageable
-                            );
+            if (distrito != null && !distrito.isBlank()) {
+
+                resultado =
+                        centroRepository
+                                .findByServicioAlimentario_IdCentroAlimentarioAndDireccion_Distrito_NombreDistritoIgnoreCase(
+                                        idCentroAlimentario,
+                                        distrito.trim(),
+                                        pageable
+                                );
+
+            } else {
+
+                resultado =
+                        centroRepository
+                                .findByServicioAlimentario_IdCentroAlimentario(
+                                        idCentroAlimentario,
+                                        pageable
+                                );
+            }
 
         } else {
 
-            resultado =
-                    centroRepository.findAll(
-                            pageable
-                    );
+            if (distrito != null && !distrito.isBlank()) {
+
+                resultado =
+                        centroRepository
+                                .findByDireccion_Distrito_NombreDistritoIgnoreCase(
+                                        distrito.trim(),
+                                        pageable
+                                );
+
+            } else {
+
+                resultado =
+                        centroRepository.findAll(
+                                pageable
+                        );
+            }
         }
 
         List<CentroAtencionInfantilListadoDTO> lista =

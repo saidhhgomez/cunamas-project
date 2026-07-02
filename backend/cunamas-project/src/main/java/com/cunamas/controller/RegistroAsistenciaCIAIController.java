@@ -14,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("asistencia-ciai")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class RegistroAsistenciaCIAIController {
 
     private final RegistroAsistenciaCIAIService service;
