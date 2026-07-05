@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,176 +6,140 @@ import {
   StyleSheet, 
   SafeAreaView, 
   FlatList,
+  ActivityIndicator,
   useWindowDimensions
 } from 'react-native';
-import { UserRound, ArrowLeft } from 'lucide-react-native';
-import { useRouter } from 'expo-router'; // 🚀 Navegación nativa de Expo Router
+import { User, LogOut, UserRound } from 'lucide-react-native';
+import { useAuth } from '../../context/AuthContext'; 
+import { LocalService } from '../../service/centroAtencionService'; 
+import { useRouter, useLocalSearchParams } from 'expo-router'; // 👈 Importamos useLocalSearchParams
 
-export default function LocalesServicioScreen() {
-  const router = useRouter();
+export default function InicioCuidadora() {
+  const { user, logout } = useAuth();
   const { width } = useWindowDimensions();
-
   const esPantallaGrande = width > 600;
+  const router = useRouter(); 
 
-  // Estado con tus categorías fijas
-  const [categorias] = useState([
-    { id: '1', name: "EXPLORADORES" },
-    { id: '2', name: "CAMINADORES" },
-    { id: '3', name: "AVENTUREROS" },
-  ]);
+  // 📥 CAPTURA DINÁMICA: Atrapamos el parámetro enviado desde la pantalla anterior
+  const params = useLocalSearchParams();
+  const idCentroAlimentarioReal = params.idCentroAlimentario ? Number(params.idCentroAlimentario) : null;
+
+  const [locales, setLocales] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const cargarLocales = async (paginaAEnviar: number, reiniciar: boolean = false) => {
+    // Si no hay un ID válido en los parámetros de navegación, evitamos llamar a la API
+    if (idCentroAlimentarioReal === null || loading) return;
+
+    setLoading(true);
+    try {
+      const resultado = await LocalService.getLocalesPorCentro(idCentroAlimentarioReal, paginaAEnviar);
+
+      if (resultado.locales.length === 0) {
+        setHasMore(false);
+      } else {
+        setLocales(prevLocales => reiniciar ? resultado.locales : [...prevLocales, ...resultado.locales]);
+        
+        if (resultado.isLast) {
+          setHasMore(false);
+        } else {
+          setPage(paginaAEnviar + 1);
+        }
+      }
+    } catch (error) {
+      console.error("Error cargando locales en la vista:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Se dispara y reinicia de forma limpia cada vez que cambia el centro seleccionado
+  useEffect(() => {
+    if (idCentroAlimentarioReal !== null) {
+      setLocales([]);
+      setPage(0);
+      setHasMore(true);
+      cargarLocales(0, true);
+    }
+  }, [idCentroAlimentarioReal]);
+
+  const manejarSiguientePagina = () => {
+    if (!hasMore || loading) return;
+    cargarLocales(page, false);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       
-      {/* Header con botón Volver Responsivo */}
-      <View style={[styles.header, { height: esPantallaGrande ? 150 : 120 }]}>
-        <TouchableOpacity 
-          style={[styles.backButton, { width: esPantallaGrande ? 160 : 135, height: esPantallaGrande ? 50 : 44 }]}
-          onPress={() => router.back()} // Volver de manera nativa
-          activeOpacity={0.8}
-        >
-          <View style={styles.backContent}>
-            <ArrowLeft color="#FFF" size={esPantallaGrande ? 24 : 20} strokeWidth={3} />
-            <Text style={[styles.backText, { fontSize: esPantallaGrande ? 16 : 14 }]}>VOLVER</Text>
+      <View style={[styles.header, { height: esPantallaGrande ? 160 : 130 }]}>
+        <View style={styles.userInfo}>
+          <View style={styles.avatarCircle}>
+            <User color="#000" size={esPantallaGrande ? 32 : 26} />
           </View>
+          <View style={styles.welcomeContainer}>
+            <Text style={[styles.welcomeTitle, { fontSize: esPantallaGrande ? 24 : 20 }]}>
+              Bienvenid@
+            </Text>
+            <Text style={[styles.userName, { fontSize: esPantallaGrande ? 18 : 15 }]} numberOfLines={1}>
+              {user?.nombre || "Cuidadora"}
+            </Text>
+          </View>
+        </View>
+        
+        <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}>
+          <LogOut color="#FFF" size={esPantallaGrande ? 26 : 22} />
         </TouchableOpacity>
       </View>
 
-      {/* FlatList con soporte responsivo para Mobile y Tablet */}
       <FlatList
-        data={categorias}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.scrollContent, 
-          esPantallaGrande && styles.tabletContent
-        ]}
+        data={locales}
+        keyExtractor={(item) => item.idLocal.toString()} 
+        contentContainerStyle={[styles.scrollContent, esPantallaGrande && styles.tabletContent]}
         showsVerticalScrollIndicator={false}
-        
-        // Cabecera de la lista para los títulos
         ListHeaderComponent={
-          <View style={styles.titleContainer}>
-            <Text style={[styles.titleBlue, { fontSize: esPantallaGrande ? 26 : 22 }]}>Locales:</Text>
-            <Text style={[styles.titleSubtitle, { fontSize: esPantallaGrande ? 24 : 20 }]}>Nombre del Servicio</Text>
-          </View>
+          <Text style={[styles.title, { fontSize: esPantallaGrande ? 38 : 32 }]}>
+            Locales ({idCentroAlimentarioReal ? `Centro #${idCentroAlimentarioReal}` : 'Sin Selección'})
+          </Text>
         }
-        
-        // Renderizado responsivo de ítems
         renderItem={({ item }) => (
           <TouchableOpacity 
-            style={styles.categoryItem}
+            style={styles.localItem}
             activeOpacity={0.7}
-            // Aquí puedes redirigir usando router.push
+            onPress={() => {
+              router.push({
+                pathname: '/asistencia/modulo', 
+                params: { idLocal: item.idLocal }
+              });
+            }}
           >
             <View style={styles.iconWrapper}>
-              <UserRound color="#8A2BE2" size={esPantallaGrande ? 34 : 28} strokeWidth={2.5} />
+              <UserRound color="#8A2BE2" size={esPantallaGrande ? 36 : 28} strokeWidth={2.5} />
             </View>
-            <Text 
-              style={[styles.categoryName, { fontSize: esPantallaGrande ? 20 : 16 }]}
-              numberOfLines={1}
-            >
-              {item.name}
-            </Text>
+            <View style={styles.textContainer}>
+              <Text style={[styles.localName, { fontSize: esPantallaGrande ? 19 : 15 }]} numberOfLines={1}>
+                {item.localNombre} 
+              </Text>
+              <Text style={styles.localSubtitle} numberOfLines={1}>
+                {item.direccion}
+              </Text>
+            </View>
           </TouchableOpacity>
         )}
+        onEndReached={manejarSiguientePagina}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={() => (
+          loading && hasMore ? (
+            <View style={styles.footerLoading}>
+              <ActivityIndicator size="small" color="#00AEEF" />
+            </View>
+          ) : null
+        )}
       />
-
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF',
-  },
-  header: {
-    backgroundColor: '#C5D800', 
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    justifyContent: 'center',
-    paddingHorizontal: '6%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  backButton: {
-    backgroundColor: '#FF007A', 
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  backContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    marginLeft: 6,
-    letterSpacing: 0.5,
-  },
-  scrollContent: {
-    paddingHorizontal: '6%',
-    paddingBottom: 30,
-    width: '100%',
-  },
-  tabletContent: {
-    maxWidth: 550,
-    alignSelf: 'center',
-  },
-  titleContainer: {
-    alignItems: 'center',
-    marginBottom: 30,
-    marginTop: 25,
-  },
-  titleBlue: {
-    fontWeight: '900',
-    color: '#00AEEF', 
-    textAlign: 'center',
-  },
-  titleSubtitle: {
-    fontWeight: '700',
-    color: '#1E293B',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  categoryItem: {
-    width: '100%',
-    height: 72,
-    borderWidth: 2,
-    borderColor: '#8A2BE2', 
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 14,
-    backgroundColor: '#FFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#F3E8FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  categoryName: {
-    fontWeight: '800',
-    color: '#1E293B',
-    marginLeft: 14,
-    textTransform: 'uppercase',
-    flex: 1,
-  },
-});
+// ... Mantén tus mismos estilos abajo
+const styles = StyleSheet.create({ container: { flex: 1, backgroundColor: '#FFF' }, header: { backgroundColor: '#C5D800', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: '6%', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4 }, userInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 15 }, avatarCircle: { backgroundColor: '#FFF', width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' }, welcomeContainer: { marginLeft: 12, flex: 1 }, welcomeTitle: { color: '#00AEEF', fontWeight: 'bold' }, userName: { color: '#FFF', fontWeight: '600', marginTop: 2 }, logoutButton: { backgroundColor: '#FF007A', padding: 12, borderRadius: 25 }, scrollContent: { paddingHorizontal: '6%', paddingBottom: 30, width: '100%' }, tabletContent: { maxWidth: 550, alignSelf: 'center' }, title: { fontWeight: '900', color: '#00AEEF', marginBottom: 20, marginTop: 25 }, localItem: { width: '100%', height: 76, borderWidth: 2, borderColor: '#8A2BE2', borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14, backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 }, iconWrapper: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F3E8FF', justifyContent: 'center', alignItems: 'center' }, textContainer: { marginLeft: 14, flex: 1, justifyContent: 'center' }, localName: { fontWeight: '800', color: '#1E293B', textTransform: 'uppercase' }, localSubtitle: { fontSize: 12, color: '#64748B', marginTop: 2 }, footerLoading: { paddingVertical: 16, alignItems: 'center' } });

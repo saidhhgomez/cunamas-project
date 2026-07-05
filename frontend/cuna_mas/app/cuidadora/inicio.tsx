@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,19 +11,52 @@ import {
 } from 'react-native';
 import { User, LogOut, UserRound } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext'; 
+import { LocalService } from '../../service/centroAtencionService'; 
+import { useRouter } from 'expo-router'; // 🚀 Importación de Expo Router
 
 export default function InicioCuidadora() {
   const { user, logout } = useAuth();
   const { width } = useWindowDimensions();
-
   const esPantallaGrande = width > 600;
+  const router = useRouter(); // 💸 Instancia del enrutador para la navegación
 
-  // Datos simulados (aquí luego conectarás tu paginación por API)
-  const [locales] = useState([
-    { id: '1', name: "12 de noviembre" },
-    { id: '2', name: "RAYITOS DE SOL" },
-    { id: '3', name: "Sol de luna" },
-  ]);
+  // Estados para Scroll Infinito de la API
+  const [locales, setLocales] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  // ID del centro alimentario fijo de ejemplo
+  const [idCentroAlimentarioFijo] = useState(1); 
+
+  const cargarLocales = async () => {
+    if (loading || !hasMore) return;
+
+    setLoading(true);
+    try {
+      const resultado = await LocalService.getLocalesPorCentro(idCentroAlimentarioFijo, page);
+
+      if (resultado.locales.length === 0) {
+        setHasMore(false);
+      } else {
+        setLocales(prevLocales => [...prevLocales, ...resultado.locales]);
+        
+        if (resultado.isLast) {
+          setHasMore(false);
+        } else {
+          setPage(prevPage => prevPage + 1);
+        }
+      }
+    } catch (error) {
+      console.error("Error cargando locales en la vista:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarLocales();
+  }, [idCentroAlimentarioFijo]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,39 +89,60 @@ export default function InicioCuidadora() {
         </TouchableOpacity>
       </View>
 
-      {/* Reemplazamos ScrollView + Map por un FlatList Responsivo */}
+      {/* FlatList Responsivo con Scroll Infinito */}
       <FlatList
         data={locales}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.idLocal.toString()} 
         contentContainerStyle={[
           styles.scrollContent, 
           esPantallaGrande && styles.tabletContent
         ]}
         showsVerticalScrollIndicator={false}
         
-        // Cabecera de la lista
         ListHeaderComponent={
           <Text style={[styles.title, { fontSize: esPantallaGrande ? 38 : 32 }]}>
             Locales
           </Text>
         }
         
-        // Renderizado de las tarjetas de locales
         renderItem={({ item }) => (
           <TouchableOpacity 
             style={styles.localItem}
             activeOpacity={0.7}
+            // 🔄 Redirección dinámica enviando el idLocal por parámetros de URL
+            onPress={() => {
+              router.push({
+                pathname: '/cuidadora/modulo', // 💡 Modifica esta ruta según la estructura exacta de tus carpetas (ej: '/(cuidadora)/modulos')
+                params: { idLocal: item.idLocal }
+              });
+            }}
           >
             <View style={styles.iconWrapper}>
               <UserRound color="#8A2BE2" size={esPantallaGrande ? 36 : 28} strokeWidth={2.5} />
             </View>
-            <Text 
-              style={[styles.localName, { fontSize: esPantallaGrande ? 20 : 16 }]}
-              numberOfLines={1}
-            >
-              {item.name}
-            </Text>
+            <View style={styles.textContainer}>
+              <Text 
+                style={[styles.localName, { fontSize: esPantallaGrande ? 19 : 15 }]}
+                numberOfLines={1}
+              >
+                {item.localNombre} 
+              </Text>
+              <Text style={styles.localSubtitle} numberOfLines={1}>
+                {item.direccion}
+              </Text>
+            </View>
           </TouchableOpacity>
+        )}
+
+        onEndReached={cargarLocales}
+        onEndReachedThreshold={0.4}
+
+        ListFooterComponent={() => (
+          loading && hasMore ? (
+            <View style={styles.footerLoading}>
+              <ActivityIndicator size="small" color="#00AEEF" />
+            </View>
+          ) : null
         )}
       />
 
@@ -109,7 +163,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: '6%',
-    // Sombras sutiles para la cabecera
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
@@ -153,7 +206,6 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     width: '100%',
   },
-  // Si es Tablet, centramos el contenido y limitamos el ancho para que no se estire demasiado
   tabletContent: {
     maxWidth: 550,
     alignSelf: 'center',
@@ -166,7 +218,7 @@ const styles = StyleSheet.create({
   },
   localItem: {
     width: '100%',
-    height: 70,
+    height: 76,
     borderWidth: 2,
     borderColor: '#8A2BE2',
     borderRadius: 16,
@@ -175,7 +227,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 14,
     backgroundColor: '#FFF',
-    // Sombra suave para dar efecto de tarjeta premium
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -186,15 +237,27 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F3E8FF', // Un fondo lila suave muy sutil para el icono
+    backgroundColor: '#F3E8FF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  textContainer: {
+    marginLeft: 14,
+    flex: 1,
+    justifyContent: 'center',
   },
   localName: {
     fontWeight: '800',
     color: '#1E293B',
-    marginLeft: 14,
     textTransform: 'uppercase',
-    flex: 1, // Permite que el texto respete los límites del botón
   },
+  localSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  footerLoading: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  }
 });

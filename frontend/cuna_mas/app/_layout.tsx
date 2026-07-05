@@ -1,15 +1,13 @@
-import { Slot } from 'expo-router';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
+import { Slot, useRouter } from 'expo-router'; 
 import { AuthProvider, useAuth } from '../context/AuthContext';
-// Importamos tus componentes de pantalla directamente
-import LoginScreen from './auth/login'; 
-import InicioCuidadora from './cuidadora/inicio';
-import ServicioAlimentarioScreen from './asistente';
 
 function RootLayoutProtected() {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-  // 1. Mientras lee el AsyncStorage del celular, se queda aquí quieto
+  // 1. Mientras lee el AsyncStorage, muestra el Spinner de carga
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -19,23 +17,25 @@ function RootLayoutProtected() {
     );
   }
 
-/*
-  // 2. Control de flujo directo (Sin rutas dinámicas ni vigilantes de posición)
-  if (!user) {
-    return <LoginScreen />;
-  }
+  // 2. Control de Roles y Redirección en un useEffect (Evita el bucle infinito)
+  useEffect(() => {
+    if (isLoading) return;
 
-  if (user.rol === 'cuidadora') {
-    return <InicioCuidadora />;
-  }
+    if (!user) {
+      // Si no hay sesión, al login
+      router.replace('/auth/login');
+    } else {
+      // Redirección inicial única según el rol
+      if (user.rol === 'cuidadora') {
+        router.replace('/cuidadora/inicio');
+      } else if (user.rol === 'asistente') {
+        router.replace('/asistente');
+      }
+    }
+  }, [user, isLoading]); // 💡 Solo se ejecuta cuando el usuario cambia o inicia sesión
 
-  if (user.rol === 'asistente') {
-    return <ServicioAlimentarioScreen />;
-  }
-
-*/
-  // Respaldo por si el usuario no tiene un rol válido
-return <Slot />;
+  // 3. Renderiza el contenedor nativo para que 'router.push' funcione sin problemas
+  return <Slot />;
 }
 
 export default function RootLayout() {

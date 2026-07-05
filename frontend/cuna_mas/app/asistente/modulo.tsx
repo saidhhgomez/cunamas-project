@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,23 +6,57 @@ import {
   StyleSheet, 
   SafeAreaView, 
   FlatList,
-  useWindowDimensions
+  useWindowDimensions,
+  ActivityIndicator
 } from 'react-native';
 import { User, LogOut, UserRound } from 'lucide-react-native';
-import { useAuth } from '../../context/AuthContext'; // 🚀 Conexión con tu sesión global
+import { useAuth } from '../../context/AuthContext'; 
+import { ModuloService } from '../../service/moduloService';
 
 export default function ModulosListScreen() {
-  const { user, logout } = useAuth(); // Extraemos los datos reales y el deslogueo
+  const { user, logout } = useAuth(); 
   const { width } = useWindowDimensions();
-
   const esPantallaGrande = width > 600;
 
-  // Lista de módulos fijada en un estado inicial
-  const [modulos] = useState([
-    { id: '1', name: "EXPLORADORES" },
-    { id: '2', name: "CAMINADORES" },
-    { id: '3', name: "AVENTUREROS" },
-  ]);
+  // Estados del Scroll Infinito
+  const [modulos, setModulos] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  
+  // ID de local fijo de ejemplo (conforme a tu Postman)
+  const [idLocalSeleccionado] = useState(5); 
+
+  const cargarModulos = async () => {
+    if (loading || !hasMore) return;
+
+    setLoading(true);
+    try {
+      const resultado = await ModuloService.getModulosPorLocal(idLocalSeleccionado, page);
+
+      if (resultado.modulos.length === 0) {
+        setHasMore(false);
+      } else {
+        // Concatenamos los módulos nuevos con los anteriores
+        setModulos(prevModulos => [...prevModulos, ...resultado.modulos]);
+        
+        if (resultado.isLast) {
+          setHasMore(false);
+        } else {
+          setPage(prevPage => prevPage + 1); 
+        }
+      }
+    } catch (error) {
+      console.error("Error cargando módulos en la vista:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carga inicial al montar o cambiar de local
+  useEffect(() => {
+    cargarModulos();
+  }, [idLocalSeleccionado]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -55,29 +89,26 @@ export default function ModulosListScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* FlatList adaptable que reemplaza ScrollView y Map */}
+      {/* FlatList con Scroll Infinito */}
       <FlatList
         data={modulos}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.idModulo.toString()} 
         contentContainerStyle={[
           styles.scrollContent, 
           esPantallaGrande && styles.tabletContent
         ]}
         showsVerticalScrollIndicator={false}
         
-        // Título superior de la lista
         ListHeaderComponent={
           <Text style={[styles.title, { fontSize: esPantallaGrande ? 38 : 32 }]}>
             Módulos
           </Text>
         }
         
-        // Tarjetas de Módulos Responsivas
         renderItem={({ item }) => (
           <TouchableOpacity 
             style={styles.moduloItem}
             activeOpacity={0.7}
-            // NOTA: Si usas Expo Router, aquí cambiarías a: router.push({ pathname: '/cuidadora_guia/detalle', params: { name: item.name } })
           >
             <View style={styles.iconWrapper}>
               <UserRound color="#8A2BE2" size={esPantallaGrande ? 34 : 28} strokeWidth={2.5} />
@@ -86,9 +117,22 @@ export default function ModulosListScreen() {
               style={[styles.moduloName, { fontSize: esPantallaGrande ? 20 : 16 }]}
               numberOfLines={1}
             >
-              {item.name}
+              {item.nombreModulo} 
             </Text>
           </TouchableOpacity>
+        )}
+
+        // Disparadores del Scroll
+        onEndReached={cargarModulos}
+        onEndReachedThreshold={0.4}
+
+        // Loader de la parte inferior
+        ListFooterComponent={() => (
+          loading && hasMore ? (
+            <View style={styles.footerLoading}>
+              <ActivityIndicator size="small" color="#00AEEF" />
+            </View>
+          ) : null
         )}
       />
 
@@ -194,4 +238,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     flex: 1,
   },
+  footerLoading: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  }
 });
