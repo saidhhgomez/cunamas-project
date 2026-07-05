@@ -1,5 +1,7 @@
 package com.cunamas.controller;
 
+import com.cunamas.dto.LoginRequestDTO;
+import com.cunamas.dto.LoginResponseDTO;
 import com.cunamas.dto.RegisterRequestDTO;
 import com.cunamas.dto.RegisterResponseDTO;
 import com.cunamas.service.AuthService;
@@ -27,6 +29,21 @@ public class AuthController {
         return authService.register(
                 request
         );
+
+    }
+
+    @PostMapping("/login")
+    public LoginResponseDTO login(
+
+            @Valid
+
+            @RequestBody
+
+            LoginRequestDTO request
+
+    ) {
+
+        return authService.login(request);
 
     }
 

@@ -1,21 +1,22 @@
 package com.cunamas.service;
 
+import com.cunamas.dto.LoginRequestDTO;
+import com.cunamas.dto.LoginResponseDTO;
 import com.cunamas.dto.RegisterRequestDTO;
 import com.cunamas.dto.RegisterResponseDTO;
 import com.cunamas.entity.CuentaAccesoEntity;
 import com.cunamas.entity.DocumentoEntity;
 import com.cunamas.entity.GeneroEntity;
 import com.cunamas.entity.PersonaEntity;
-import com.cunamas.repository.CuentaAccesoRepository;
-import com.cunamas.repository.DocumentoRepository;
-import com.cunamas.repository.GeneroRepository;
-import com.cunamas.repository.PersonaRepository;
-import jakarta.transaction.Transactional;
+import com.cunamas.repository.*;
+import com.cunamas.security.JwtService;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.regex.Pattern;
 
 @Service
@@ -31,6 +32,10 @@ public class AuthServiceImpl implements AuthService {
     private final DocumentoRepository documentoRepository;
 
     private final PasswordEncoder passwordEncoder;
+
+    private final PersonaRolRepository personaRolRepository;
+
+    private final JwtService jwtService;
 
     private static final Pattern REGEX_DNI =
             Pattern.compile("^[0-9]{8}$");
@@ -342,5 +347,133 @@ public class AuthServiceImpl implements AuthService {
             }
 
         }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResponseDTO login(
+            LoginRequestDTO request
+    ) {
+
+        PersonaEntity persona =
+
+                personaRepository
+                        .findByNumeroDocumento(
+                                request.getNumeroDocumento().trim()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Credenciales inválidas."
+                                )
+                        );
+
+        CuentaAccesoEntity cuenta =
+
+                cuentaRepository
+                        .findByPersona_IdPersona(
+                                persona.getIdPersona()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Credenciales inválidas."
+                                )
+                        );
+
+        if (!Boolean.TRUE.equals(
+                cuenta.getEstadoCuenta()
+        )) {
+
+            throw new RuntimeException(
+                    "Su cuenta aún no ha sido aprobada."
+            );
+
+        }
+
+        boolean passwordCorrecto =
+
+                passwordEncoder.matches(
+
+                        request.getPassword(),
+
+                        cuenta.getPassword()
+
+                );
+
+        if (!passwordCorrecto) {
+
+            throw new RuntimeException(
+                    "Credenciales inválidas."
+            );
+
+        }
+
+        List<String> roles =
+
+                personaRolRepository
+
+                        .findByPersona_IdPersona(
+                                persona.getIdPersona()
+                        )
+
+                        .stream()
+
+                        .map(r ->
+
+                                r.getRol()
+                                        .getNombreRol()
+
+                        )
+
+                        .toList();
+
+        String distrito = null;
+
+        boolean tieneDireccion = false;
+
+        if (persona.getDireccion() != null) {
+
+            tieneDireccion = true;
+
+            distrito =
+
+                    persona.getDireccion()
+
+                            .getDistrito()
+
+                            .getNombreDistrito();
+
+        }
+
+        String token =
+
+                jwtService.generarToken(
+                        persona,
+                        roles
+                );
+
+        return new LoginResponseDTO(
+
+                token,
+
+                "Bearer",
+
+                jwtService.getExpirationSeconds(),
+
+                persona.getIdPersona(),
+
+                persona.getNombres()
+
+                        + " "
+
+                        + persona.getApPaterno(),
+
+                roles,
+
+                distrito,
+
+                tieneDireccion
+
+        );
+
+    }
 
     }
