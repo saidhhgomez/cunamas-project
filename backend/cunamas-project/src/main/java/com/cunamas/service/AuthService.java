@@ -1,9 +1,8 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.LoginRequestDTO;
-import com.cunamas.dto.LoginResponseDTO;
-import com.cunamas.dto.RegisterRequestDTO;
-import com.cunamas.dto.RegisterResponseDTO;
+import com.cunamas.dto.*;
+
+import java.util.List;
 
 public interface AuthService {
 
@@ -13,6 +12,20 @@ public interface AuthService {
 
     LoginResponseDTO login(
             LoginRequestDTO request
+    );
+
+    AdminRegisterResponseDTO registrarUsuarioPorAdministrador(
+            AdminRegisterRequestDTO request
+    );
+
+    List<UsuarioPendienteListadoDTO> obtenerSolicitudesPendientes();
+
+    UsuarioPendienteDetalleDTO obtenerDetalleSolicitud(
+            Integer idPersona
+    );
+
+    AprobarUsuarioResponseDTO aprobarSolicitud(
+            AprobarUsuarioRequestDTO request
     );
 
 }

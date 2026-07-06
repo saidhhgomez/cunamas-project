@@ -13,4 +13,8 @@ public interface PersonaRolRepository
             Integer idPersona
     );
 
+    boolean existsByPersona_IdPersona(
+            Integer idPersona
+    );
+
 }

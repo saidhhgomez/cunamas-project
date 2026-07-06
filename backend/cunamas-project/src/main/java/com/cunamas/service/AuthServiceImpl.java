@@ -1,15 +1,13 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.LoginRequestDTO;
-import com.cunamas.dto.LoginResponseDTO;
-import com.cunamas.dto.RegisterRequestDTO;
-import com.cunamas.dto.RegisterResponseDTO;
-import com.cunamas.entity.CuentaAccesoEntity;
-import com.cunamas.entity.DocumentoEntity;
-import com.cunamas.entity.GeneroEntity;
-import com.cunamas.entity.PersonaEntity;
+import com.cunamas.dto.*;
+import com.cunamas.entity.*;
 import com.cunamas.repository.*;
 import com.cunamas.security.JwtService;
+import com.cunamas.security.JwtUtils;
+import com.cunamas.security.SecurityUtils;
+import com.cunamas.util.PasswordGenerator;
+import io.jsonwebtoken.Claims;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,6 +34,10 @@ public class AuthServiceImpl implements AuthService {
     private final PersonaRolRepository personaRolRepository;
 
     private final JwtService jwtService;
+
+    private final SecurityUtils securityUtils;
+
+    private final RolRepository rolRepository;
 
     private static final Pattern REGEX_DNI =
             Pattern.compile("^[0-9]{8}$");
@@ -476,4 +478,496 @@ public class AuthServiceImpl implements AuthService {
 
     }
 
+    @Override
+    @Transactional
+    public AdminRegisterResponseDTO registrarUsuarioPorAdministrador(
+
+            AdminRegisterRequestDTO request
+    ) {
+
+        // ======================================================
+        // 1. VALIDAR JWT
+        // ======================================================
+
+        Integer idAdministrador =
+                securityUtils.getIdPersona();
+
+        if (!securityUtils.puedeAdministrarUsuarios()) {
+
+            throw new RuntimeException(
+                    "No tiene permisos para realizar esta operación."
+            );
+
+        }
+
+        GeneroEntity genero =
+
+                generoRepository.findById(
+
+                        request.getPersona().getIdGenero()
+
+                ).orElseThrow(() ->
+
+                        new RuntimeException(
+                                "El género no existe."
+                        )
+
+                );
+
+        DocumentoEntity documento =
+
+                documentoRepository.findById(
+
+                        request.getPersona().getIdDocumento()
+
+                ).orElseThrow(() ->
+
+                        new RuntimeException(
+                                "Tipo de documento no existe."
+                        )
+
+                );
+
+        String numeroDocumento =
+
+                request.getPersona()
+                        .getNumeroDocumento()
+                        .trim();
+
+        if (documento.getIdDocumento() == 1) {
+
+            if (!numeroDocumento.matches("^[0-9]{8}$")) {
+
+                throw new RuntimeException(
+                        "El DNI debe contener exactamente 8 dígitos."
+                );
+            }
+
+        } else if (documento.getIdDocumento() == 2) {
+
+            if (!numeroDocumento.matches("^[A-Za-z0-9]{9}$")) {
+
+                throw new RuntimeException(
+                        "Carnet de extranjería inválido."
+                );
+            }
+
+        }
+
+        if (personaRepository.existsByNumeroDocumento(numeroDocumento)) {
+
+            throw new RuntimeException(
+                    "El número de documento ya existe."
+            );
+        }
+
+        String correo =
+
+                request.getCuenta()
+                        .getCorreoElectronico()
+                        .trim()
+                        .toLowerCase();
+
+        if (cuentaRepository.existsByCorreoElectronicoIgnoreCase(correo)) {
+
+            throw new RuntimeException(
+                    "El correo ya existe."
+            );
+        }
+
+        List<RolEntity> roles =
+
+                rolRepository.findAllById(
+
+                        request.getRoles()
+
+                );
+
+        if (roles.size() != request.getRoles().size()) {
+
+            throw new RuntimeException(
+                    "Existe un rol inválido."
+            );
+        }
+
+        String passwordTemporal =
+
+                PasswordGenerator.generarPasswordTemporal();
+
+        String passwordHash =
+
+                passwordEncoder.encode(passwordTemporal);
+
+        PersonaEntity persona =
+
+                new PersonaEntity();
+
+        persona.setGenero(genero);
+
+        persona.setDocumento(documento);
+
+        persona.setNumeroDocumento(numeroDocumento);
+
+        persona.setNombres(
+                request.getPersona().getNombres()
+        );
+
+        persona.setApPaterno(
+                request.getPersona().getApPaterno()
+        );
+
+        persona.setApMaterno(
+                request.getPersona().getApMaterno()
+        );
+
+        persona.setFechaCreacion(
+                LocalDateTime.now()
+        );
+
+        persona.setFechaModificacion(
+                LocalDateTime.now()
+        );
+
+        persona.setIdUsuarioModificacion(
+                idAdministrador
+        );
+
+        personaRepository.save(persona);
+
+        CuentaAccesoEntity cuenta =
+
+                new CuentaAccesoEntity();
+
+        cuenta.setPersona(persona);
+
+        cuenta.setCorreoElectronico(correo);
+
+        cuenta.setPassword(passwordHash);
+
+        cuenta.setEstadoCuenta(true);
+
+        cuenta.setFechaCreacion(
+                LocalDateTime.now()
+        );
+
+        cuenta.setFechaModificacion(
+                LocalDateTime.now()
+        );
+
+        cuenta.setIdUsuarioModificacion(
+                idAdministrador
+        );
+
+        cuentaRepository.save(cuenta);
+
+        for (RolEntity rol : roles) {
+
+            PersonaRolEntity personaRol =
+                    new PersonaRolEntity();
+
+            personaRol.setPersona(persona);
+
+            personaRol.setRol(rol);
+
+            personaRolRepository.save(personaRol);
+
+        }
+
+        return new AdminRegisterResponseDTO(
+
+                "Usuario registrado correctamente.",
+
+                persona.getIdPersona(),
+
+                passwordTemporal
+
+        );
+
     }
+
+    @Override
+    @Transactional
+    public List<UsuarioPendienteListadoDTO>
+    obtenerSolicitudesPendientes() {
+
+        List<CuentaAccesoEntity> cuentas =
+                cuentaRepository
+                        .findAllByEstadoCuentaFalseOrderByFechaCreacionDesc();
+
+        return cuentas.stream()
+
+                .map(cuenta -> {
+
+                    PersonaEntity persona =
+                            cuenta.getPersona();
+
+                    String nombresCompletos =
+
+                            persona.getNombres()
+
+                                    + " "
+
+                                    + persona.getApPaterno()
+
+                                    + (
+
+                                    persona.getApMaterno() != null
+
+                                            ? " " + persona.getApMaterno()
+
+                                            : ""
+
+                            );
+
+                    return new UsuarioPendienteListadoDTO(
+
+                            persona.getIdPersona(),
+
+                            persona.getNumeroDocumento(),
+
+                            nombresCompletos,
+
+                            cuenta.getCorreoElectronico(),
+
+                            cuenta.getFechaCreacion(),
+
+                            cuenta.getEstadoCuenta()
+
+                    );
+
+                })
+
+                .toList();
+
+    }
+
+    @Override
+    @Transactional
+    public UsuarioPendienteDetalleDTO
+    obtenerDetalleSolicitud(Integer idPersona) {
+
+        CuentaAccesoEntity cuenta =
+
+                cuentaRepository
+
+                        .findWithPersonaByPersona_IdPersona(idPersona)
+
+                        .orElseThrow(() ->
+
+                                new RuntimeException(
+                                        "Solicitud no encontrada"
+                                )
+
+                        );
+
+        if (Boolean.TRUE.equals(
+                cuenta.getEstadoCuenta())) {
+
+            throw new RuntimeException(
+                    "La cuenta ya fue aprobada"
+            );
+
+        }
+
+        PersonaEntity persona =
+                cuenta.getPersona();
+
+        UsuarioPendienteDetalleDTO dto =
+                new UsuarioPendienteDetalleDTO();
+
+        dto.setIdPersona(
+                persona.getIdPersona()
+        );
+
+        dto.setIdGenero(
+                persona.getGenero().getIdGenero()
+        );
+
+        dto.setGenero(
+                persona.getGenero().getNombreGenero()
+        );
+
+        dto.setIdDocumento(
+                persona.getDocumento().getIdDocumento()
+        );
+
+        dto.setTipoDocumento(
+                persona.getDocumento().getNombreDocumento()
+        );
+
+        dto.setNumeroDocumento(
+                persona.getNumeroDocumento()
+        );
+
+        dto.setNombres(
+                persona.getNombres()
+        );
+
+        dto.setApPaterno(
+                persona.getApPaterno()
+        );
+
+        dto.setApMaterno(
+                persona.getApMaterno()
+        );
+
+        dto.setTelefono(
+                persona.getTelefono()
+        );
+
+        dto.setFechaNacimiento(
+                persona.getFechaNacimiento()
+        );
+
+        if (persona.getDireccion() != null) {
+
+            dto.setIdDireccion(
+                    persona.getDireccion().getIdDireccion()
+            );
+
+            dto.setDireccion(
+                    persona.getDireccion()
+                            .getNombreDireccion()
+            );
+
+            dto.setDistrito(
+
+                    persona.getDireccion()
+
+                            .getDistrito()
+
+                            .getNombreDistrito()
+
+            );
+
+        }
+
+        dto.setCorreoElectronico(
+                cuenta.getCorreoElectronico()
+        );
+
+        dto.setFechaRegistro(
+                cuenta.getFechaCreacion()
+        );
+
+        return dto;
+
+    }
+
+    @Override
+    @Transactional
+    public AprobarUsuarioResponseDTO aprobarSolicitud(
+            AprobarUsuarioRequestDTO request
+    ) {
+
+        Integer idAdministrador =
+                securityUtils.getIdPersona();
+
+        if (!securityUtils.puedeAdministrarUsuarios()) {
+
+            throw new RuntimeException(
+                    "No tiene permisos para realizar esta operación."
+            );
+
+        }
+
+        CuentaAccesoEntity cuenta =
+
+                cuentaRepository
+
+                        .findWithPersonaByPersona_IdPersona(
+                                request.getIdPersona()
+                        )
+
+                        .orElseThrow(() ->
+
+                                new RuntimeException(
+                                        "Solicitud no encontrada."
+                                )
+
+                        );
+
+        if (Boolean.TRUE.equals(
+                cuenta.getEstadoCuenta())) {
+
+            throw new RuntimeException(
+                    "La cuenta ya fue aprobada."
+            );
+
+        }
+
+        if (personaRolRepository.existsByPersona_IdPersona(
+                request.getIdPersona())) {
+
+            throw new RuntimeException(
+                    "La persona ya posee roles asignados."
+            );
+
+        }
+
+        for (Integer idRol : request.getRoles()) {
+
+            RolEntity rol =
+
+                    rolRepository
+
+                            .findById(idRol)
+
+                            .orElseThrow(() ->
+
+                                    new RuntimeException(
+                                            "Rol inexistente."
+                                    )
+
+                            );
+
+            PersonaRolEntity personaRol =
+                    new PersonaRolEntity();
+
+            personaRol.setPersona(
+                    cuenta.getPersona()
+            );
+
+            personaRol.setRol(
+                    rol
+            );
+
+            personaRolRepository.save(
+                    personaRol
+            );
+
+        }
+
+        cuenta.setEstadoCuenta(true);
+
+        cuenta.setIdUsuarioModificacion(
+                idAdministrador
+        );
+
+        cuenta.setFechaModificacion(
+                LocalDateTime.now()
+        );
+
+        cuentaRepository.save(cuenta);
+
+        PersonaEntity persona =
+                cuenta.getPersona();
+
+        persona.setIdUsuarioModificacion(
+                idAdministrador
+        );
+
+        persona.setFechaModificacion(
+                LocalDateTime.now()
+        );
+
+        personaRepository.save(persona);
+
+        return new AprobarUsuarioResponseDTO(
+
+                "Usuario aprobado correctamente."
+
+        );
+    }
+
+}
