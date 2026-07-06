@@ -10,6 +10,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/calculadora")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class CalculadoraController {
 
     private final CalculadoraService calculadoraService;
