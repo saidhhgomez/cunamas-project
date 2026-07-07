@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.time.LocalDate;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +21,10 @@ public class CalculadoraServiceImpl implements CalculadoraService {
     private final TipoPreparacionRepository tipoPreparacionRepository;
 
     private final RacionDosificacionRepository racionRepository;
+
+    private final RegistroAsistenciaCIAIRepository registroRepository;
+
+    private final ServicioAlimentarioRepository servicioRepository;
 
 
     @Override
@@ -105,7 +111,7 @@ public class CalculadoraServiceImpl implements CalculadoraService {
             DosisCategoriaDTO dto =
                     new DosisCategoriaDTO();
 
-            if(r.getCategoriaGrupo() != null){
+            if (r.getCategoriaGrupo() != null) {
 
                 dto.setIdCatNino(
                         r.getCategoriaGrupo()
@@ -137,7 +143,8 @@ public class CalculadoraServiceImpl implements CalculadoraService {
 
     @Override
     public CalculadoraRespuestaDTO calcularTotal(
-            Integer idPreparacion
+            Integer idPreparacion,
+            CalculadoraRequestDTO request
     ) {
 
         TipoPreparacionEntity preparacion =
@@ -151,31 +158,25 @@ public class CalculadoraServiceImpl implements CalculadoraService {
                                 idPreparacion
                         );
 
-        int ninosCat1 = 10;
-        int ninosCat2 = 15;
-        int ninosCat3 = 20;
-        int ninosCat4 = 12;
+
 
         double total = 0;
 
-        for (RacionDosificacionEntity r : raciones) {
+        for (RacionDosificacionEntity racion : raciones) {
 
-            Integer grupo =
-                    r.getCategoriaGrupo()
-                            .getIdCategoriaGrupo();
+            for (DetalleAsistenciaDTO categoria : request.getCategorias()) {
 
-            if (grupo == 1)
-                total += ninosCat1 * r.getGrMl();
+                if (racion.getCategoriaGrupo().getIdCategoriaGrupo()
+                        .equals(categoria.getIdCategoriaGrupo())) {
 
-            if (grupo == 2)
-                total += ninosCat2 * r.getGrMl();
+                    total += categoria.getCantidad() * racion.getGrMl();
 
-            if (grupo == 3)
-                total += ninosCat3 * r.getGrMl();
-
-            if (grupo == 4)
-                total += ninosCat4 * r.getGrMl();
+                    break;
+                }
+            }
         }
+
+        System.out.println("TOTAL = " + total);
 
         CalculadoraRespuestaDTO dto =
                 new CalculadoraRespuestaDTO();
@@ -188,27 +189,210 @@ public class CalculadoraServiceImpl implements CalculadoraService {
 
         dto.setUnidad("g/ml");
 
-        LinkedHashMap<String,Integer> empaques =
+        LinkedHashMap<String, Integer> empaques =
                 new LinkedHashMap<>();
 
         empaques.put(
                 "Opción en empaques de 1 Kg/L",
-                (int)Math.ceil(total/1000)
+                (int) Math.ceil(total / 1000)
         );
 
         empaques.put(
                 "Opción en empaques de 500 g/ml",
-                (int)Math.ceil(total/500)
+                (int) Math.ceil(total / 500)
         );
 
         empaques.put(
                 "Opción en empaques de 250 g/ml",
-                (int)Math.ceil(total/250)
+                (int) Math.ceil(total / 250)
         );
 
         dto.setEmpaquesSugeridos(empaques);
 
         return dto;
+    }
+    @Override
+    public ResumenServicioDTO obtenerResumenServicio(
+            Integer idServicio,
+            LocalDate fecha,
+            Integer correlativo
+    ) {
+
+        if (correlativo != 1 && correlativo != 2) {
+
+            throw new RuntimeException(
+                    "El correlativo solo puede ser 1 o 2"
+            );
+        }
+
+        ServicioAlimentarioEntity servicio =
+                servicioRepository.findById(idServicio)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Servicio alimentario no encontrado"
+                                )
+                        );
+
+        List<RegistroAsistenciaCIAIEntity> registros =
+                registroRepository.obtenerResumenServicio(
+                        idServicio,
+                        fecha,
+                        correlativo
+                );
+
+        List<LocalResumenDTO> locales =
+                new ArrayList<>();
+
+        Map<Integer, LocalResumenDTO> mapaLocales =
+                new LinkedHashMap<>();
+
+        Map<Integer, TotalesCategoriaDTO> mapaTotales =
+                new LinkedHashMap<>();
+        List<TotalesCategoriaDTO> totales = null;
+        for (RegistroAsistenciaCIAIEntity registro : registros) {
+
+            Integer idLocal =
+                    registro.getModulo()
+                            .getLocal()
+                            .getIdLocal();
+
+            LocalResumenDTO local =
+                    mapaLocales.get(idLocal);
+
+            if (local == null) {
+
+                local = new LocalResumenDTO();
+
+                local.setIdLocal(idLocal);
+
+                local.setNombreLocal(
+                        registro.getModulo()
+                                .getLocal()
+                                .getLocalNombre()
+                );
+
+                local.setModulos(
+                        new ArrayList<>()
+                );
+
+                mapaLocales.put(
+                        idLocal,
+                        local
+                );
+            }
+
+            ModuloResumenDTO modulo = null;
+
+            for (ModuloResumenDTO m :
+                    local.getModulos()) {
+
+                if (m.getIdModulo().equals(
+                        registro.getModulo().getIdModulo())) {
+
+                    modulo = m;
+                    break;
+                }
+            }
+
+            if (modulo == null) {
+
+                modulo = new ModuloResumenDTO();
+
+                modulo.setIdModulo(
+                        registro.getModulo()
+                                .getIdModulo()
+                );
+
+                modulo.setNombreModulo(
+                        registro.getModulo()
+                                .getNombreModulo()
+                );
+
+                modulo.setAsistencia(
+                        new ArrayList<>()
+                );
+
+                local.getModulos().add(modulo);
+            }
+
+            TotalesCategoriaDTO asistencia =
+                    new TotalesCategoriaDTO();
+
+            asistencia.setIdCategoriaGrupo(
+                    registro.getCategoria()
+                            .getIdCategoriaGrupo()
+            );
+
+            asistencia.setCategoria(
+                    registro.getCategoria()
+                            .getNombreCategoria()
+            );
+
+            asistencia.setCantidad(
+                    registro.getCantidad()
+            );
+
+            modulo.getAsistencia()
+                    .add(asistencia);
+            Integer idCategoria =
+                    registro.getCategoria()
+                            .getIdCategoriaGrupo();
+
+            TotalesCategoriaDTO total =
+                    mapaTotales.get(idCategoria);
+
+            if (total == null) {
+
+                total = new TotalesCategoriaDTO();
+
+                total.setIdCategoriaGrupo(idCategoria);
+
+                total.setCategoria(
+                        registro.getCategoria()
+                                .getNombreCategoria()
+                );
+
+                total.setCantidad(0);
+
+                mapaTotales.put(
+                        idCategoria,
+                        total
+                );
+            }
+
+            total.setCantidad(
+                    total.getCantidad() + registro.getCantidad()
+            );
+
+            totales = new ArrayList<>(mapaTotales.values());
+
+
+        }
+        ResumenServicioDTO response =
+                new ResumenServicioDTO();
+
+        response.setIdServicioAlimentario(
+                idServicio
+        );
+
+        response.setServicioAlimentario(
+                servicioRepository
+                        .findById(idServicio)
+                        .orElseThrow()
+                        .getNombreCentro()
+        );
+
+        response.setLocales(
+                new ArrayList<>(
+                        mapaLocales.values()
+                )
+        );
+
+        response.setTotales(
+                totales
+        );
+
+        return response;
     }
 
 }
