@@ -11,6 +11,8 @@ public class LoginResponseDTO {
 
     private String token;
 
+    private String refreshToken;
+
     private String tipo;
 
     private Long expiraEn;

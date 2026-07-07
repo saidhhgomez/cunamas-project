@@ -39,6 +39,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final RolRepository rolRepository;
 
+    private final RefreshTokenService refreshTokenService;
+
     private static final Pattern REGEX_DNI =
             Pattern.compile("^[0-9]{8}$");
 
@@ -351,7 +353,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponseDTO login(
             LoginRequestDTO request
     ) {
@@ -452,9 +454,23 @@ public class AuthServiceImpl implements AuthService {
                         roles
                 );
 
+        DispositivoSesionEntity sesion =
+
+                refreshTokenService.crearSesion(
+
+                        persona,
+
+                        request.getDispositivo().getNombreDispositivo(),
+
+                        request.getDispositivo().getUuidDispositivo()
+
+                );
+
         return new LoginResponseDTO(
 
                 token,
+
+                sesion.getRefreshToken(),
 
                 "Bearer",
 
@@ -463,9 +479,7 @@ public class AuthServiceImpl implements AuthService {
                 persona.getIdPersona(),
 
                 persona.getNombres()
-
                         + " "
-
                         + persona.getApPaterno(),
 
                 roles,
