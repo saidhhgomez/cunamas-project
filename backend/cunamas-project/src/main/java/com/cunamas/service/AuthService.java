@@ -28,4 +28,14 @@ public interface AuthService {
             AprobarUsuarioRequestDTO request
     );
 
+    RefreshTokenResponseDTO refresh(
+            RefreshTokenRequestDTO request
+    );
+
+    void logout(
+            String refreshToken
+    );
+
+    void logoutAll();
+
 }

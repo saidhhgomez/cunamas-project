@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -96,15 +97,23 @@ public class RefreshTokenServiceImpl
 
     ) {
 
-        repository.findByRefreshToken(refreshToken)
+        DispositivoSesionEntity sesion =
 
-                .ifPresent(sesion -> {
+                repository
 
-                    sesion.setActivo(false);
+                        .findByRefreshToken(refreshToken)
 
-                    repository.save(sesion);
+                        .orElseThrow(() ->
 
-                });
+                                new RuntimeException(
+                                        "Refresh Token no encontrado."
+                                )
+
+                        );
+
+        sesion.setActivo(false);
+
+        repository.save(sesion);
 
     }
 
@@ -115,15 +124,19 @@ public class RefreshTokenServiceImpl
 
     ) {
 
-        repository
+        List<DispositivoSesionEntity> sesiones =
 
-                .findByPersona_IdPersona(idPersona)
+                repository.findByPersona_IdPersona(
+                        idPersona
+                );
 
-                .forEach(sesion -> {
+        for (DispositivoSesionEntity sesion : sesiones) {
 
-                    sesion.setActivo(false);
+            sesion.setActivo(false);
 
-                });
+        }
+
+        repository.saveAll(sesiones);
 
     }
 
