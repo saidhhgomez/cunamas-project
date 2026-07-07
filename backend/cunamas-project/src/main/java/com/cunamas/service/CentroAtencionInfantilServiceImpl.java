@@ -9,6 +9,7 @@ import com.cunamas.repository.CentroAtencionInfantilRepository;
 import com.cunamas.repository.DireccionRepository;
 import com.cunamas.repository.ModuloRepository;
 import com.cunamas.repository.ServicioAlimentarioRepository;
+import com.cunamas.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +33,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
     private final ServicioAlimentarioRepository servicioRepository;
 
     private final ModuloRepository moduloRepository;
+
+    private final SecurityUtils securityUtils;
 
     @Override
     public CentroAtencionInfantilResponseDTO registrar(
@@ -89,7 +92,7 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
         );
 
         centro.setIdUsuarioModificacion(
-                request.getIdUsuarioModificacion()
+                securityUtils.getIdPersona()
         );
 
         LocalDateTime ahora =
@@ -276,6 +279,9 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
         CentroAtencionInfantilEntity centro =
                 new CentroAtencionInfantilEntity();
 
+        Integer idUsuario =
+                securityUtils.getIdPersona();
+
         centro.setDireccion(direccion);
 
         centro.setServicioAlimentario(servicio);
@@ -284,9 +290,7 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                 request.getLocalNombre().trim()
         );
 
-        centro.setIdUsuarioModificacion(
-                request.getIdUsuario()
-        );
+        centro.setIdUsuarioModificacion(idUsuario);
 
         centro.setFechaCreacion(
                 LocalDateTime.now()
@@ -323,9 +327,7 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                     centroGuardado
             );
 
-            modulo.setIdUsuarioModificacion(
-                    request.getIdUsuario()
-            );
+            modulo.setIdUsuarioModificacion(idUsuario);
 
             ModuloEntity moduloGuardado =
                     moduloRepository.save(modulo);
