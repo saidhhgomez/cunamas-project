@@ -7,7 +7,30 @@ function RootLayoutProtected() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // 1. Mientras lee el AsyncStorage, muestra el Spinner de carga
+  // 1. El useEffect SIEMPRE en el nivel superior
+  useEffect(() => {
+    if (isLoading) return; // Evitamos acciones mientras valida el token/sesión
+
+    // 🌟 Truco de sincronización: Usamos un micro-timeout para asegurar
+    // que Expo Router haya montado completamente la vista antes de redirigir.
+    const timer = setTimeout(() => {
+      if (!user) {
+        // Si no hay sesión, va al login
+        router.replace('/auth/login');
+      } else {
+        // Redirección inicial según el rol del usuario
+        if (user.rol === 'cuidadora') {
+          router.replace('/cuidadora/inicio');
+        } else if (user.rol === 'asistente') {
+          router.replace('/asistente');
+        }
+      }
+    }, 0);
+
+    return () => clearTimeout(timer); // Limpieza de timer
+  }, [user, isLoading]); 
+
+  // 2. Retorno condicional de UI de carga (después de los Hooks)
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -17,24 +40,7 @@ function RootLayoutProtected() {
     );
   }
 
-  // 2. Control de Roles y Redirección en un useEffect (Evita el bucle infinito)
-  useEffect(() => {
-    if (isLoading) return;
-
-    if (!user) {
-      // Si no hay sesión, al login
-      router.replace('/auth/login');
-    } else {
-      // Redirección inicial única según el rol
-      if (user.rol === 'cuidadora') {
-        router.replace('/cuidadora/inicio');
-      } else if (user.rol === 'asistente') {
-        router.replace('/asistente');
-      }
-    }
-  }, [user, isLoading]); // 💡 Solo se ejecuta cuando el usuario cambia o inicia sesión
-
-  // 3. Renderiza el contenedor nativo para que 'router.push' funcione sin problemas
+  // 3. Renderiza las pantallas hijas de las carpetas internas
   return <Slot />;
 }
 

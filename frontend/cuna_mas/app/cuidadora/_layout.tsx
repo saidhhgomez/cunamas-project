@@ -1,28 +1,23 @@
-    import { Tabs } from 'expo-router';
-    import { Home, Calculator } from 'lucide-react-native';
+import { Tabs, useRouter } from 'expo-router'; 
+import { Home, User, LogOut, ArrowLeft } from 'lucide-react-native';
+import { View, Text, useWindowDimensions, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { useAuth } from '../../context/AuthContext'; 
 
-    export default function CuidadoraLayout() {
-    return (
-        <Tabs screenOptions={{ 
-        headerShown: false, // Oculta la barra blanca nativa de arriba ya que tú tienes tu propio header de Cuna Más
-        tabBarActiveTintColor: '#00AEEF', // Celeste Cuna Más cuando esté activo
-        tabBarLabelStyle: { fontWeight: '700', fontSize: 12 },
-        tabBarStyle: { height: 70, paddingBottom: 10 }
-        }}>
-        <Tabs.Screen 
-            name="inicio" 
-            options={{ 
-            title: 'Inicio',
-            tabBarIcon: ({ color }) => <Home color={color} size={24} />
-            }} 
-        />
-        <Tabs.Screen 
-            name="calculadora" // Recuerda crear luego el archivo app/(cuidadora)/calculadora.tsx si lo necesitas
-            options={{ 
-            title: 'Calculadora',
-            tabBarIcon: ({ color }) => <Calculator color={color} size={24} />
-            }} 
-        />
-        </Tabs>
-    );
-    }
+export default function CuidadoraLayout() {
+return (
+    <Tabs
+      screenOptions={{
+        headerShown: false, // Quitamos cualquier header por defecto
+      }}
+      // Ocultamos completamente la barra de pestañas nativa 
+      // para que cada pantalla dibuje sus propios botones abajo si quiere
+      tabBar={() => null} 
+    >
+      <Tabs.Screen name="inicio" />
+      <Tabs.Screen name="categoriaCalculadora" />
+      <Tabs.Screen name="locales" />
+      <Tabs.Screen name="modulo" />
+      <Tabs.Screen name="control_lista" />
+    </Tabs>
+  );
+}

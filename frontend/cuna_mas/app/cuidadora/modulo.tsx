@@ -4,18 +4,15 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  SafeAreaView, 
   FlatList,
   useWindowDimensions,
   ActivityIndicator
 } from 'react-native';
-import { User, LogOut, UserRound } from 'lucide-react-native';
-import { useAuth } from '../../context/AuthContext'; 
+import { UserRound } from 'lucide-react-native';
 import { ModuloService } from '../../service/moduloService';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export default function ModulosListScreen() {
-  const { user, logout } = useAuth(); 
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
   const router = useRouter();
@@ -28,6 +25,7 @@ export default function ModulosListScreen() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Nos ayuda a controlar el spinner del centro
 
   const cargarModulos = async (paginaAEnviar: number, reiniciar: boolean = false) => {
     if (loading) return;
@@ -36,7 +34,7 @@ export default function ModulosListScreen() {
     try {
       const resultado = await ModuloService.getModulosPorLocal(idLocalSeleccionado, paginaAEnviar);
 
-      if (resultado.modulos.length === 0) {
+      if (!resultado || !resultado.modulos || resultado.modulos.length === 0) {
         setHasMore(false);
       } else {
         setModulos(prevModulos => reiniciar ? resultado.modulos : [...prevModulos, ...resultado.modulos]);
@@ -49,8 +47,12 @@ export default function ModulosListScreen() {
       }
     } catch (error) {
       console.error("Error cargando módulos en la vista:", error);
+      // Detenemos futuros intentos si hay un colapso en la API
+      setHasMore(false); 
     } finally {
+      // 🌟 SOLUCIÓN AL SPINNER INFINITO: Forzamos el apagado pase lo que pase
       setLoading(false);
+      setIsInitialLoad(false);
     }
   };
 
@@ -58,6 +60,7 @@ export default function ModulosListScreen() {
     setModulos([]);
     setPage(0);
     setHasMore(true);
+    setIsInitialLoad(true);
     cargarModulos(0, true);
   }, [idLocalSeleccionado]);
 
@@ -67,36 +70,10 @@ export default function ModulosListScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       
-      {/* Header Corporativo Responsivo */}
-      <View style={[styles.header, { height: esPantallaGrande ? 160 : 130 }]}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatarCircle}>
-            <User color="#000" size={esPantallaGrande ? 32 : 26} />
-          </View>
-          <View style={styles.welcomeContainer}>
-            <Text style={[styles.welcomeTitle, { fontSize: esPantallaGrande ? 24 : 20 }]}>
-              Bienvenid@
-            </Text>
-            <Text 
-              style={[styles.userName, { fontSize: esPantallaGrande ? 18 : 15 }]}
-              numberOfLines={1}
-            >
-              {user?.nombre || "Cuidadora"}
-            </Text>
-          </View>
-        </View>
-        
-        <TouchableOpacity 
-          style={styles.logoutButton} 
-          onPress={logout}
-          activeOpacity={0.8}
-          focusable={true}
-        >
-          <LogOut color="#FFF" size={esPantallaGrande ? 26 : 22} />
-        </TouchableOpacity>
-      </View>
+      {/* 🟢 NOTA: El header verde corporativo fue removido con éxito de aquí */}
+      {/* Ya que ahora vive y se renderiza elegantemente desde el archivo _layout.tsx */}
 
       {/* FlatList con Scroll Infinito */}
       <FlatList
@@ -113,12 +90,27 @@ export default function ModulosListScreen() {
             Módulos
           </Text>
         }
+
+        // 📝 Control inteligente de carga y estado vacío debajo del título
+        ListEmptyComponent={
+          loading && isInitialLoad ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color="#00AEEF" />
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                No se encontraron módulos registrados para este local.
+              </Text>
+            </View>
+          )
+        }
         
         renderItem={({ item }) => (
           <TouchableOpacity 
             style={styles.moduloItem}
             activeOpacity={0.7}
-            focusable={true} /* 👈 Solución: Ayuda a controlar el foco nativo en web */
+            focusable={true}
             onPress={() => {
               router.push({
                 pathname: '/cuidadora/control_lista', 
@@ -145,8 +137,7 @@ export default function ModulosListScreen() {
         onEndReachedThreshold={0.4}
 
         ListFooterComponent={() => (
-          loading && hasMore ? (
-            /* 👈 Solución: Evita que el foco de accesibilidad quede atrapado en el loader */
+          loading && !isInitialLoad && hasMore ? (
             <View style={styles.footerLoading} accessible={false}>
               <ActivityIndicator size="small" color="#00AEEF" />
             </View>
@@ -154,24 +145,78 @@ export default function ModulosListScreen() {
         )}
       />
 
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
-  header: { backgroundColor: '#C5D800', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: '6%', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4 },
-  userInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 15 },
-  avatarCircle: { backgroundColor: '#FFF', width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
-  welcomeContainer: { marginLeft: 12, flex: 1 },
-  welcomeTitle: { color: '#00AEEF', fontWeight: 'bold' },
-  userName: { color: '#FFF', fontWeight: '600', marginTop: 2 },
-  logoutButton: { backgroundColor: '#FF007A', padding: 12, borderRadius: 25 },
-  scrollContent: { paddingHorizontal: '6%', paddingBottom: 30, width: '100%' },
-  tabletContent: { maxWidth: 550, alignSelf: 'center' },
-  title: { fontWeight: '900', color: '#00AEEF', marginBottom: 20, marginTop: 25 },
-  moduloItem: { width: '100%', height: 72, borderWidth: 2, borderColor: '#8A2BE2', borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14, backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
-  iconWrapper: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F3E8FF', justifyContent: 'center', alignItems: 'center' },
-  moduloName: { fontWeight: '800', color: '#1E293B', marginLeft: 14, textTransform: 'uppercase', flex: 1 },
-  footerLoading: { paddingVertical: 16, alignItems: 'center' }
+  container: { 
+    flex: 1, 
+    backgroundColor: '#FFF' 
+  },
+  scrollContent: { 
+    paddingHorizontal: '6%', 
+    paddingBottom: 110, // 🌟 Espacio extra para que la cápsula flotante inferior no tape tus elementos
+    width: '100%' 
+  },
+  tabletContent: { 
+    maxWidth: 550, 
+    alignSelf: 'center' 
+  },
+  title: { 
+    fontWeight: '900', 
+    color: '#00AEEF', 
+    marginBottom: 20, 
+    marginTop: 25 
+  },
+  moduloItem: { 
+    width: '100%', 
+    height: 72, 
+    borderWidth: 2, 
+    borderColor: '#8A2BE2', 
+    borderRadius: 16, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 16, 
+    marginBottom: 14, 
+    backgroundColor: '#FFF', 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 1 }, 
+    shadowOpacity: 0.05, 
+    shadowRadius: 2, 
+    elevation: 2 
+  },
+  iconWrapper: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 12, 
+    backgroundColor: '#F3E8FF', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  moduloName: { 
+    fontWeight: '800', 
+    color: '#1E293B', 
+    marginLeft: 14, 
+    textTransform: 'uppercase', 
+    flex: 1 
+  },
+  footerLoading: { 
+    paddingVertical: 16, 
+    alignItems: 'center' 
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 50,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#94A3B8',
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
 });

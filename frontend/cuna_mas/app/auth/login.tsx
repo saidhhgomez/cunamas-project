@@ -15,6 +15,9 @@ import {
   useWindowDimensions 
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext'; 
+import { Link } from 'expo-router';
+// 🌟 Importamos los insets para esquivar la barra de botones del celular
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
   const [dni, setDni] = useState('');
@@ -23,9 +26,10 @@ export default function LoginScreen() {
   
   const { login } = useAuth();
   const { width } = useWindowDimensions();
+  // 🌟 Medimos el espacio inferior del teléfono
+  const insets = useSafeAreaInsets(); 
   
   const esPantallaGrande = width > 600;
-  // 🚀 Círculo notablemente más grande y con más presencia visual
   const tamañoLogo = esPantallaGrande ? 260 : width * 0.55; 
 
   const handleIngresar = async () => {
@@ -47,18 +51,21 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} // 🌟 Ajustado a padding para un comportamiento óptimo en ambos sistemas
         style={styles.flexible}
       >
         <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom, 16) } // 🌟 Añadimos el colchón de seguridad dinámico al final
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* Contenedor principal unificado */}
           <View style={[styles.mainContent, esPantallaGrande && styles.formMaxWith]}>
             
-            {/* Logo Central más imponente */}
+            {/* Logo Central */}
             <View style={styles.logoContainer}>
               <View style={[
                 styles.logoCircle, 
@@ -119,17 +126,17 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
             </View>
-
           </View>
 
-          {/* Footer de Registro */}
+          {/* Footer de Registro alineado y protegido del fondo */}
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>¿No estás registrado? </Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text style={styles.registerLink}>Regístrate Aquí</Text>
-            </TouchableOpacity>
+            <Link href="/auth/register" asChild>
+              <TouchableOpacity activeOpacity={0.7} focusable={true}>
+                <Text style={styles.registerLink}>Regístrate Aquí</Text>
+              </TouchableOpacity>
+            </Link>
           </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -147,7 +154,6 @@ const styles = StyleSheet.create({
   scrollContent: { 
     flexGrow: 1, 
     paddingHorizontal: '8%', 
-    paddingBottom: 20,
     justifyContent: 'space-between'
   },
   mainContent: {
@@ -155,17 +161,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     width: '100%',
     alignSelf: 'center',
-    marginTop: 15
+    marginTop: 35 // 🌟 Agregamos un poco más de aire superior para equilibrar la vista
   },
   formMaxWith: {
     maxWidth: 400 
   },
   logoContainer: { 
     alignItems: 'center', 
-    marginBottom: 25 // Ajustado un poco más corto para equilibrar el tamaño del logo nuevo
+    marginBottom: 25 
   },
   logoCircle: { 
-    borderWidth: 5, // Aumentado ligeramente el grosor del borde para acompañar el tamaño
+    borderWidth: 5, 
     borderColor: '#00AEEF', 
     justifyContent: 'center', 
     alignItems: 'center', 
@@ -220,7 +226,7 @@ const styles = StyleSheet.create({
   registerContainer: { 
     flexDirection: 'row', 
     justifyContent: 'center', 
-    paddingVertical: 15
+    paddingVertical: 20 // 🌟 Espaciado interno cómodo
   },
   registerText: { 
     color: '#666', 

@@ -21,7 +21,6 @@ export const LocalService = {
         isLast: response.data.last ?? (content.length < size)
       };
     } catch (error) {
-      console.error("Error en getLocalesPorCentro:", error);
       throw error;
     }
   }

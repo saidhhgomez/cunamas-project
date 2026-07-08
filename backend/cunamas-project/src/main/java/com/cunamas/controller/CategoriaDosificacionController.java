@@ -11,7 +11,6 @@ import java.util.List;
 @RequestMapping("categorias-dosificacion")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class CategoriaDosificacionController {
 
     private final CategoriaDosificacionService service;
