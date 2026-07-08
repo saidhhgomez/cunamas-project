@@ -17,9 +17,6 @@ public class CentroConModulosRequestDTO {
 
     private String localNombre;
 
-    @NotNull
-    private Integer idUsuario;
-
     @NotEmpty
     private List<String> modulos;
 }

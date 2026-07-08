@@ -7,6 +7,7 @@ import com.cunamas.entity.RegistroAsistenciaCIAIEntity;
 import com.cunamas.repository.CategoriaDosificacionRepository;
 import com.cunamas.repository.ModuloRepository;
 import com.cunamas.repository.RegistroAsistenciaCIAIRepository;
+import com.cunamas.security.SecurityUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,9 @@ public class RegistroAsistenciaCIAIServiceImpl
 
     private final ModuloRepository moduloRepository;
 
-    private final CategoriaDosificacionRepository categoriaRepository;;
+    private final CategoriaDosificacionRepository categoriaRepository;
+
+    private final SecurityUtils securityUtils;
 
     @Override
     @Transactional
@@ -126,11 +129,11 @@ public class RegistroAsistenciaCIAIServiceImpl
             registro.setFechaModificacion(ahora);
 
             registro.setIdUsuarioCreacion(
-                    request.getIdUsuarioCreacion()
+                    securityUtils.getIdPersona()
             );
 
             registro.setIdUsuarioModificacion(
-                    request.getIdUsuarioCreacion()
+                    securityUtils.getIdPersona()
             );
 
             repository.save(registro);

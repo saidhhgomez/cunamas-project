@@ -10,6 +10,7 @@ import java.util.List;
 @RestController
 @RequestMapping("categorias-dosificacion")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class CategoriaDosificacionController {
 
     private final CategoriaDosificacionService service;

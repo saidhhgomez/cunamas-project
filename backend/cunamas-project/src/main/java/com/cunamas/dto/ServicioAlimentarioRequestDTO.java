@@ -14,7 +14,4 @@ public class ServicioAlimentarioRequestDTO {
     private String nombreCentro;
 
     private String nombreComite;
-
-    @NotNull(message = "El usuario es obligatorio")
-    private Integer idUsuarioModificacion;
 }

@@ -19,6 +19,14 @@ spring:
   jackson:
     time-zone: America/Lima
 
+security:
+  jwt:
+    secret: "cunamas-secret-asdasdasdas-2026-jwt-token-jwt-security"
+    expiration: 1800
+
+  refresh-token:
+    expiration-days: 180
+
 server:
   port: 8080
   servlet:

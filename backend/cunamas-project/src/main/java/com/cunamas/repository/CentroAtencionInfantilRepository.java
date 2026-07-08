@@ -17,4 +17,17 @@ public interface CentroAtencionInfantilRepository
             Integer idCentroAlimentario,
             Pageable pageable
     );
+
+    Page<CentroAtencionInfantilEntity>
+    findByDireccion_Distrito_NombreDistritoIgnoreCase(
+            String nombreDistrito,
+            Pageable pageable
+    );
+
+    Page<CentroAtencionInfantilEntity>
+    findByServicioAlimentario_IdCentroAlimentarioAndDireccion_Distrito_NombreDistritoIgnoreCase(
+            Integer idCentroAlimentario,
+            String nombreDistrito,
+            Pageable pageable
+    );
 }

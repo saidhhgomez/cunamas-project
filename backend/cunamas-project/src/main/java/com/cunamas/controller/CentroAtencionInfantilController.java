@@ -27,24 +27,22 @@ public class CentroAtencionInfantilController {
     @GetMapping
     public CentroAtencionInfantilPageDTO listar(
 
-            @RequestParam(
-                    required = false
-            )
+            @RequestParam(required = false)
             Integer idCentroAlimentario,
 
-            @RequestParam(
-                    defaultValue = "0"
-            )
+            @RequestParam(required = false)
+            String distrito,
+
+            @RequestParam(defaultValue = "0")
             int page,
 
-            @RequestParam(
-                    defaultValue = "10"
-            )
+            @RequestParam(defaultValue = "10")
             int size
     ) {
 
         return centroService.listar(
                 idCentroAlimentario,
+                distrito,
                 page,
                 size
         );

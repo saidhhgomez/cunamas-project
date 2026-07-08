@@ -8,6 +8,7 @@ import com.cunamas.entity.CentroAtencionInfantilEntity;
 import com.cunamas.entity.ModuloEntity;
 import com.cunamas.repository.CentroAtencionInfantilRepository;
 import com.cunamas.repository.ModuloRepository;
+import com.cunamas.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +25,8 @@ public class ModuloServiceImpl implements ModuloService {
     private final ModuloRepository moduloRepository;
 
     private final CentroAtencionInfantilRepository centroAtencionInfantilRepository;
+
+    private final SecurityUtils securityUtils;
 
     @Override
     public ModuloResponseDTO registrarModulo(
@@ -56,7 +59,7 @@ public class ModuloServiceImpl implements ModuloService {
         modulo.setLocal(local);
 
         modulo.setIdUsuarioModificacion(
-                request.getIdUsuario()
+                securityUtils.getIdPersona()
         );
 
         ModuloEntity guardado =

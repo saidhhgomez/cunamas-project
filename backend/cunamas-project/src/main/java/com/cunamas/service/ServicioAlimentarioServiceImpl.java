@@ -8,6 +8,7 @@ import com.cunamas.entity.DireccionEntity;
 import com.cunamas.entity.ServicioAlimentarioEntity;
 import com.cunamas.repository.DireccionRepository;
 import com.cunamas.repository.ServicioAlimentarioRepository;
+import com.cunamas.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,8 @@ public class ServicioAlimentarioServiceImpl
     private final ServicioAlimentarioRepository servicioRepository;
 
     private final DireccionRepository direccionRepository;
+
+    private final SecurityUtils securityUtils;
 
     @Override
     public ServicioAlimentarioResponseDTO registrarServicioAlimentario(
@@ -78,7 +81,7 @@ public class ServicioAlimentarioServiceImpl
         );
 
         servicio.setIdUsuarioModificacion(
-                request.getIdUsuarioModificacion()
+                securityUtils.getIdPersona()
         );
 
         servicio.setFechaCreacion(ahora);

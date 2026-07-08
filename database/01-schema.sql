@@ -128,6 +128,7 @@ CREATE TABLE cuenta_acceso
 (
   id_cuenta SERIAL PRIMARY KEY,
   id_persona INTEGER NOT NULL,
+  correo_electronico VARCHAR(255) NOT NULL UNIQUE,
   password TEXT NOT NULL,
   estado_cuenta BOOLEAN DEFAULT TRUE,
   
@@ -135,6 +136,20 @@ CREATE TABLE cuenta_acceso
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   fecha_modificacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   id_usuario_modificacion INTEGER
+);
+
+CREATE TABLE dispositivo_sesion (
+  id_sesion SERIAL PRIMARY KEY,
+  id_persona INTEGER NOT NULL,
+  refresh_token TEXT NOT NULL UNIQUE,
+  nombre_dispositivo VARCHAR(100), 
+  uuid_dispositivo VARCHAR(255), 
+  activo BOOLEAN DEFAULT TRUE,
+  fecha_expiracion TIMESTAMP NOT NULL,
+  fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  ultima_conexion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  CONSTRAINT fk_sesion_persona FOREIGN KEY (id_persona) REFERENCES persona(id_persona) ON DELETE CASCADE
 );
 
 CREATE TABLE servicio_alimentario

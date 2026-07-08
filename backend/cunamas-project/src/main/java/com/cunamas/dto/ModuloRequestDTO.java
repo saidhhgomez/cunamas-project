@@ -12,7 +12,4 @@ public class ModuloRequestDTO {
 
     @NotNull(message = "El idLocal es obligatorio")
     private Integer idLocal;
-
-    @NotNull(message = "El idUsuario es obligatorio")
-    private Integer idUsuario;
 }
