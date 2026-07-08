@@ -15,7 +15,4 @@ public class CentroAtencionInfantilRequestDTO {
 
     @NotBlank(message = "El nombre del local es obligatorio")
     private String localNombre;
-
-    @NotNull(message = "El usuario es obligatorio")
-    private Integer idUsuarioModificacion;
 }
