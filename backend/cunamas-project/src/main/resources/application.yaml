@@ -24,6 +24,9 @@ security:
     secret: "cunamas-secret-asdasdasdas-2026-jwt-token-jwt-security"
     expiration: 1800
 
+  refresh-token:
+    expiration-days: 180
+
 server:
   port: 8080
   servlet:

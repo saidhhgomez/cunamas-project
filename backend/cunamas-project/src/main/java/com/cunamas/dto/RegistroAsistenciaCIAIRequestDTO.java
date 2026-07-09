@@ -11,9 +11,6 @@ public class RegistroAsistenciaCIAIRequestDTO {
     @NotNull(message = "El idModulo es obligatorio")
     private Integer idModulo;
 
-    @NotNull(message = "El idUsuarioCreacion es obligatorio")
-    private Integer idUsuarioCreacion;
-
     @NotNull(message = "El registroCorrelativo es obligatorio")
     private Integer registroCorrelativo;
 

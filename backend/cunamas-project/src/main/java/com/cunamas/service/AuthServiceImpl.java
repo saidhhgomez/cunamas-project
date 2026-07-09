@@ -39,6 +39,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final RolRepository rolRepository;
 
+    private final RefreshTokenService refreshTokenService;
+
     private static final Pattern REGEX_DNI =
             Pattern.compile("^[0-9]{8}$");
 
@@ -351,7 +353,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponseDTO login(
             LoginRequestDTO request
     ) {
@@ -452,9 +454,23 @@ public class AuthServiceImpl implements AuthService {
                         roles
                 );
 
+        DispositivoSesionEntity sesion =
+
+                refreshTokenService.crearSesion(
+
+                        persona,
+
+                        request.getDispositivo().getNombreDispositivo(),
+
+                        request.getDispositivo().getUuidDispositivo()
+
+                );
+
         return new LoginResponseDTO(
 
                 token,
+
+                sesion.getRefreshToken(),
 
                 "Bearer",
 
@@ -463,9 +479,7 @@ public class AuthServiceImpl implements AuthService {
                 persona.getIdPersona(),
 
                 persona.getNombres()
-
                         + " "
-
                         + persona.getApPaterno(),
 
                 roles,
@@ -969,5 +983,151 @@ public class AuthServiceImpl implements AuthService {
 
         );
     }
+
+    @Override
+    @Transactional
+    public RefreshTokenResponseDTO refresh(
+            RefreshTokenRequestDTO request
+    ) {
+
+        DispositivoSesionEntity sesion =
+
+                refreshTokenService.renovarSesion(
+
+                        request.getRefreshToken()
+
+                );
+
+        PersonaEntity persona =
+                sesion.getPersona();
+
+        CuentaAccesoEntity cuenta =
+
+                cuentaRepository
+
+                        .findByPersona_IdPersona(
+
+                                persona.getIdPersona()
+
+                        )
+
+                        .orElseThrow(() ->
+
+                                new RuntimeException(
+                                        "La cuenta no existe."
+                                )
+
+                        );
+
+        if (!Boolean.TRUE.equals(
+                cuenta.getEstadoCuenta()
+        )) {
+
+            throw new RuntimeException(
+                    "La cuenta se encuentra inactiva."
+            );
+
+        }
+
+        List<String> roles =
+
+                personaRolRepository
+
+                        .findByPersona_IdPersona(
+                                persona.getIdPersona()
+                        )
+
+                        .stream()
+
+                        .map(r ->
+
+                                r.getRol()
+                                        .getNombreRol()
+
+                        )
+
+                        .toList();
+
+        String distrito = null;
+
+        boolean tieneDireccion = false;
+
+        if (persona.getDireccion() != null) {
+
+            tieneDireccion = true;
+
+            distrito =
+
+                    persona.getDireccion()
+
+                            .getDistrito()
+
+                            .getNombreDistrito();
+
+        }
+
+        String nuevoJwt =
+
+                jwtService.generarToken(
+
+                        persona,
+
+                        roles
+
+                );
+
+        return new RefreshTokenResponseDTO(
+
+                nuevoJwt,
+
+                sesion.getRefreshToken(),
+
+                "Bearer",
+
+                jwtService.getExpirationSeconds(),
+
+                persona.getIdPersona(),
+
+                persona.getNombres()
+
+                        + " "
+
+                        + persona.getApPaterno(),
+
+                roles,
+
+                distrito,
+
+                tieneDireccion
+
+        );
+
+    }
+
+    @Override
+    @Transactional
+    public void logout(
+            String refreshToken
+    ) {
+
+        refreshTokenService.cerrarSesion(
+                refreshToken
+        );
+
+    }
+
+    @Override
+    @Transactional
+    public void logoutAll() {
+
+        Integer idPersona =
+                securityUtils.getIdPersona();
+
+        refreshTokenService.cerrarTodasLasSesiones(
+                idPersona
+        );
+
+    }
+
 
 }

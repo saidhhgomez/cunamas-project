@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class LoginResponseDTO {
+public class RefreshTokenResponseDTO {
 
     private String token;
 
