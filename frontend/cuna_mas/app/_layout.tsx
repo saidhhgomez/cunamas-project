@@ -1,3 +1,4 @@
+// app/_layout.tsx
 import React, { useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
 import { Slot, useRouter } from 'expo-router'; 
@@ -7,30 +8,16 @@ function RootLayoutProtected() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // 1. El useEffect SIEMPRE en el nivel superior
   useEffect(() => {
-    if (isLoading) return; // Evitamos acciones mientras valida el token/sesión
+    if (isLoading) return; // Evitamos acciones mientras valida el token
 
-    // 🌟 Truco de sincronización: Usamos un micro-timeout para asegurar
-    // que Expo Router haya montado completamente la vista antes de redirigir.
-    const timer = setTimeout(() => {
-      if (!user) {
-        // Si no hay sesión, va al login
-        router.replace('/auth/login');
-      } else {
-        // Redirección inicial según el rol del usuario
-        if (user.rol === 'cuidadora') {
-          router.replace('/cuidadora/inicio');
-        } else if (user.rol === 'asistente') {
-          router.replace('/asistente');
-        }
-      }
-    }, 0);
-
-    return () => clearTimeout(timer); // Limpieza de timer
+    // Si el usuario da click en cerrar sesión o se vence el token, 
+    // el layout detecta que 'user' es null y lo expulsa al login de inmediato
+    if (!user) {
+      router.replace('/auth/login');
+    }
   }, [user, isLoading]); 
 
-  // 2. Retorno condicional de UI de carga (después de los Hooks)
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -40,7 +27,7 @@ function RootLayoutProtected() {
     );
   }
 
-  // 3. Renderiza las pantallas hijas de las carpetas internas
+  // Renderiza el árbol de vistas (donde tu index.tsx tomará el control principal)
   return <Slot />;
 }
 

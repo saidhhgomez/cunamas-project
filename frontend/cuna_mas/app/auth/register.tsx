@@ -10,11 +10,14 @@ import {
   Platform,
   ScrollView,
   Alert,
+  ActivityIndicator, // 🌟 Importamos para mostrar estado de carga
   useWindowDimensions,
   Keyboard
 } from 'react-native';
 import { ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+// 🌟 Importamos el servicio y la interfaz que creamos previamente
+import { registerService, RegisterPayload } from '../../service/authService'; 
 
 const TABLA_DOCUMENTO = [
   { id_documento: 1, nombre_documento: 'DNI' },
@@ -34,6 +37,7 @@ export default function RegistroScreen() {
   const esPantallaGrande = width > 600;
 
   const [tecladoVisible, setTecladoVisible] = useState(false);
+  const [cargando, setCargando] = useState(false); // 🌟 Estado para deshabilitar botones al registrar
 
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState<typeof TABLA_DOCUMENTO[number] | null>(null);
   const [generoSeleccionado, setGeneroSeleccionado] = useState<typeof TABLA_GENERO[number] | null>(null);
@@ -64,25 +68,49 @@ export default function RegistroScreen() {
     };
   }, []);
 
-  const manejarRegistro = () => {
+  // 🌟 Modificamos la función para que sea asíncrona y llame a la API
+  const manejarRegistro = async () => {
     if (!documentoSeleccionado || !numDocumento || !nombres || !apellidoPaterno || !generoSeleccionado || !correo || !password) {
       Alert.alert('Campos Incompletos', 'Por favor, completa todos los datos obligatorios.');
       return;
     }
 
-    const payloadRegistro = {
-      id_documento: documentoSeleccionado.id_documento,
-      num_documento: numDocumento,
-      nombres: nombres,
-      apellido_paterno: apellidoPaterno,
-      apellido_materno: apellidoMaterno,
-      id_genero: generoSeleccionado.id_genero,
-      correo: correo.trim().toLowerCase(),
-      password: password
+    // 🌟 Mapeamos y estructuramos los datos exactamente como pide tu Swagger
+    const payloadRegistro: RegisterPayload = {
+      persona: {
+        idDocumento: documentoSeleccionado.id_documento,
+        numeroDocumento: numDocumento,
+        nombres: nombres,
+        appPaterno: apellidoPaterno,
+        apMaterno: apellidoMaterno, // Puede ir vacío si no tiene
+        idGenero: generoSeleccionado.id_genero,
+      },
+      cuenta: {
+        correoElectronico: correo.trim().toLowerCase(),
+        password: password,
+      },
     };
 
-    console.log("Payload enviado:", payloadRegistro);
-    Alert.alert("Registro Exitoso", `ID Doc: ${payloadRegistro.id_documento} | ID Género: ${payloadRegistro.id_genero}`);
+    try {
+      setCargando(true);
+      
+      // Enviamos los datos al backend
+      await registerService(payloadRegistro);
+
+      // Si todo sale bien:
+      Alert.alert(
+        "¡Registro Exitoso!", 
+        "Tu cuenta ha sido creada correctamente.",
+        [{ text: "OK", onPress: () => router.replace('/login') }] // Te redirige al Login
+      );
+
+    } catch (error: any) {
+      // Manejo amigable de errores desde el backend
+      const mensajeError = error.response?.data?.mensaje || "No se pudo completar el registro. Inténtalo de nuevo más tarde.";
+      Alert.alert("Error en el Registro", mensajeError);
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
@@ -97,6 +125,7 @@ export default function RegistroScreen() {
             style={[styles.backButton, { width: esPantallaGrande ? 150 : 125, height: esPantallaGrande ? 46 : 40 }]} 
             onPress={() => router.back()}
             activeOpacity={0.85}
+            disabled={cargando} // Deshabilitar si está cargando
           >
             <View style={styles.backContent}>
               <ArrowLeft color="#FFF" size={esPantallaGrande ? 22 : 18} strokeWidth={3} />
@@ -122,6 +151,7 @@ export default function RegistroScreen() {
             <TouchableOpacity 
               style={[styles.pickerField, mostrarMenuDoc && styles.pickerAbierto]}
               activeOpacity={0.8}
+              disabled={cargando}
               onPress={() => {
                 setMostrarMenuDoc(!mostrarMenuDoc);
                 setMostrarMenuGenero(false);
@@ -170,7 +200,7 @@ export default function RegistroScreen() {
                 maxLength={documentoSeleccionado?.id_documento === 1 ? 8 : 12}
                 value={numDocumento}
                 onChangeText={setNumDocumento}
-                editable={!!documentoSeleccionado}
+                editable={!!documentoSeleccionado && !cargando}
               />
             </View>
 
@@ -182,6 +212,7 @@ export default function RegistroScreen() {
                 placeholderTextColor="#94A3B8"
                 value={nombres}
                 onChangeText={setNombres}
+                editable={!cargando}
               />
             </View>
 
@@ -193,6 +224,7 @@ export default function RegistroScreen() {
                 placeholderTextColor="#94A3B8"
                 value={apellidoPaterno}
                 onChangeText={setApellidoPaterno}
+                editable={!cargando}
               />
             </View>
 
@@ -204,6 +236,7 @@ export default function RegistroScreen() {
                 placeholderTextColor="#94A3B8"
                 value={apellidoMaterno}
                 onChangeText={setApellidoMaterno}
+                editable={!cargando}
               />
             </View>
 
@@ -211,6 +244,7 @@ export default function RegistroScreen() {
             <TouchableOpacity 
               style={[styles.pickerField, mostrarMenuGenero && styles.pickerAbierto]}
               activeOpacity={0.8}
+              disabled={cargando}
               onPress={() => {
                 setMostrarMenuGenero(!mostrarMenuGenero);
                 setMostrarMenuDoc(false);
@@ -261,6 +295,7 @@ export default function RegistroScreen() {
                 autoCapitalize="none"
                 value={correo}
                 onChangeText={setCorreo}
+                editable={!cargando}
               />
             </View>
 
@@ -273,6 +308,7 @@ export default function RegistroScreen() {
                 secureTextEntry={true}
                 value={password}
                 onChangeText={setPassword}
+                editable={!cargando}
               />
             </View>
           </View>
@@ -288,10 +324,15 @@ export default function RegistroScreen() {
               style={[styles.registerButton, { height: esPantallaGrande ? 56 : 52 }]}
               onPress={manejarRegistro}
               activeOpacity={0.85}
+              disabled={cargando} // 🌟 Evita doble envío accidental
             >
-              <Text style={[styles.registerButtonText, { fontSize: esPantallaGrande ? 18 : 16 }]}>
-                REGISTRAR
-              </Text>
+              {cargando ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <Text style={[styles.registerButtonText, { fontSize: esPantallaGrande ? 18 : 16 }]}>
+                  REGISTRAR
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         )}
@@ -301,6 +342,7 @@ export default function RegistroScreen() {
   );
 }
 
+// ... Tus estilos se quedan exactamente iguales a como los tenías ...
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -440,7 +482,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     paddingHorizontal: 24,
     paddingTop: 10,
-    paddingBottom: 50, // 🌟 50 píxeles puros para separarlo elegantemente de los botones del celular
+    paddingBottom: 50,
     width: '100%',
   },
   registerButton: {

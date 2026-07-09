@@ -16,17 +16,17 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext'; 
 import { Link } from 'expo-router';
-// 🌟 Importamos los insets para esquivar la barra de botones del celular
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
   const [dni, setDni] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  // 🌟 Estado para controlar la visibilidad de la contraseña
+  const [securePassword, setSecurePassword] = useState(true);
   
   const { login } = useAuth();
   const { width } = useWindowDimensions();
-  // 🌟 Medimos el espacio inferior del teléfono
   const insets = useSafeAreaInsets(); 
   
   const esPantallaGrande = width > 600;
@@ -40,7 +40,8 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      await login(dni, password);
+      // 🚀 .trim() para evitar los espacios fantasmas que causaban el error de login simulado
+      await login(dni.trim(), password.trim());
     } catch (error: any) {
       Alert.alert('Error de Inicio de Sesión', error.message || 'DNI o contraseña incorrectos');
     } finally {
@@ -51,18 +52,17 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} // 🌟 Ajustado a padding para un comportamiento óptimo en ambos sistemas
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} 
         style={styles.flexible}
       >
         <ScrollView 
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: Math.max(insets.bottom, 16) } // 🌟 Añadimos el colchón de seguridad dinámico al final
+            { paddingBottom: Math.max(insets.bottom, 16) } 
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Contenedor principal unificado */}
           <View style={[styles.mainContent, esPantallaGrande && styles.formMaxWith]}>
             
             {/* Logo Central */}
@@ -85,6 +85,7 @@ export default function LoginScreen() {
 
             {/* Formulario */}
             <View style={styles.formContainer}>
+              {/* Input DNI */}
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
@@ -98,16 +99,29 @@ export default function LoginScreen() {
                 />
               </View>
 
+              {/* Input CONTRASEÑA con Ojo Dinámico */}
               <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="CONTRASEÑA"
-                  placeholderTextColor="#A9A9A9"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                  editable={!loading}
-                />
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="CONTRASEÑA"
+                    placeholderTextColor="#A9A9A9"
+                    secureTextEntry={securePassword} // 🌟 Cambia dinámicamente
+                    value={password}
+                    onChangeText={setPassword}
+                    editable={!loading}
+                  />
+                  {/* Botón del Ojo */}
+                  <TouchableOpacity 
+                    style={styles.eyeButton} 
+                    onPress={() => setSecurePassword(!securePassword)}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.eyeIcon}>
+                      {securePassword ? '👁️' : '🕶️'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Botón Ingresar */}
@@ -128,7 +142,7 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          {/* Footer de Registro alineado y protegido del fondo */}
+          {/* Footer */}
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>¿No estás registrado? </Text>
             <Link href="/auth/register" asChild>
@@ -161,7 +175,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     width: '100%',
     alignSelf: 'center',
-    marginTop: 35 // 🌟 Agregamos un poco más de aire superior para equilibrar la vista
+    marginTop: 35 
   },
   formMaxWith: {
     maxWidth: 400 
@@ -202,6 +216,32 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     borderRadius: 10 
   },
+  // 🌟 NUEVOS ESTILOS PARA EL CONTENEDOR DE LA CONTRASEÑA Y EL OJO
+  passwordInputContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F5F5F5',
+    height: 54,
+    borderRadius: 10,
+    alignItems: 'center',
+    overflow: 'hidden'
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+  },
+  eyeButton: {
+    height: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  eyeIcon: {
+    fontSize: 18,
+    color: '#A9A9A9'
+  },
   loginButton: { 
     backgroundColor: '#C5D800', 
     height: 56, 
@@ -226,7 +266,7 @@ const styles = StyleSheet.create({
   registerContainer: { 
     flexDirection: 'row', 
     justifyContent: 'center', 
-    paddingVertical: 20 // 🌟 Espaciado interno cómodo
+    paddingVertical: 20 
   },
   registerText: { 
     color: '#666', 
