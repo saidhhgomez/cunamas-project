@@ -1,6 +1,8 @@
 package com.cunamas.service;
 
 import com.cunamas.dto.*;
+
+import java.time.LocalDate;
 import java.util.List;
 
 public interface CalculadoraService {
@@ -20,7 +22,14 @@ public interface CalculadoraService {
 
 
     CalculadoraRespuestaDTO calcularTotal(
-            Integer idPreparacion
+            Integer idPreparacion,
+            CalculadoraRequestDTO request
+    );
+
+    ResumenServicioDTO obtenerResumenServicio(
+            Integer idServicio,
+            LocalDate fecha,
+            Integer correlativo
     );
 
 }
