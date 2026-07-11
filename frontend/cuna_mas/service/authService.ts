@@ -1,8 +1,9 @@
 // services/authService.ts
 import { api } from './api'; 
 import * as Device from 'expo-device'; 
+import * as SecureStore from 'expo-secure-store'; 
 
-// --- Interfaces para el Login (Existentes) ---
+// --- Interfaces Existentes ---
 interface LoginResponse {
   token: string;
   refreshToken: string;
@@ -12,15 +13,14 @@ interface LoginResponse {
   distrito: string | null;
 }
 
-// --- 🌟 Nuevas Interfaces para el Registro (POST /auth/register) ---
 export interface RegisterPayload {
   persona: {
-    idDocumento: number;     // ID del tipo de documento (DNI generalmente es 1)
-    numeroDocumento: string; // El número de DNI ingresado
+    idDocumento: number;     
+    numeroDocumento: string; 
     nombres: string;
-    appPaterno: string;
+    appPaterno: string;      
     apMaterno: string;
-    idGenero: number;        // ID numérico del género
+    idGenero: number;        
   };
   cuenta: {
     correoElectronico: string;
@@ -28,11 +28,17 @@ export interface RegisterPayload {
   };
 }
 
+// --- 🌟 Nueva Interface para el Refresco ---
+interface RefreshResponse {
+  accessToken: string;
+  refreshToken?: string; // Por si tu backend también rota el refresh token
+}
+
 /**
  * Servicio de Autenticación - Cuna Más
  */
 
-// 🚪 Petición de Login (Existente)
+// 🚪 Petición de Login
 export const loginService = async (numeroDocumento: string, password: string): Promise<LoginResponse> => {
   const nombreDispositivo = Device.modelName || `${Device.brand} ${Device.designName}` || 'Dispositivo Móvil';
   const uuidDispositivo = Device.osBuildId || 'dev-react-native-uuid';
@@ -47,12 +53,8 @@ export const loginService = async (numeroDocumento: string, password: string): P
   };
 
   console.log('====== 🚀 ENVIANDO LOGIN ======');
-  console.log(JSON.stringify(payload, null, 2));
-
   try {
     const respuesta = await api.post<LoginResponse>('/auth/login', payload);
-    console.log('====== 📥 RESPUESTA LOGIN ======');
-    console.log(JSON.stringify(respuesta.data, null, 2));
     return respuesta.data; 
   } catch (error) {
     console.log('====== ❌ ERROR LOGIN ======', error);
@@ -60,37 +62,78 @@ export const loginService = async (numeroDocumento: string, password: string): P
   }
 };
 
-// 📝 Petición de Registro Real (POST /auth/register)
-export const registerService = async (datosRegistro: RegisterPayload): Promise<void> => {
+// 🔄 🌟 NUEVA FUNCIÓN: Petición para Refrescar el Token (POST /auth/refresh)
+export const refrescarTokenService = async (): Promise<string | null> => {
+  try {
+    // 1. Recuperamos el refresh token guardado en el celular
+    const refreshToken = await SecureStore.getItemAsync('refreshToken');
+    
+    if (!refreshToken) {
+      console.log('No se encontró un Refresh Token local.');
+      return null;
+    }
+
+    console.log('====== 🔄 ENVIANDO REFRESH TOKEN (POST /auth/refresh) ======');
+    
+    // 2. Hacemos la petición a tu endpoint de Postman
+    const respuesta = await api.post<RefreshResponse>('/auth/refresh', {
+      refreshToken: refreshToken
+    });
+
+    console.log('====== 📥 REFRESH EXITOSO ======');
+    const { accessToken, refreshToken: nuevoRefreshToken } = respuesta.data;
+
+    // 3. Guardamos los nuevos datos recibidos
+    await SecureStore.setItemAsync('accessToken', accessToken);
+    if (nuevoRefreshToken) {
+      await SecureStore.setItemAsync('refreshToken', nuevoRefreshToken);
+    }
+
+    return accessToken; // Devolvemos la nueva llave para que la petición fallida continúe
+  } catch (error) {
+    console.log('====== ❌ ERROR AL REFRESCAR TOKEN ======', error);
+    // Si falla el refresco, limpiamos todo de inmediato porque la sesión expiró por completo
+    await SecureStore.deleteItemAsync('accessToken');
+    await SecureStore.deleteItemAsync('refreshToken');
+    return null;
+  }
+};
+
+// 🚪 Cierra la sesión de manera segura tanto en el backend como en el dispositivo
+export const cerrarSesionService = async (): Promise<boolean> => { 
+  try {
+    const refreshToken = await SecureStore.getItemAsync('refreshToken');
+
+    if (refreshToken) {
+      console.log('====== 🚀 ENVIANDO LOGOUT (POST /auth/logout) ======');
+      await api.post('/auth/logout', {
+        refreshToken: refreshToken
+      });
+      console.log('Sesión invalidada con éxito en el servidor.');
+    }
+  } catch (error) {
+    console.warn('El servidor no pudo procesar el logout o el token ya era inválido:', error);
+  } finally {
+    await SecureStore.deleteItemAsync('accessToken'); 
+    await SecureStore.deleteItemAsync('refreshToken');
+    console.log('Tokens borrados del almacenamiento local.');
+  }
   
-  // Limpiamos espacios innecesarios antes de enviar el DNI
+  return true;
+};
+
+// 📝 Petición de Registro Real (POST /auth/register)
+export const registerService = async (datosRegistro: RegisterPayload): Promise<any> => { 
   if (datosRegistro.persona?.numeroDocumento) {
     datosRegistro.persona.numeroDocumento = datosRegistro.persona.numeroDocumento.trim();
   }
 
-  console.log('====== 🚀 ENVIANDO REGISTRO (POST /auth/register) ======');
-  console.log(JSON.stringify(datosRegistro, null, 2));
-
+  console.log('====== 🚀 ENVIANDO REGISTRO ======');
   try {
     const respuesta = await api.post('/auth/register', datosRegistro);
-    
-    console.log('====== 📥 REGISTRO EXITOSO ======');
-    console.log(JSON.stringify(respuesta.data, null, 2));
-    
     return respuesta.data;
-} catch (error: any) {
+  } catch (error: any) {
     console.log('====== ❌ ERROR EN REGISTRO ======');
-    if (error.response) {
-      // 🌟 Imprimimos el código de estado (ej: 500, 400) para saber qué pasa
-      console.log('Código Estado HTTP:', error.response.status);
-      
-      // 🌟 Imprimimos el objeto completo sin formatear por si viene un string plano
-      console.log('Detalle crudo:', error.response.data);
-    } else if (error.request) {
-      console.log('El servidor no respondió nada (Request sent, no response)');
-    } else {
-      console.log('Error al configurar la petición:', error.message);
-    }
     throw error;
   }
 };

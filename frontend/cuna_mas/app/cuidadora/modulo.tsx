@@ -6,32 +6,36 @@ import {
   StyleSheet, 
   FlatList,
   useWindowDimensions,
-  ActivityIndicator
+  ActivityIndicator,
+  SafeAreaView
 } from 'react-native';
-import { UserRound } from 'lucide-react-native';
+import { UserRound, User, LogOut } from 'lucide-react-native';
 import { ModuloService } from '../../service/moduloService';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useAuth } from '../../context/AuthContext'; 
 
 export default function ModulosListScreen() {
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
   const router = useRouter();
+  const { user, logout } = useAuth(); 
 
   const params = useLocalSearchParams();
   const idLocalSeleccionado = Number(params.idLocal) || 1; 
 
-  // Estados del Scroll Infinito
+  // 🔄 Estados restaurados para el Scroll Infinito
   const [modulos, setModulos] = useState<any[]>([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [isInitialLoad, setIsInitialLoad] = useState(true); // Nos ayuda a controlar el spinner del centro
+  const [isInitialLoad, setIsInitialLoad] = useState(true); 
 
   const cargarModulos = async (paginaAEnviar: number, reiniciar: boolean = false) => {
     if (loading) return;
 
     setLoading(true);
     try {
+      // 📝 Se envía la página correctamente al servicio
       const resultado = await ModuloService.getModulosPorLocal(idLocalSeleccionado, paginaAEnviar);
 
       if (!resultado || !resultado.modulos || resultado.modulos.length === 0) {
@@ -47,16 +51,15 @@ export default function ModulosListScreen() {
       }
     } catch (error) {
       console.error("Error cargando módulos en la vista:", error);
-      // Detenemos futuros intentos si hay un colapso en la API
       setHasMore(false); 
     } finally {
-      // 🌟 SOLUCIÓN AL SPINNER INFINITO: Forzamos el apagado pase lo que pase
       setLoading(false);
       setIsInitialLoad(false);
     }
   };
 
   useEffect(() => {
+    // Reiniciar estados cada vez que cambie el local seleccionado
     setModulos([]);
     setPage(0);
     setHasMore(true);
@@ -70,15 +73,33 @@ export default function ModulosListScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       
-      {/* 🟢 NOTA: El header verde corporativo fue removido con éxito de aquí */}
-      {/* Ya que ahora vive y se renderiza elegantemente desde el archivo _layout.tsx */}
+      {/* 🟢 HEADER CORPORATIVO VERDE RESTAURADO */}
+      <View style={[styles.header, { height: esPantallaGrande ? 160 : 130 }]}>
+        <View style={styles.userInfo}>
+          <View style={styles.avatarCircle}>
+            <User color="#000" size={esPantallaGrande ? 32 : 26} />
+          </View>
+          <View style={styles.welcomeContainer}>
+            <Text style={[styles.welcomeTitle, { fontSize: esPantallaGrande ? 24 : 20 }]}>
+              Bienvenid@
+            </Text>
+            <Text style={[styles.userName, { fontSize: esPantallaGrande ? 18 : 15 }]} numberOfLines={1}>
+              {user?.nombre || "María Estela"}
+            </Text>
+          </View>
+        </View>
+        
+        <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}>
+          <LogOut color="#FFF" size={esPantallaGrande ? 26 : 22} />
+        </TouchableOpacity>
+      </View>
 
-      {/* FlatList con Scroll Infinito */}
+      {/* 📜 FlatList con Scroll Infinito */}
       <FlatList
         data={modulos}
-        keyExtractor={(item) => item.idModulo.toString()} 
+        keyExtractor={(item, index) => `${item.idModulo || 'modulo'}-${index}`} 
         contentContainerStyle={[
           styles.scrollContent, 
           esPantallaGrande && styles.tabletContent
@@ -91,7 +112,6 @@ export default function ModulosListScreen() {
           </Text>
         }
 
-        // 📝 Control inteligente de carga y estado vacío debajo del título
         ListEmptyComponent={
           loading && isInitialLoad ? (
             <View style={styles.emptyContainer}>
@@ -110,7 +130,6 @@ export default function ModulosListScreen() {
           <TouchableOpacity 
             style={styles.moduloItem}
             activeOpacity={0.7}
-            focusable={true}
             onPress={() => {
               router.push({
                 pathname: '/cuidadora/control_lista', 
@@ -133,19 +152,20 @@ export default function ModulosListScreen() {
           </TouchableOpacity>
         )}
 
+        // 🔄 Controladores de paginación del Scroll Infinito reasignados
         onEndReached={manejarSiguientePagina}
         onEndReachedThreshold={0.4}
 
         ListFooterComponent={() => (
           loading && !isInitialLoad && hasMore ? (
-            <View style={styles.footerLoading} accessible={false}>
+            <View style={styles.footerLoading}>
               <ActivityIndicator size="small" color="#00AEEF" />
             </View>
           ) : null
         )}
       />
 
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -154,9 +174,54 @@ const styles = StyleSheet.create({
     flex: 1, 
     backgroundColor: '#FFF' 
   },
+  header: {
+    backgroundColor: '#C5D800',
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: '6%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  userInfo: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    flex: 1, 
+    marginRight: 15 
+  },
+  avatarCircle: { 
+    backgroundColor: '#FFF', 
+    width: 50, height: 50, 
+    borderRadius: 25, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  welcomeContainer: { 
+    marginLeft: 12, 
+    flex: 1 
+  },
+  welcomeTitle: { 
+    color: '#00AEEF', 
+    fontWeight: 'bold' 
+  },
+  userName: { 
+    color: '#FFF', 
+    fontWeight: '600', 
+    marginTop: 2 
+  },
+  logoutButton: { 
+    backgroundColor: '#FF007A', 
+    padding: 12, 
+    borderRadius: 25 
+  },
   scrollContent: { 
     paddingHorizontal: '6%', 
-    paddingBottom: 110, // 🌟 Espacio extra para que la cápsula flotante inferior no tape tus elementos
+    paddingBottom: 60, 
     width: '100%' 
   },
   tabletContent: { 

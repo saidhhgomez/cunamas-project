@@ -5,8 +5,8 @@ import { useAuth } from '../context/AuthContext';
 
 import LoginScreen from './auth/login'; 
 import InicioCuidadora from './cuidadora/inicio';
-import ServicioAlimentarioScreen from './asistente/index'; 
-import InicioAdministrador from './administrador/inicio'; // Por si usas admin
+
+import UsuariosPendientes from './administrador/inicio';
 
 export default function IndexScreen() {
   const { user, isLoading } = useAuth();
@@ -27,19 +27,15 @@ export default function IndexScreen() {
 
   // 🌟 ADAPTACIÓN CON LOS ROLES REALES DE TU POSTMAN
   
-  // 1. Validamos Administrador del Sistema
-  if (user.roles.includes('Administrador') || user.roles.includes('ADMINISTRADOR SISTEMA')) {
-    return <InicioAdministrador />;
-  }
 
   // 2. Validamos Cuidadora
-  if (user.roles.includes('Cuidadora')) {
+  if (user.roles.includes('Madre Guía')) {
     return <InicioCuidadora />;
   }
 
   // 3. Validamos Asistente Técnico mediante el string real de tu Postman
   if (user.roles.includes('Asistente Técnico (AT)')) {
-    return <InicioAdministrador />;
+    return <UsuariosPendientes />;
   }
 
   // Si tiene un token válido pero el rol es desconocido

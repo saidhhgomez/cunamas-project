@@ -2,24 +2,18 @@ import { api } from './api';
 
 export const LocalService = {
   /**
-   * Obtiene los locales filtrados por idCentroAlimentario con paginación
-   * @param idCentroAlimentario ID del centro alimentario (ej. 1)
-   * @param page Número de página (0, 1, 2...)
-   * @param size Cantidad de elementos por página (por defecto 5, según tu Postman)
+   * Obtiene todos los locales filtrados por distrito
+   * @param distrito Nombre del distrito (ej. "CHACHAPOYAS")
    */
-  getLocalesPorCentro: async (idCentroAlimentario: number, page: number, size: number = 5) => {
+  getLocalesPorCentro: async (distrito: string) => {
     try {
+      // ✅ Sin paginación: Mandamos solo el distrito como parámetro
       const response = await api.get('/centros-atencion-infantil', {
-        params: { idCentroAlimentario, page, size }
+        params: { distrito }
       });
       
-      const content = response.data.content || [];
-      
-      return {
-        locales: content,
-        // Al usar 'content', calculamos si es la última página si vinieron menos elementos del tamaño solicitado
-        isLast: response.data.last ?? (content.length < size)
-      };
+      // Retornamos el contenido directamente
+      return response.data.content || [];
     } catch (error) {
       throw error;
     }

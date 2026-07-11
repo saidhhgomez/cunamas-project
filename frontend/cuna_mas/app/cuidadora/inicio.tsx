@@ -13,7 +13,6 @@ import { UserRound, User, LogOut, Home, Calculator, RefreshCw, WifiOff } from 'l
 import { LocalService } from '../../service/centroAtencionService'; 
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext'; 
-// 🌟 Importamos el hook para medir la barra de botones nativa del celular
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function InicioCuidadora() {
@@ -22,50 +21,34 @@ export default function InicioCuidadora() {
   const router = useRouter();
   const { user, logout } = useAuth(); 
   
-  // 🌟 Medimos dinámicamente los bordes de la pantalla del celular
   const insets = useSafeAreaInsets(); 
 
   const [locales, setLocales] = useState<any[]>([]);
-  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [errorRed, setErrorRed] = useState(false); 
 
-  const [idCentroAlimentarioFijo] = useState(1); 
-
   const reintentarConexion = () => {
     setLocales([]);
-    setPage(0);
-    setHasMore(true);
     setIsInitialLoad(true);
     setErrorRed(false);
   };
 
   const cargarLocales = async () => {
-    if (loading || !hasMore || errorRed) return;
+    const distritoUsuario = user?.distrito || "CHACHAPOYAS";
+
+    if (loading || errorRed) return;
 
     setLoading(true);
     try {
-      const resultado = await LocalService.getLocalesPorCentro(idCentroAlimentarioFijo, page);
-
-      if (!resultado || !resultado.locales || resultado.locales.length === 0) {
-        setHasMore(false);
-      } else {
-        setLocales(prevLocales => [...prevLocales, ...resultado.locales]);
-        
-        if (resultado.isLast) {
-          setHasMore(false);
-        } else {
-          setPage(prevPage => prevPage + 1);
-        }
-      }
+      // ✅ Llamamos al servicio sin parámetros de página
+      const resultado = await LocalService.getLocalesPorCentro(distritoUsuario);
+      setLocales(resultado);
     } catch (error) {
       console.warn("⚠️ Servidor desconectado o IP incorrecta.");
       if (isInitialLoad) {
         setErrorRed(true);
       }
-      setHasMore(false); 
     } finally {
       setLoading(false);
       setIsInitialLoad(false);
@@ -73,10 +56,10 @@ export default function InicioCuidadora() {
   };
 
   useEffect(() => {
-    if (hasMore && isInitialLoad) {
+    if (isInitialLoad) {
       cargarLocales();
     }
-  }, [idCentroAlimentarioFijo, isInitialLoad, hasMore]);
+  }, [user?.distrito, isInitialLoad]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -105,7 +88,8 @@ export default function InicioCuidadora() {
       {/* 📜 LISTADO DE LOCALES */}
       <FlatList
         data={locales}
-        keyExtractor={(item) => item.idLocal.toString()} 
+        // ✅ Mantenemos la llave única combinada por precaución
+        keyExtractor={(item, index) => `${item.idLocal || 'local'}-${index}`} 
         contentContainerStyle={[
           styles.scrollContent, 
           esPantallaGrande && styles.tabletContent
@@ -119,7 +103,7 @@ export default function InicioCuidadora() {
         }
         
         ListEmptyComponent={
-          loading && isInitialLoad ? (
+          loading ? (
             <View style={styles.emptyContainer}>
               <ActivityIndicator size="large" color="#00AEEF" />
             </View>
@@ -142,7 +126,7 @@ export default function InicioCuidadora() {
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                No se encontraron locales de atención disponibles.
+                No se encontraron locales de atención disponibles en {user?.distrito || "tu zona"}.
               </Text>
             </View>
           )
@@ -154,7 +138,7 @@ export default function InicioCuidadora() {
             activeOpacity={0.7}
             onPress={() => {
               router.push({
-                pathname: '/modulo', 
+                pathname: '/cuidadora/modulo', 
                 params: { idLocal: item.idLocal }
               });
             }}
@@ -175,38 +159,22 @@ export default function InicioCuidadora() {
             </View>
           </TouchableOpacity>
         )}
-
-        onEndReached={cargarLocales}
-        onEndReachedThreshold={0.4}
-
-        ListFooterComponent={() => (
-          loading && !isInitialLoad && hasMore ? (
-            <View style={styles.footerLoading}>
-              <ActivityIndicator size="small" color="#00AEEF" />
-            </View>
-          ) : null
-        )}
+        // ✅ Quitamos onEndReached y ListFooterComponent porque ya no hay más páginas que pedir
       />
 
       {/* 🌟 BARRA DE BOTONES CONTROLADA DINÁMICAMENTE POR LOS INSETS DEL CELULAR */}
       <View 
         style={[
           styles.floatingTabBarContainer, 
-          { bottom: Math.max(insets.bottom, 16) } // 🔥 Empuja el menú hacia arriba si hay botones en pantalla
+          { bottom: Math.max(insets.bottom, 16) } 
         ]}
       >
         <View style={[styles.floatingTabBar, { width: esPantallaGrande ? 320 : '90%' }]}>
-          
-          {/* Botón Inicio (Activo) */}
-          <TouchableOpacity 
-            style={styles.tabButton} 
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.tabButton} activeOpacity={0.7}>
             <Home color="#00AEEF" size={24} />
             <Text style={[styles.tabLabel, { color: '#00AEEF' }]}>Inicio</Text>
           </TouchableOpacity>
 
-          {/* Botón Calculadora */}
           <TouchableOpacity 
             style={styles.tabButton} 
             activeOpacity={0.7}
@@ -215,7 +183,6 @@ export default function InicioCuidadora() {
             <Calculator color="#94A3B8" size={24} />
             <Text style={[styles.tabLabel, { color: '#94A3B8' }]}>Calculadora</Text>
           </TouchableOpacity>
-
         </View>
       </View>
 
@@ -250,7 +217,7 @@ const styles = StyleSheet.create({
   logoutButton: { backgroundColor: '#FF007A', padding: 12, borderRadius: 25 },
   scrollContent: {
     paddingHorizontal: '6%',
-    paddingBottom: 160, // 🌟 Colchón aumentado para librar la nueva posición del menú
+    paddingBottom: 160, 
     width: '100%',
   },
   tabletContent: {
@@ -302,10 +269,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 2,
-  },
-  footerLoading: {
-    paddingVertical: 16,
-    alignItems: 'center',
   },
   emptyContainer: {
     flex: 1,

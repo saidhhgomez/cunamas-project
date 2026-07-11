@@ -12,7 +12,6 @@ function RootLayoutProtected() {
     if (isLoading) return; // Evitamos acciones mientras valida el token
 
     // Si el usuario da click en cerrar sesión o se vence el token, 
-    // el layout detecta que 'user' es null y lo expulsa al login de inmediato
     if (!user) {
       router.replace('/auth/login');
     }

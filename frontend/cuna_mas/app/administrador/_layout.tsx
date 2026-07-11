@@ -7,10 +7,7 @@ export default function AdministradorLayout() {
   const { user } = useAuth();
 
   // 🚨 CANDADO DE SEGURIDAD EXCLUSIVO PARA ADMINISTRADOR
-  if (!user || !user.roles.includes('ADMINISTRADOR SISTEMA')) {
-    // Si intenta colarse otro rol, lo rebotamos dinámicamente a su zona
-    if (user?.roles.includes('Cuidadora')) return <Redirect href="/cuidadora/inicio" />;
-    if (user?.roles.includes('Asistente Técnico (AT)')) return <Redirect href="/asistente/inicio" />;
+  if (!user || !user.roles.includes('Asistente Técnico (AT)')) {
     return <Redirect href="/auth/login" />;
   }
 
@@ -18,13 +15,18 @@ export default function AdministradorLayout() {
   return (
     <Stack 
       screenOptions={{ 
-        headerShown: true, 
-        headerTintColor: '#D97706',
+        // ✅ Cambiado a false para usar tus cabeceras personalizadas y evitar doble barra superior
+        headerShown: false, 
+        headerTintColor: '#006080',
         headerTitleStyle: { fontWeight: '700' }
       }}
     >
-      <Stack.Screen name="inicio" options={{ title: 'Panel Central 👑' }} />
-      {/* Registra aquí abajo más sub-pantallas administrativas si las necesitas */}
+
+      {/* 👥 Primera Pantalla: Lista de usuarios en estado Pendiente */}
+      <Stack.Screen name="inicio" />
+
+      {/* 🔑 Segunda Pantalla: Detalle y Asignación de Roles por ID */}
+      <Stack.Screen name="aprobacion" />
     </Stack>
   );
 }

@@ -1,28 +1,32 @@
+// 1. Importamos la instancia personalizada que ya creaste en tu api.ts
+// (Ajusta la ruta de importación '../api' según dónde esté guardado tu archivo api.ts)
 import { api } from './api';
 
-// Definimos la interfaz exacta basada en tu captura de Postman para tipar el objeto
-export interface AsistenciaPayload {
+export interface CategoriaAsistenciaPayload {
+  idCategoriaGrupo: number;
+  cantidad: number;
+}
+
+export interface RegistrarAsistenciaPayload {
   idModulo: number;
-  idUsuarioCreacion: number;
+  idUsuarioCreacion: number; // Mapeado tal cual como se vio en tu Postman
   registroCorrelativo: number;
-  categorias: Array<{
-    idCategoriaGrupo: number;
-    cantidad: number;
-  }>;
+  categorias: CategoriaAsistenciaPayload[];
 }
 
 export const AsistenciaService = {
   /**
-   * Registra la asistencia consolidada por módulos y categorías
-   * Endpoint: POST http://localhost:8080/api/asistencia-ciai
+   * Registra la asistencia en el CIAI utilizando la instancia centralizada de la app
    */
-  registrarAsistenciaCiai: async (payload: AsistenciaPayload) => {
+  registrarAsistenciaCiai: async (payload: RegistrarAsistenciaPayload) => {
     try {
+      // Como tu api.ts ya debe tener configurado el baseURL (ej: http://localhost:8080/api),
+      // aquí solo necesitas concatenar el endpoint específico.
       const response = await api.post('/asistencia-ciai', payload);
       return response.data;
-    } catch (error) {
-      console.error("Error en AsistenciaService.registrarAsistenciaCiai:", error);
+    } catch (error: any) {
+      console.error('Error detallado en registrarAsistenciaCiai:', error?.response?.data || error.message);
       throw error;
     }
-  }
+  },
 };

@@ -1,7 +1,7 @@
 // context/AuthContext.tsx
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { loginService } from '../service/authService'; 
+import { loginService, cerrarSesionService } from '../service/authService'; // 👈 Importamos cerrarSesionService
 
 interface UserSession {
   token: string;
@@ -29,7 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkPersistedUser = async () => {
       try {
-        const token = await SecureStore.getItemAsync('userToken');
+        // 🌟 CORREGIDO: Ahora busca 'accessToken' en sincronía con tu api.ts
+        const token = await SecureStore.getItemAsync('accessToken');
         const refreshToken = await SecureStore.getItemAsync('refreshToken');
         const idPersona = await SecureStore.getItemAsync('idPersona');
         const roles = await SecureStore.getItemAsync('userRoles');
@@ -59,18 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (numeroDocumento: string, contrasena: string) => {
     setIsLoading(true);
     try {
-      // 🌟 LLAMADA CORREGIDA: Ahora coincide con los 2 parámetros que espera tu loginService
       const datosAPI = await loginService(numeroDocumento, contrasena);
 
-      // 💾 Guardamos físicamente en las particiones seguras del teléfono
-      await SecureStore.setItemAsync('userToken', datosAPI.token);
+      // 🌟 CORREGIDO: Guardamos físicamente como 'accessToken' para que el interceptor de Axios lo detecte
+      await SecureStore.setItemAsync('accessToken', datosAPI.token);
       await SecureStore.setItemAsync('refreshToken', datosAPI.refreshToken);
       await SecureStore.setItemAsync('idPersona', String(datosAPI.idPersona));
       await SecureStore.setItemAsync('userRoles', JSON.stringify(datosAPI.roles));
       await SecureStore.setItemAsync('userName', datosAPI.nombre || '');
       await SecureStore.setItemAsync('userDistrito', datosAPI.distrito || '');
 
-      // Seteamos el estado global para activar las redirecciones automáticas por rol
       setUser({
         token: datosAPI.token,
         refreshToken: datosAPI.refreshToken,
@@ -81,7 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
     } catch (error: any) {
-      // Captura de errores de red o credenciales inválidas desde Axios
       const mensaje = error.response?.data?.message || 'No se pudo iniciar sesión. Verifica tu red o datos.';
       throw new Error(mensaje);
     } finally {
@@ -93,12 +91,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setIsLoading(true);
     try {
-      await SecureStore.deleteItemAsync('userToken');
-      await SecureStore.deleteItemAsync('refreshToken');
+      // 🌟 CORREGIDO: Delegamos el logout a tu servicio. Él se encarga de avisar al backend 
+      // vía POST /auth/logout y de borrar los tokens ('accessToken' y 'refreshToken') del celular.
+      await cerrarSesionService();
+
+      // Borramos el resto de datos secundarios que guardaba este contexto
       await SecureStore.deleteItemAsync('idPersona');
       await SecureStore.deleteItemAsync('userRoles');
       await SecureStore.deleteItemAsync('userDistrito');
       await SecureStore.deleteItemAsync('userName');
+      
       setUser(null);
     } catch (error) {
       console.error('Error al limpiar la sesión:', error);

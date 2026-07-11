@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,42 +6,67 @@ import {
   StyleSheet, 
   ScrollView,
   useWindowDimensions,
-  SafeAreaView
+  SafeAreaView,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { 
   ArrowLeft, 
   Home,
-  BookOpen, Layers, Beef, Leaf, Milk, Apple, Droplet, Nut, Egg, Fish, CupSoda, Cookie, Candy, Sparkles, Activity 
+  Beef, Milk, Egg, Activity 
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+// 💡 Importamos la herramienta nativa para calcular el tamaño de las barras del sistema
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const CATEGORIES = [
-  { id: '1', title: 'CEREALES', icon: BookOpen },
-  { id: '2', title: 'TUBÉRCULOS', icon: Layers },
-  { id: '3', title: 'LEGUMINOSAS', icon: BookOpen },
-  { id: '4', title: 'PROTEINAS', icon: Beef },
-  { id: '5', title: 'VERDURAS', icon: Leaf },
-  { id: '6', title: 'LACTEOS', icon: Milk },
-  { id: '7', title: 'FRUTAS', icon: Apple },
-  { id: '8', title: 'GRASAS Y ACEITES', icon: Droplet },
-  { id: '9', title: 'FRUTOS SECOS', icon: Nut },
-  { id: '10', title: 'HUEVOS', icon: Egg },
-  { id: '11', title: 'PESCADOS Y MARISCOS', icon: Fish },
-  { id: '12', title: 'BEBIDAS E INFUSIONES', icon: CupSoda },
-  { id: '13', title: 'ACOMPAÑAMIENTOS', icon: Cookie },
-  { id: '14', title: 'AZÚCARES Y DULCES', icon: Candy },
-  { id: '15', title: 'CONDIMENTOS', icon: Sparkles },
-  { id: '16', title: 'SUPLEMENTOS', icon: Activity },
-];
+import { CalculadoraService } from '../../service/calculadoraService'; 
+
+const MAPA_ICONOS: { [key: string]: any } = {
+  'LÁCTEOS': Milk,
+  'PRODUCTOS DE ORIGEN ANIMAL': Beef,
+  'HUEVO': Egg,
+  'OVOPRODUCTO': Egg,
+};
 
 export default function CalculadoraCategorias() {
   const router = useRouter();
+  const insets = useSafeAreaInsets(); // 💡 Captura el espacio de la barra de navegación de Android/iOS
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
 
+  const [categorias, setCategorias] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const cargarCategorias = async () => {
+      try {
+        const data = await CalculadoraService.getListaCategorias();
+        setCategorias(data);
+      } catch (error) {
+        console.error(error);
+        Alert.alert("Error", "No se pudieron obtener las categorías.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargarCategorias();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#00AEEF" />
+        <Text style={styles.loadingText}>Cargando categorías...</Text>
+      </View>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       
+      {/* 🟢 TOP SAFE AREA */}
+      <SafeAreaView style={styles.topSafeArea} />
+
       {/* 🟢 HEADER CURVO */}
       <View style={[styles.customHeader, { height: esPantallaGrande ? 120 : 100 }]}>
         <TouchableOpacity 
@@ -56,7 +81,7 @@ export default function CalculadoraCategorias() {
         </TouchableOpacity>
       </View>
 
-      {/* 📜 LISTADO DE CATEGORÍAS (flex: 1 toma todo el espacio restante disponible) */}
+      {/* 📜 LISTADO DE CATEGORÍAS */}
       <View style={styles.scrollWrapper}>
         <ScrollView 
           contentContainerStyle={styles.scrollContainerInternal}
@@ -67,20 +92,32 @@ export default function CalculadoraCategorias() {
           </Text>
 
           <View style={styles.categoryList}>
-            {CATEGORIES.map((category) => {
-              const Icon = category.icon;
+            {categorias.map((category) => {
+              const nombreNormalizado = category.nombreCategoriaAlimento ? category.nombreCategoriaAlimento.toUpperCase().trim() : '';
+              const Icon = MAPA_ICONOS[nombreNormalizado] || Activity; 
+
               return (
                 <TouchableOpacity 
-                  key={category.id} 
-                  style={[styles.categoryItem, { height: esPantallaGrande ? 82 : 70 }]}
+                  key={category.idCategoriaAlimento.toString()} 
+                  style={[styles.categoryItem, { minHeight: esPantallaGrande ? 82 : 70 }]} 
                   activeOpacity={0.7}
-                  onPress={() => console.log(`Selected: ${category.title}`)}
+                  onPress={() => {
+                    router.push({
+                      pathname: '/cuidadora/preparacionCalculadora', 
+                      params: { 
+                        idCategoria: category.idCategoriaAlimento, 
+                      }
+                    });
+                  }}
                 >
                   <View style={styles.iconWrapper}>
                     <Icon color="#333" size={esPantallaGrande ? 28 : 24} strokeWidth={2.5} />
                   </View>
-                  <Text style={[styles.categoryLabel, { fontSize: esPantallaGrande ? 20 : 18 }]}>
-                    {category.title}
+                  <Text 
+                    style={[styles.categoryLabel, { fontSize: esPantallaGrande ? 20 : 16 }]} 
+                    numberOfLines={2} 
+                  >
+                    {category.nombreCategoriaAlimento}
                   </Text>
                 </TouchableOpacity>
               );
@@ -89,8 +126,12 @@ export default function CalculadoraCategorias() {
         </ScrollView>
       </View>
 
-      {/* 🌟 LA SOLUCIÓN DEFINITIVA: BOTÓN FIJO EN LA PARTE INFERIOR (Fuera del Scroll) */}
-      <View style={styles.bottomBarContainer}>
+      {/* 🌟 BARRA INFERIOR CONTROLADA NATIVAMENTE */}
+      {/* Cambiamos SafeAreaView por un View común y corriente usando los insets calculados */}
+      <View style={[
+        styles.bottomBarContainer, 
+        { paddingBottom: Math.max(insets.bottom, 16) } // Asegura separación en dispositivos con gestos o botones virtuales
+      ]}>
         <TouchableOpacity 
           style={styles.homeButtonCircle}
           onPress={() => router.replace('/cuidadora/calculadoraDosificadora')}
@@ -101,7 +142,7 @@ export default function CalculadoraCategorias() {
         </TouchableOpacity>
       </View>
 
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -109,6 +150,21 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: '#F9F9F9' 
+  },
+  topSafeArea: {
+    flex: 0,
+    backgroundColor: '#C5D800', 
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9'
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#64748B',
+    fontWeight: '600'
   },
   customHeader: {
     backgroundColor: '#C5D800',
@@ -138,12 +194,12 @@ const styles = StyleSheet.create({
     marginLeft: 6 
   },
   scrollWrapper: {
-    flex: 1, // Obliga al contenedor del scroll a estirarse llenando la pantalla sin pisar el botón de abajo
+    flex: 1,
   },
   scrollContainerInternal: {
     paddingHorizontal: 25, 
     paddingTop: 30, 
-    paddingBottom: 20, // Padding normal porque el botón ya no flota encima
+    paddingBottom: 20, 
   },
   title: { 
     fontWeight: '900', 
@@ -162,28 +218,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     paddingHorizontal: 20, 
+    paddingVertical: 12, 
     borderWidth: 1, 
-    borderColor: '#D8D8E8' 
+    borderColor: '#D8D8E8',
+    flexShrink: 1 
   },
   iconWrapper: { 
     marginRight: 15, 
     justifyContent: 'center', 
-    alignItems: 'center' 
+    alignItems: 'center',
+    width: 30 
   },
   categoryLabel: { 
     fontWeight: '800', 
     color: '#333', 
-    letterSpacing: 0.5 
+    letterSpacing: 0.5,
+    flex: 1, 
+    flexWrap: 'wrap' 
   },
-  /* 🌟 NUEVO CONTENEDOR ESTÁTICO INFERIOR */
+  /* 🌟 ESTILIZACIÓN DE LA BARRA CONTENEDORA REAL EN LA PARTE INFERIOR */
   bottomBarContainer: {
     width: '100%',
-    backgroundColor: '#F9F9F9', // Mismo color de fondo para mimetizarse perfectamente
+    backgroundColor: '#F9F9F9', // Mismo fondo grisáceo limpio del layout de la app
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 15, // Le da espacio por arriba y abajo al botón
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderColor: '#E2E8F0', // Una línea sutil para delimitar la zona de navegación de forma limpia
+    borderColor: '#E2E8F0',
   },
   homeButtonCircle: {
     backgroundColor: '#FFFFFF',
