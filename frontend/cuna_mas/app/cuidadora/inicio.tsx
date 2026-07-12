@@ -19,12 +19,12 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext'; 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+
 export default function InicioCuidadora() {
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
   const router = useRouter();
-  const { user, logout } = useAuth(); 
-  
+const { user, logout, updateUser } = useAuth(); // 👈 Destructura updateUser aquí  
   const insets = useSafeAreaInsets(); 
 
   const [locales, setLocales] = useState<any[]>([]);
@@ -80,10 +80,7 @@ export default function InicioCuidadora() {
   const cargarLocales = async () => {
     const distritoUsuario = user?.distrito;
 
-    if (!distritoUsuario || user?.tieneDireccion === false) {
-      return;
-    }
-
+    
     if (loading || errorRed) return;
 
     setLoading(true);
@@ -108,7 +105,6 @@ export default function InicioCuidadora() {
   }, [user?.distrito, user?.tieneDireccion, isInitialLoad]);
 
 const manejarGuardarDireccion = async () => {
-  // Asegúrate de tener los estados necesarios
   if (!distritoSeleccionado || !direccionFisica) return;
 
   setGuardandoDireccion(true);
@@ -118,14 +114,27 @@ const manejarGuardarDireccion = async () => {
       nombreDireccion: direccionFisica
     };
 
-    await DistritoService.guardarDireccion(payload);
+    // 1. Guardamos en el backend
+    await DistritoService.actualizarDireccionPerfil(payload);
     
-    Alert.alert("Éxito", "Dirección registrada correctamente");
+    // 3. Esperamos 2 segundos antes de cerrar y actualizar el contexto
+    // Esto asegura que el usuario vea el mensaje y haya una pausa natural
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // 4. Cerramos el modal
     setMostrarModalUbicacion(false);
+
+    // 5. ACTUALIZAMOS EL ESTADO GLOBAL
+    // Esto disparará automáticamente el useEffect que carga los locales
+    await updateUser({ 
+      tieneDireccion: true, 
+      distrito: distritoSeleccionado.distrito 
+    });
+
   } catch (error) {
+    console.error("Error al guardar:", error);
     Alert.alert("Error", "No se pudo guardar la ubicación");
-  } finally {
-    setGuardandoDireccion(false);
+    setGuardandoDireccion(false); // Solo desactivamos el loading si hay error
   }
 };
 

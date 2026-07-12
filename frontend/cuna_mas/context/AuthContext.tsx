@@ -13,10 +13,12 @@ interface UserSession {
   tieneDireccion: boolean; // 👈 Registrado correctamente en la interfaz
 }
 
+// 1. Agrega esto a la interfaz
 interface AuthContextType {
   user: UserSession | null;
   login: (numeroDocumento: string, contrasena: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (newData: Partial<UserSession>) => Promise<void>; // 👈 NUEVA FUNCIÓN
   isLoading: boolean;
 }
 
@@ -26,6 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+
+ 
   // 🔄 1. Restaurar Sesión al abrir la app
   useEffect(() => {
     const checkPersistedUser = async () => {
@@ -59,6 +63,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     checkPersistedUser();
   }, []);
+
+
+  // 2. Dentro del componente AuthProvider, define la función:
+const updateUser = async (newData: Partial<UserSession>) => {
+  if (!user) return;
+
+  const updatedUser = { ...user, ...newData };
+  
+  // Actualizamos el SecureStore con los nuevos valores
+  if (newData.tieneDireccion !== undefined) {
+    await SecureStore.setItemAsync('userTieneDireccion', String(newData.tieneDireccion));
+  }
+  if (newData.distrito !== undefined) {
+    await SecureStore.setItemAsync('userDistrito', newData.distrito || '');
+  }
+
+  // Actualizamos el estado en memoria
+  setUser(updatedUser);
+};
 
   // 🚀 2. Login REAL conectado a tu API
   const login = async (numeroDocumento: string, contrasena: string) => {
@@ -120,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading,updateUser }}>
       {children}
     </AuthContext.Provider>
   );
