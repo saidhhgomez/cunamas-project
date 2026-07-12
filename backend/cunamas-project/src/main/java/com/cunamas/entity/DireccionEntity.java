@@ -21,6 +21,9 @@ public class DireccionEntity {
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
+    @Column(name = "fecha_modificacion")
+    private LocalDateTime fechaModificacion;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_distrito", nullable = false)
     private DistritoEntity distrito;
