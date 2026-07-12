@@ -38,7 +38,7 @@ export const CalculadoraService = {
   },
 
 // calculadoraService.ts
-calcularDosificacionInsumos: async (datos: any, idPreparacion: number) => {
+calcularDosificacionInsumos: async (datos: any, idPreparacion: string) => {
   const response = await api.post(
     `/calculadora/calcular`, 
     datos, 

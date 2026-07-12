@@ -1,75 +1,80 @@
-// services/api.ts
-import axios from 'axios';
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { refrescarTokenService } from './authService'; // 👈 Importamos tu función de refresco
+import { refrescarTokenService } from './authService';
 
-const getBaseUrl = () => {
-  if (Platform.OS === 'web') {
-    return 'http://localhost:8080/api';
-  }
-  return 'http://192.168.18.233:8080/api'; 
-};
+const getBaseUrl = () => (Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.18.233:8080/api');
 
 export const api = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 10000, 
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
 });
 
-// 🔒 1. Interceptor de Petición: Inyecta el Access Token automáticamente
-api.interceptors.request.use(
-  async (config) => {
-    try {
-      // 💡 Cambié 'userToken' a 'accessToken' para que coincida con tu authService
-      const token = await SecureStore.getItemAsync('accessToken');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.error("Error al recuperar el token en el interceptor:", error);
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+// Variables para gestionar la cola de refresco
+let isRefreshing = false;
+let failedQueue: any[] = [];
 
-// 🔄 2. 🌟 NUEVO Interceptor de Respuesta: Atrapa el error 401 y refresca el token automáticamente
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else prom.resolve(token);
+  });
+  failedQueue = [];
+};
+
+// 1. Interceptor de Petición
+api.interceptors.request.use(async (config) => {
+  const token = await SecureStore.getItemAsync('accessToken');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// 2. Interceptor de Respuesta
 api.interceptors.response.use(
-  (response) => response, // Si la respuesta es exitosa (200, 201), pasa de largo con éxito
-  async (error) => {
-    const originalRequest = error.config;
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
-    // Si el servidor responde 401 (No autorizado) y no hemos reintentado ya esta misma petición
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true; // Marcamos la petición para no caer en bucles infinitos si falla el refresh
-
-      try {
-        // 🔄 Invocamos el servicio que maneja el endpoint /auth/refresh
-        const nuevoToken = await refrescarTokenService();
-
-        if (nuevoToken) {
-          // Si obtuvimos un nuevo token con éxito, parchamos la cabecera de la petición original
-          originalRequest.headers.Authorization = `Bearer ${nuevoToken}`;
-          
-          // Reejecutamos la petición fallida usando la instancia 'api' modificada
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        console.error("No se pudo reintentar la petición tras refrescar el token:", refreshError);
-      }
-      
-      // Si `nuevoToken` fue null, significa que el refresh token también expiró o no existía.
-      // Aquí el authService ya limpió el SecureStore, por lo que puedes lanzar un evento global,
-      // un redireccionamiento al Login o dejar que el estado de tu app detecte la sesión vacía.
+    // Si el error no es 401, simplemente lo rechazamos
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
     }
 
-    // Si es cualquier otro tipo de error (400, 404, 500, etc.), lo pasamos al catch del servicio que lo llamó
-    return Promise.reject(error);
+    if (isRefreshing) {
+      // Si ya hay un refresco en curso, añadimos esta petición a la cola
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      })
+        .then((token) => {
+          if (originalRequest.headers) originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        })
+        .catch((err) => Promise.reject(err));
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const nuevoToken = await refrescarTokenService();
+      
+      if (!nuevoToken) {
+        // El refresco falló, probablemente el refresh token también expiró
+        processQueue(new Error('Sesión expirada'));
+        // Aquí podrías disparar un evento para cerrar sesión globalmente
+        return Promise.reject(error);
+      }
+
+      // Éxito: refrescamos la cola y reintentamos la petición original
+      processQueue(null, nuevoToken);
+      if (originalRequest.headers) originalRequest.headers.Authorization = `Bearer ${nuevoToken}`;
+      return api(originalRequest);
+    } catch (refreshError) {
+      processQueue(refreshError, null);
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );

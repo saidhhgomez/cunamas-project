@@ -1,10 +1,7 @@
 import { api } from './api';
 
 export const LocalService = {
-  /**
-   * Obtiene todos los locales filtrados por distrito
-   * @param distrito Nombre del distrito (ej. "CHACHAPOYAS")
-   */
+
   getLocalesPorCentro: async (distrito: string) => {
     try {
       // ✅ Sin paginación: Mandamos solo el distrito como parámetro
@@ -14,6 +11,7 @@ export const LocalService = {
       
       // Retornamos el contenido directamente
       return response.data.content || [];
+      console.log("Locales obtenidos:", response.data.content);
     } catch (error) {
       throw error;
     }

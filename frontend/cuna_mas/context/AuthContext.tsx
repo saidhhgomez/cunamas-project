@@ -1,7 +1,7 @@
 // context/AuthContext.tsx
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { loginService, cerrarSesionService } from '../service/authService'; // 👈 Importamos cerrarSesionService
+import { loginService, cerrarSesionService } from '../service/authService';
 
 interface UserSession {
   token: string;
@@ -10,6 +10,7 @@ interface UserSession {
   nombre: string;
   roles: string[]; 
   distrito: string | null;
+  tieneDireccion: boolean; // 👈 Registrado correctamente en la interfaz
 }
 
 interface AuthContextType {
@@ -29,13 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkPersistedUser = async () => {
       try {
-        // 🌟 CORREGIDO: Ahora busca 'accessToken' en sincronía con tu api.ts
         const token = await SecureStore.getItemAsync('accessToken');
         const refreshToken = await SecureStore.getItemAsync('refreshToken');
         const idPersona = await SecureStore.getItemAsync('idPersona');
         const roles = await SecureStore.getItemAsync('userRoles');
-        const distrito = await SecureStore.getItemAsync('userDistrito');
         const nombre = await SecureStore.getItemAsync('userName');
+        const distrito = await SecureStore.getItemAsync('userDistrito');
+        const tieneDireccion = await SecureStore.getItemAsync('userTieneDireccion');
 
         if (token && refreshToken && idPersona && roles && nombre) {
           setUser({
@@ -44,7 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             idPersona: Number(idPersona),
             nombre,
             roles: JSON.parse(roles),
-            distrito: distrito || null,
+            // Si en SecureStore se guardó un string vacío o la palabra "null", lo restauramos como null real
+            distrito: (distrito === '' || distrito === 'null') ? null : distrito,
+            // Recuperamos el booleano (si es el string "true" será true, de lo contrario false)
+            tieneDireccion: tieneDireccion === 'true',
           });
         }
       } catch (error) {
@@ -62,21 +66,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const datosAPI = await loginService(numeroDocumento, contrasena);
 
-      // 🌟 CORREGIDO: Guardamos físicamente como 'accessToken' para que el interceptor de Axios lo detecte
+      // 🛠️ Tratamiento preventivo para el distrito si viene null de tu servidor
+      const distritoString = datosAPI.distrito !== null ? String(datosAPI.distrito) : '';
+
+      // 🌟 Guardamos todos los datos físicamente en el SecureStore como Strings
       await SecureStore.setItemAsync('accessToken', datosAPI.token);
       await SecureStore.setItemAsync('refreshToken', datosAPI.refreshToken);
       await SecureStore.setItemAsync('idPersona', String(datosAPI.idPersona));
       await SecureStore.setItemAsync('userRoles', JSON.stringify(datosAPI.roles));
       await SecureStore.setItemAsync('userName', datosAPI.nombre || '');
-      await SecureStore.setItemAsync('userDistrito', datosAPI.distrito || '');
+      await SecureStore.setItemAsync('userDistrito', distritoString);
+      await SecureStore.setItemAsync('userTieneDireccion', String(datosAPI.tieneDireccion)); // Guardará "true" o "false"
 
+      // Actualizamos el estado global de la sesión
       setUser({
         token: datosAPI.token,
         refreshToken: datosAPI.refreshToken,
         idPersona: datosAPI.idPersona,
         nombre: datosAPI.nombre,
         roles: datosAPI.roles,
-        distrito: datosAPI.distrito || null,
+        distrito: datosAPI.distrito || null, // Guardamos null real en el estado de memoria de JS
+        tieneDireccion: datosAPI.tieneDireccion,
       });
 
     } catch (error: any) {
@@ -91,15 +101,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setIsLoading(true);
     try {
-      // 🌟 CORREGIDO: Delegamos el logout a tu servicio. Él se encarga de avisar al backend 
-      // vía POST /auth/logout y de borrar los tokens ('accessToken' y 'refreshToken') del celular.
+      // Avisa al backend y remueve 'accessToken' y 'refreshToken'
       await cerrarSesionService();
 
-      // Borramos el resto de datos secundarios que guardaba este contexto
+      // Borramos el resto de datos secundarios del almacenamiento del celular
       await SecureStore.deleteItemAsync('idPersona');
       await SecureStore.deleteItemAsync('userRoles');
       await SecureStore.deleteItemAsync('userDistrito');
       await SecureStore.deleteItemAsync('userName');
+      await SecureStore.deleteItemAsync('userTieneDireccion'); // 👈 Limpieza del nuevo campo
       
       setUser(null);
     } catch (error) {

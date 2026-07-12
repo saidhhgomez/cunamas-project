@@ -11,6 +11,7 @@ interface LoginResponse {
   nombre: string;
   roles: string[]; 
   distrito: string | null;
+  tieneDireccion: boolean; // 👈 Registrado correctamente en la interfaz
 }
 
 export interface RegisterPayload {
