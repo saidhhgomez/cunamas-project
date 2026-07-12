@@ -24,5 +24,27 @@ export const CalculadoraService = {
       console.error("Error en servicio preparaciones:", error);
       throw error;
     }
-  }
+  },
+
+
+
+
+  getResumenServicio: async (fecha: string, correlativo: number): Promise<any> => {
+    const response = await api.get(
+      `/calculadora/resumen-servicio/1`, 
+      { params: { fecha, correlativo } }
+    );
+    return response.data;
+  },
+
+// calculadoraService.ts
+calcularDosificacionInsumos: async (datos: any, idPreparacion: number) => {
+  const response = await api.post(
+    `/calculadora/calcular`, 
+    datos, 
+    { params: { idPreparacion } }
+  );
+  return response.data;
+}
+
 };

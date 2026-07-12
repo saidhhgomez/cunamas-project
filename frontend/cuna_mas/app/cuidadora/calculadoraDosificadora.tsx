@@ -10,23 +10,20 @@ import {
   Modal,
   FlatList,
   TextInput,
-  Keyboard, // 🌟 Importamos Keyboard para controlar la visibilidad de la barra inferior
+  Keyboard, 
   Platform,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  ActivityIndicator,
+  Alert
 } from 'react-native'; 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
-import { useRouter } from 'expo-router'; 
-
-const OPCIONES_SA = [
-  { label: 'S.A. Opción 1', value: '1' },
-  { label: 'S.A. Opción 2', value: '2' },
-  { label: 'S.A. Opción 3', value: '3' },
-];
+import { useRouter, useLocalSearchParams } from 'expo-router'; 
+import { CalculadoraService } from '../../service/calculadoraService'; 
+import { CentroAlimentarioService } from '../../service/servicioAlimentario'; // Asegúrate de que la ruta sea correcta según tu estructura de carpetas
 
 const OPCIONES_CORRELATIVO = [
-  { label: 'Correlativo 1', value: '1' },
-  { label: 'Correlativo 2', value: '2' },
-  { label: 'Correlativo 3', value: '3' },
+  { label: 'Media Mañana ', value: '1' },
+  { label: 'Media Tarde', value: '2' },
 ];
 
 export default function DosificacionResultados() { 
@@ -34,27 +31,118 @@ export default function DosificacionResultados() {
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
 
-  // Estados de los selectores
+  // 📥 Recibimos de forma segura el nombrePreparacion enviado por la pantalla anterior
+  const { nombrePreparacion } = useLocalSearchParams();
+
+  // Estados para la carga dinámica de Centros (S.A.) desde tu API
+  const [listaCentros, setListaCentros] = useState<any[]>([]);
+  const [cargandoCentros, setCargandoCentros] = useState<boolean>(false);
+
   const [selectedSA, setSelectedSA] = useState<any>(null); 
   const [selectedCorrelativo, setSelectedCorrelativo] = useState<any>(null); 
 
-  // Estados para abrir los Modales de selección estética
   const [modalSAVisible, setModalSAVisible] = useState(false);
   const [modalCorrelativoVisible, setModalCorrelativoVisible] = useState(false);
-
-  // Estado para controlar si el teclado está abierto
   const [tecladoVisible, setTecladoVisible] = useState(false);
 
-  // Estado dinámico para los resultados editables
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [resultados, setResultados] = useState([
-    { id: '1', label: "Niños de 6 a 9 Meses", value: "26", color: "#4CAF50" }, 
-    { id: '2', label: "Niños de 10 a 12 Meses", value: "18", color: "#FF4081" }, 
-    { id: '3', label: "Niños de 13 a 23 Meses", value: "12", color: "#FFB300" }, 
-    { id: '4', label: "Niños de 24 a 36 Meses", value: "20", color: "#FFB300" }, 
-    { id: '5', label: "Actores Comunales", value: "6", color: "#FFB300" }, 
+    { id: '1', label: "Niños de 6 a 9 Meses", value: "0", color: "#4CAF50" }, 
+    { id: '2', label: "Niños de 10 a 12 Meses", value: "0", color: "#FF4081" }, 
+    { id: '3', label: "Niños de 13 a 23 Meses", value: "0", color: "#FFB300" }, 
+    { id: '4', label: "Niños de 24 a 36 Meses", value: "0", color: "#FFB300" }, 
+    { id: '5', label: "Actores Comunales", value: "0", color: "#FFB300" }, 
   ]);
 
-  // Escuchadores del teclado para ocultar la barra inferior al escribir
+  // 📥 ESTADO PARA GUARDAR LA RESPUESTA DE TU API (Dosificación)
+  const [datosInsumos, setDatosInsumos] = useState<any>(null);
+
+  // 🔌 CARGA DINÁMICA DE S.A. DESDE TU API CONFIGURADA CON TU JSON
+  useEffect(() => {
+    const cargarCentrosSA = async () => {
+      try {
+        setCargandoCentros(true);
+        const data = await CentroAlimentarioService.getCentrosTodos();
+        
+        // 🛠️ CORRECCIÓN: Accedemos a data.content que es donde viene tu arreglo de comedores
+        if (data && data.content && Array.isArray(data.content)) {
+          const formateados = data.content.map((centro: any) => ({
+            // 🛠️ CORRECCIÓN: Mapeamos con 'nombreCentro' e 'idCentroAlimentario'
+            label: centro.nombreCentro || 'Centro sin nombre',
+            value: centro.idCentroAlimentario
+          }));
+          setListaCentros(formateados);
+        } else if (data && Array.isArray(data)) {
+          // Caso de respaldo por si en algún entorno cambia la estructura
+          const formateados = data.map((centro: any) => ({
+            label: centro.nombreCentro || centro.nombre || 'Centro sin nombre',
+            value: centro.idCentroAlimentario || centro.id
+          }));
+          setListaCentros(formateados);
+        }
+      } catch (err) {
+        console.error("Error al cargar centros desde la API:", err);
+      } finally {
+        setCargandoCentros(false);
+      }
+    };
+
+    cargarCentrosSA();
+  }, []);
+
+  // Resetear el correlativo si el usuario cambia de S.A. / Centro
+  const manejarCambioSA = (item: any) => {
+    setSelectedSA(item);
+    setSelectedCorrelativo(null); // Resetea el paso 2
+    setResultados(prev => prev.map(r => ({ ...r, value: "0" })));
+    setDatosInsumos(null); // Limpia la sección Necesitas anterior
+    setModalSAVisible(false);
+  };
+
+  // 🌟 useEffect: SOLO carga si AMBOS selectores están listos
+  useEffect(() => {
+    const cargarTotalesDesdeAPI = async () => {
+      if (!selectedSA || !selectedCorrelativo) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+        setDatosInsumos(null);
+        
+        const hoy = new Date();
+        const yyyy = hoy.getFullYear();
+        const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+        const dd = String(hoy.getDate()).padStart(2, '0');
+        const fechaActual = `${yyyy}-${mm}-${dd}`;
+
+        const correlativoParam = Number(selectedCorrelativo.value);
+
+        // Tu API original para asistencias
+        const data = await CalculadoraService.getResumenServicio(fechaActual, correlativoParam);
+
+        if (data && data.totales) {
+          const nuevosResultados = resultados.map(res => {
+            const apiTotal = data.totales.find((t: any) => t.idCategoriaGrupo === Number(res.id));
+            return {
+              ...res,
+              value: apiTotal ? String(apiTotal.cantidad) : "0"
+            };
+          });
+          setResultados(nuevosResultados);
+        }
+      } catch (err) {
+        console.error("Error al traer datos de asistencia:", err);
+        setError("Error de conexión al recuperar los totales.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarTotalesDesdeAPI();
+  }, [selectedSA, selectedCorrelativo]);
+
   useEffect(() => {
     const tecladoMuestra = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -80,19 +168,47 @@ export default function DosificacionResultados() {
     );
   };
 
-  const manejarContinuar = () => {
-    console.log("Datos listos para enviar:", resultados);
+  // 🚀 MANEJAR CONTINUAR INTEGRADO DIRECTAMENTE CON TU CALCULADORASERVICE
+  const manejarContinuar = async () => {
+    if (!nombrePreparacion) {
+      console.error("❌ ERROR: No se recibió 'nombrePreparacion' desde la pantalla anterior.");
+      Alert.alert(
+        "Información Faltante", 
+        "No se pudo identificar la preparación seleccionada. Por favor, regresa a la pantalla anterior e inténtalo de nuevo."
+      );
+      return; 
+    }
+
+    const payload = {
+      categorias: resultados.map(item => ({
+        idCategoriaGrupo: Number(item.id),
+        cantidad: parseInt(item.value) || 0
+      }))
+    };
+
+    try {
+      setLoading(true);
+      const data = await CalculadoraService.calcularDosificacionInsumos(payload);
+      if (data) {
+        setDatosInsumos(data); 
+      } else {
+        Alert.alert("Error", "No se recibieron datos del servidor.");
+      }
+    } catch (err) {
+      console.error("Error al calcular con tu API:", err);
+      Alert.alert("Error", "Ocurrió un problema al procesar los insumos con el servidor.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return ( 
     <SafeAreaView style={styles.container}> 
-      {/* 🌟 Envolvemos en KeyboardAvoidingView para evitar bugs en iOS */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
         style={styles.flexible}
       >
         
-        {/* 🟢 ENCABEZADO VERDE CURVO */} 
         <View style={[styles.header, { height: esPantallaGrande ? 120 : 100 }]}> 
           <View style={styles.headerContent}> 
             <View style={styles.userInfo}> 
@@ -115,7 +231,6 @@ export default function DosificacionResultados() {
           </View> 
         </View> 
 
-        {/* 📜 CONTENEDOR SEGURO PARA EL SCROLL */} 
         <View style={styles.scrollWrapper}>
           <ScrollView 
             contentContainerStyle={styles.scrollContent}
@@ -123,8 +238,8 @@ export default function DosificacionResultados() {
             keyboardShouldPersistTaps="handled"
           > 
             
-            {/* SELECTORES PERSONALIZADOS */} 
             <View style={styles.pickerRow}> 
+              {/* Paso 1: Seleccionar S.A. / Centro */}
               <TouchableOpacity 
                 style={styles.customPickerButton}
                 activeOpacity={0.7}
@@ -136,60 +251,112 @@ export default function DosificacionResultados() {
                 <Ionicons name="chevron-down" size={18} color="#006080" />
               </TouchableOpacity>
 
+              {/* Paso 2: Seleccionar Correlativo */}
               <TouchableOpacity 
-                style={styles.customPickerButton}
+                style={[
+                  styles.customPickerButton, 
+                  !selectedSA && styles.pickerButtonDisabled
+                ]}
                 activeOpacity={0.7}
+                disabled={!selectedSA}
                 onPress={() => setModalCorrelativoVisible(true)}
               >
-                <Text style={[styles.pickerButtonText, selectedCorrelativo && styles.pickerSelectedText]} numberOfLines={1}>
+                <Text 
+                  style={[
+                    styles.pickerButtonText, 
+                    selectedCorrelativo && styles.pickerSelectedText,
+                    !selectedSA && { color: '#B0B0B0' }
+                  ]} 
+                  numberOfLines={1}
+                >
                   {selectedCorrelativo ? selectedCorrelativo.label : "Correlativo"}
                 </Text>
-                <Ionicons name="chevron-down" size={18} color="#006080" />
+                <Ionicons name="chevron-down" size={18} color={selectedSA ? "#006080" : "#B0B0B0"} />
               </TouchableOpacity>
             </View> 
 
             <Text style={styles.sectionTitle}>TOTAL:</Text> 
 
-            {/* LISTA DE RESULTADOS EDITABLES */} 
-            <View style={styles.resultsList}> 
-              {resultados.map((item) => (
-                <ResultItem 
-                  key={item.id}
-                  label={item.label} 
-                  value={item.value} 
-                  color={item.color} 
-                  onChangeText={(texto) => manejarCambioValor(item.id, texto)}
-                /> 
-              ))}
-            </View> 
+            {!selectedSA || !selectedCorrelativo ? (
+              <View style={styles.indicacionContainer}>
+                <Ionicons name="information-circle-outline" size={32} color="#006080" />
+                <Text style={styles.indicacionText}>
+                  Por favor, seleccione una S.A. y su respectivo Correlativo para sincronizar los totales del día.
+                </Text>
+              </View>
+            ) : loading ? (
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator size="large" color="#006080" />
+                <Text style={styles.loaderText}>Sincronizando...</Text>
+              </View>
+            ) : error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : (
+              <View style={styles.resultsList}> 
+                {resultados.map((item) => (
+                  <ResultItem 
+                    key={item.id}
+                    label={item.label} 
+                    value={item.value} 
+                    color={item.color} 
+                    onChangeText={(texto) => manejarCambioValor(item.id, texto)}
+                  /> 
+                ))}
+              </View> 
+            )}
 
-            {/* Guarnición */} 
             <View style={styles.guarnicionCard}> 
               <MaterialCommunityIcons name="silverware-fork-knife" size={24} color="#006080" /> 
-              <Text style={styles.guarnicionText}>ARROZ COMO GUARNICIÓN</Text> 
+              <Text style={styles.guarnicionText}>
+                {nombrePreparacion ? String(nombrePreparacion).toUpperCase() : "ARROZ COMO GUARNICIÓN"}
+              </Text> 
             </View> 
 
-            {/* Botón Continuar */} 
-            <TouchableOpacity style={styles.continueButton} activeOpacity={0.8} onPress={manejarContinuar}> 
+            <TouchableOpacity 
+              style={[styles.continueButton, (!selectedSA || !selectedCorrelativo) && styles.continueButtonDisabled]} 
+              activeOpacity={0.8} 
+              onPress={manejarContinuar}
+              disabled={!selectedSA || !selectedCorrelativo || loading}
+            > 
               <Text style={styles.continueButtonText}>CONTINUAR</Text> 
             </TouchableOpacity> 
 
-            {/* Necesitas */} 
-            <Text style={styles.necesitasTitle}>NECESITAS:</Text> 
-            <View style={styles.necesitasRow}> 
-              <View style={styles.necesitasCard}> 
-                <Text style={styles.necesitasValue}>16</Text> 
-                <Text style={styles.necesitasLabel}>BOLSAS DE 1 KG</Text> 
-              </View> 
-              <View style={styles.necesitasCard}> 
-                <Text style={styles.necesitasValue}>24</Text> 
-                <Text style={styles.necesitasLabel}>BOLSAS DE 1/2</Text> 
-              </View> 
-            </View> 
+            {/* SECCIÓN DINÁMICA: "NECESITAS" */}
+            {datosInsumos && (
+              <View>
+                <Text style={styles.necesitasTitle}>
+                  NECESITAS ({datosInsumos.alimento}):
+                </Text> 
+                <View style={styles.necesitasRow}> 
+                  <View style={styles.necesitasCard}> 
+                    <Text style={styles.necesitasValue}>
+                      {datosInsumos.empaquesSugeridos["Opción en empaques de 1 Kg/L"] || 0}
+                    </Text> 
+                    <Text style={styles.necesitasLabel}>BOLSAS DE 1 KG</Text> 
+                  </View> 
+                  <View style={styles.necesitasCard}> 
+                    <Text style={styles.necesitasValue}>
+                      {datosInsumos.empaquesSugeridos["Opción en empaques de 500 g/ml"] || 0}
+                    </Text> 
+                    <Text style={styles.necesitasLabel}>BOLSAS DE 1/2 KG</Text> 
+                  </View> 
+                  <View style={styles.necesitasCard}> 
+                    <Text style={styles.necesitasValue}>
+                      {datosInsumos.empaquesSugeridos["Opción en empaques de 250 g/ml"] || 0}
+                    </Text> 
+                    <Text style={styles.necesitasLabel}>BOLSAS DE 250 G</Text> 
+                  </View> 
+                </View> 
+                <Text style={styles.totalGramosText}>
+                  Total requerido: {datosInsumos.totalGramosO_Ml} {datosInsumos.unidad}
+                </Text>
+              </View>
+            )}
           </ScrollView> 
         </View>
 
-        {/* 🌟 BARRA ESTÁTICA INFERIOR: Corregida con separación de 50px y se oculta con el teclado */} 
         {!tecladoVisible && (
           <View style={styles.bottomBarContainer}>
             <TouchableOpacity 
@@ -205,23 +372,32 @@ export default function DosificacionResultados() {
 
       </KeyboardAvoidingView>
 
-      {/* 🎭 MODAL PARA SELECCIONAR S.A. */}
+      {/* MODAL S.A. */}
       <Modal visible={modalSAVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Seleccione S.A.</Text>
-            <FlatList
-              data={OPCIONES_SA}
-              keyExtractor={(item) => item.value}
-              renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={styles.modalOption} 
-                  onPress={() => { setSelectedSA(item); setModalSAVisible(false); }}
-                >
-                  <Text style={styles.modalOptionText}>{item.label}</Text>
-                </TouchableOpacity>
-              )}
-            />
+            <Text style={styles.modalTitle}>Seleccione Centro / S.A.</Text>
+            {cargandoCentros ? (
+              <ActivityIndicator size="small" color="#006080" style={{ marginVertical: 20 }} />
+            ) : (
+              <FlatList
+                data={listaCentros}
+                keyExtractor={(item, index) => item.value ? String(item.value) : `centro-${index}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={styles.modalOption} 
+                    onPress={() => manejarCambioSA(item)}
+                  >
+                    <Text style={styles.modalOptionText}>{item.label}</Text>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <Text style={{ textAlign: 'center', color: '#888', marginVertical: 10 }}>
+                    No se encontraron centros disponibles.
+                  </Text>
+                }
+              />
+            )}
             <TouchableOpacity style={styles.closeModalButton} onPress={() => setModalSAVisible(false)}>
               <Text style={styles.closeModalButtonText}>Cancelar</Text>
             </TouchableOpacity>
@@ -229,14 +405,14 @@ export default function DosificacionResultados() {
         </View>
       </Modal>
 
-      {/* 🎭 MODAL PARA SELECCIONAR CORRELATIVO */}
+      {/* MODAL CORRELATIVO */}
       <Modal visible={modalCorrelativoVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Seleccione Correlativo</Text>
             <FlatList
               data={OPCIONES_CORRELATIVO}
-              keyExtractor={(item) => item.value}
+              keyExtractor={(item, index) => item.value ? String(item.value) : `correlativo-${index}`}
               renderItem={({ item }) => (
                 <TouchableOpacity 
                   style={styles.modalOption} 
@@ -365,6 +541,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  pickerButtonDisabled: {
+    backgroundColor: '#F0F0F0',
+    borderColor: '#E2E8F0',
+    opacity: 0.6
+  },
   pickerButtonText: {
     fontSize: 13,
     color: '#888888',
@@ -419,6 +600,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold', 
     padding: 0,
   }, 
+  indicacionContainer: {
+    backgroundColor: '#E6F4EA',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#A7F3D0'
+  },
+  indicacionText: {
+    color: '#047857',
+    textAlign: 'center',
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18
+  },
   guarnicionCard: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -445,6 +643,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2, 
     shadowRadius: 2, 
   }, 
+  continueButtonDisabled: {
+    backgroundColor: '#94A3B8',
+    elevation: 0,
+    shadowOpacity: 0,
+  },
   continueButtonText: { 
     color: '#FFFFFF', 
     fontWeight: 'bold', 
@@ -453,7 +656,7 @@ const styles = StyleSheet.create({
   necesitasTitle: { 
     fontSize: 16, 
     fontWeight: 'bold', 
-    color: '#333333', 
+    color: '#006080', 
     marginBottom: 10, 
   }, 
   necesitasRow: { 
@@ -461,32 +664,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', 
   }, 
   necesitasCard: { 
-    flex: 0.48, 
+    flex: 0.31, 
     backgroundColor: '#EEEEEE', 
-    padding: 20, 
+    paddingVertical: 15, 
+    paddingHorizontal: 5,
     borderRadius: 10, 
     alignItems: 'center', 
   }, 
   necesitasValue: { 
-    fontSize: 20, 
+    fontSize: 18, 
     fontWeight: 'bold', 
     color: '#4CAF50', 
     marginBottom: 5, 
   }, 
   necesitasLabel: { 
-    fontSize: 10, 
+    fontSize: 9, 
     fontWeight: 'bold', 
     color: '#4CAF50', 
     textAlign: 'center', 
   }, 
-  /* 🌟 BARRA ESTÁTICA INFERIOR ACTUALIZADA */
+  totalGramosText: {
+    textAlign: 'right',
+    fontSize: 12,
+    color: '#666666',
+    fontWeight: '600',
+    marginTop: 8,
+    fontStyle: 'italic'
+  },
   bottomBarContainer: {
     width: '100%',
     backgroundColor: '#F9F9F9', 
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 15, 
-    paddingBottom: 50, // 🌟 Forzamos 50px de aire limpio para separarlo de la barra del celular
+    paddingBottom: 50, 
     borderTopWidth: 1,
     borderColor: '#E2E8F0', 
   },
@@ -558,5 +769,27 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  loaderContainer: {
+    marginVertical: 30,
+    alignItems: 'center',
+  },
+  loaderText: {
+    marginTop: 10,
+    color: '#006080',
+    fontWeight: '600',
+  },
+  errorContainer: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 15,
+  },
+  errorText: {
+    color: '#B91C1C',
+    textAlign: 'center',
+    fontWeight: '500',
   }
 });

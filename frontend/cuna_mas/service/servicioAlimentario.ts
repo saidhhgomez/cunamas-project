@@ -25,6 +25,20 @@ export const CentroAlimentarioService = {
     } catch (error) {
       console.error("Error consultando el API de servicios alimentarios:", error);
       throw error;
+    } 
+  },
+
+  getCentrosTodos: async () => {
+      try {
+        // Un GET limpio, sin el objeto 'params'
+        const response = await api.get('/servicios-alimentarios');
+
+        // Si el endpoint sin paginar te devuelve el array directo, usas: response.data
+        // Si te sigue devolviendo el objeto con 'content', dejamos el fallback listo:
+        return response.data.content || response.data || [];
+      } catch (error) {
+        console.error("Error consultando todos los centros (sin paginación):", error);
+        throw error;
+      }
     }
-  }
-};
+  };

@@ -107,12 +107,13 @@ export default function TipoPreparacion() {
                   style={[styles.optionCard, { minHeight: esPantallaGrande ? 82 : 70 }]}
                   activeOpacity={0.7}
                   onPress={() => {
-                    // 🔀 Redirección pasando idCategoria y el idTipoPreparacion recién elegido
+                    // 🔀 Redirección pasando idCategoria, el idTipoPreparacion y el nombrePreparacion recién elegido
                     router.push({
                       pathname: '/cuidadora/calculadoraDosificadora', 
                       params: {
                         idCategoria: idCategoria,
-                        idTipoPreparacion: item.idTipoPreparacion
+                        idTipoPreparacion: item.idTipoPreparacion,
+                        nombrePreparacion: item.nombrePreparacion // 👈 Parametro añadido aquí
                       }
                     });
                   }}
