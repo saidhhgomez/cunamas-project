@@ -7,7 +7,10 @@ export default function CuidadoraLayout() {
   const { user } = useAuth();
 
   // 🚨 SEGURIDAD: Si un asistente intenta forzar la entrada a una sub-pantalla de cuidadora, lo rebota
-  if (!user || !user.roles.includes('Madre Guía')) {
+  if (!user || !user.roles.includes('Madre Guía')  || !user.roles.includes('Madre Guía') || 
+  !user.roles.includes('Madre Cuidadora') ||
+  !user.roles.includes('Socia de Cocina Tipo 2') ||
+  !user.roles.includes('Socia de Cocina Tipo 1') ) {
     return <Redirect href={user?.roles.includes('asistente') ? "/asistente/inicio" : "/auth/login"} />;
   }
 
