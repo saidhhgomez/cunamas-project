@@ -29,14 +29,21 @@ export const CalculadoraService = {
 
 
 
-  getResumenServicio: async (fecha: string, correlativo: number): Promise<any> => {
-    const response = await api.get(
-      `/calculadora/resumen-servicio/1`, 
-      { params: { fecha, correlativo } }
-    );
-    return response.data;
-  },
+getResumenServicio: async (id: number, fecha: string, correlativo: number): Promise<any> => {
 
+  try {
+    const response = await api.get(`/calculadora/resumen-servicio/${id}`, { 
+      params: { 
+        fecha, 
+        correlativo, 
+      } 
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error al obtener resumen:`, error);
+    throw error;
+  }
+},
 // calculadoraService.ts
 calcularDosificacionInsumos: async (datos: any, idPreparacion: string) => {
   const response = await api.post(

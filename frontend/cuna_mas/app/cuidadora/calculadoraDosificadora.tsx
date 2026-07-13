@@ -45,8 +45,15 @@ export default function DosificacionResultados() {
   ]);
   const [datosInsumos, setDatosInsumos] = useState<any>(null);
 
-  const formatearFechaParaAPI = (date: Date) => date.toISOString().split('T')[0];
-
+// 🛠️ CORRECCIÓN: Formatea la fecha usando el tiempo local, no UTC
+const formatearFechaParaAPI = (date: Date) => {
+  const año = date.getFullYear();
+  // Se suma 1 porque los meses en JavaScript van de 0 a 11
+  const mes = String(date.getMonth() + 1).padStart(2, '0'); 
+  const dia = String(date.getDate()).padStart(2, '0');
+  
+  return `${año}-${mes}-${dia}`;
+};
 // 🔌 CARGA DINÁMICA DE S.A.
   useEffect(() => {
     const cargarCentrosSA = async () => {
@@ -82,28 +89,47 @@ export default function DosificacionResultados() {
     setModalSAVisible(false);
   };
 
-  // useEffect sincronizado con Fecha, SA y Correlativo
-  useEffect(() => {
-    const cargarTotalesDesdeAPI = async () => {
-      if (!selectedSA || !selectedCorrelativo) return;
-      try {
-        setLoading(true);
-        setError(null);
-        setDatosInsumos(null);
-        
-        const data = await CalculadoraService.getResumenServicio(formatearFechaParaAPI(fecha), Number(selectedCorrelativo.value));
-        if (data && data.totales) {
-          setResultados(resultados.map(res => {
-            const apiTotal = data.totales.find((t: any) => t.idCategoriaGrupo === Number(res.id));
-            return { ...res, value: apiTotal ? String(apiTotal.cantidad) : "0" };
-          }));
-        }
-      } catch (err) {
-        setError("Error de conexión al recuperar los totales.");
-      } finally { setLoading(false); }
-    };
-    cargarTotalesDesdeAPI();
-  }, [selectedSA, selectedCorrelativo, fecha]);
+ // useEffect sincronizado con Fecha, SA y Correlativo
+useEffect(() => {
+  const cargarTotalesDesdeAPI = async () => {
+    if (!selectedSA || !selectedCorrelativo) return;
+    try {
+      setLoading(true);
+      setError(null);
+      setDatosInsumos(null);
+      
+      console.log("Solicitando totales para:", { 
+        idPreparacion: idTipoPreparacion,
+        fecha: formatearFechaParaAPI(fecha), 
+        correlativo: selectedCorrelativo.value,
+      });
+
+      // 🛠️ Enviamos los 4 parámetros en el orden correcto que espera tu servicio
+  // 🛠️ CORRECCIÓN: Pasa el ID del centro alimentario (selectedSA.value) como primer parámetro
+const data = await CalculadoraService.getResumenServicio(
+  Number(selectedSA.value),     // 👈 Cambiado: Esto pondrá el "1" en la URL como en tu Postman
+  formatearFechaParaAPI(fecha), 
+  Number(selectedCorrelativo.value)
+);
+      
+      console.log("Datos recibidos de la API:", data);
+      
+      if (data && data.totales) {
+        setResultados(resultados.map(res => {
+          const apiTotal = data.totales.find((t: any) => t.idCategoriaGrupo === Number(res.id));
+          return { ...res, value: apiTotal ? String(apiTotal.cantidad) : "0" };
+        }));
+      } else {
+        // Si la API responde pero no trae totales, reiniciamos a "0"
+        setResultados(prev => prev.map(r => ({ ...r, value: "0" })));
+      }
+    } catch (err) {
+      setError("Error de conexión al recuperar los totales.");
+    } finally { setLoading(false); }
+  };
+  
+  cargarTotalesDesdeAPI();
+}, [selectedSA, selectedCorrelativo, fecha]);
 
   useEffect(() => {
     const tecladoMuestra = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setTecladoVisible(true));

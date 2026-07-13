@@ -152,7 +152,7 @@ const manejarGuardarDireccion = async () => {
               Bienvenid@
             </Text>
             <Text style={[styles.userName, { fontSize: esPantallaGrande ? 18 : 15 }]} numberOfLines={1}>
-              {user?.nombre || "María Estela"}
+              {user?.nombre}
             </Text>
           </View>
         </View>

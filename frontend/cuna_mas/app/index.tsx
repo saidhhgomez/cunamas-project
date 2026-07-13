@@ -29,7 +29,12 @@ export default function IndexScreen() {
   
 
   // 2. Validamos Cuidadora
-  if (user.roles.includes('Madre Guía')) {
+if (
+  user.roles.includes('Madre Guía') || 
+  user.roles.includes('Madre Cuidadora') ||
+  user.roles.includes('Socia de Cocina Tipo 2') ||
+  user.roles.includes('Socia de Cocina Tipo 1')
+) {
     return <InicioCuidadora />;
   }
 
