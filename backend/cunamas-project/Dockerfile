@@ -1,5 +1,6 @@
 # --- Etapa 1: Compilación ---
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# Cambiado a Java 21 para soportar la compilación del proyecto
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 
 # Copiar configuración de dependencias y descargarlas
@@ -11,7 +12,8 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # --- Etapa 2: Ejecución ---
-FROM eclipse-temurin:17-jre-alpine
+# Cambiado a JRE 21 para poder ejecutar el .jar compilado
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
