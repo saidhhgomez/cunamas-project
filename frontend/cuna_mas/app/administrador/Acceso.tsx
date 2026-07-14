@@ -32,9 +32,13 @@ const TABLA_GENERO = [
 
 // 📋 Simulación de la tabla de roles mapeados por su ID de Base de Datos
 const TABLA_ROLES = [
-  { id_rol: 5, nombre_rol: 'Socia de Cocina' },
-  { id_rol: 6, nombre_rol: 'Madre Guía / Cuidadora' },
-  { id_rol: 7, nombre_rol: 'Asistente' },
+    { id_rol: 1, nombre_rol: 'Asistente Técnico (AT)' },
+  { id_rol: 2, nombre_rol: 'Socia de Cocina Tipo 1' },
+  { id_rol: 3, nombre_rol: 'Socia de Cocina Tipo 2' },
+  { id_rol: 4, nombre_rol: 'Socia de Cocina Tipo 2' },
+  { id_rol: 5, nombre_rol: 'Experta en Nutrición' },
+  { id_rol: 6, nombre_rol: 'Madre Cuidadora' },
+  { id_rol: 7, nombre_rol: 'Madre Guía' },
 ];
 
 export default function RegistrAcessoScreen() {

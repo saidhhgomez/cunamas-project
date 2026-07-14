@@ -147,7 +147,7 @@ activeOpacity={0.8}>
           <Ionicons name="home-outline" size={22} color="#757575" /> 
           <Text style={styles.navLabel}>Inicio</Text> 
         </TouchableOpacity> 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
           <Ionicons name="calculator-outline" size={22} color="#006080" /> 
           <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Calculadora</Text> 
         </TouchableOpacity> 
