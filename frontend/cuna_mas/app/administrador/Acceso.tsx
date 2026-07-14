@@ -16,12 +16,13 @@ import {
 } from 'react-native';
 import { ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { registerService, RegisterPayload } from '../../service/authService'; 
+import * as Clipboard from 'expo-clipboard'; // 🌟 Importación moderna y recomendada para Expo
+import { usuarioService, RegisterAdminPayload } from '../../service/adminService'; 
 
 const TABLA_DOCUMENTO = [
-  { id_documento: 1, nombre_documento: 'DNI' },
-  { id_documento: 2, nombre_documento: 'CE' },
-  { id_documento: 3, nombre_documento: 'Pasaporte' },
+  { id_documento: 1, nombre_documento: 'DNI', longitud: 8, teclado: 'numeric' as const },
+  { id_documento: 2, nombre_documento: 'CE', longitud: 9, teclado: 'default' as const },
+  { id_documento: 3, nombre_documento: 'Pasaporte', longitud: 9, teclado: 'default' as const },
 ];
 
 const TABLA_GENERO = [
@@ -30,18 +31,16 @@ const TABLA_GENERO = [
   { id_genero: 3, nombre_genero: 'Prefiero No Decirlo' },
 ];
 
-// 📋 Simulación de la tabla de roles mapeados por su ID de Base de Datos
 const TABLA_ROLES = [
-    { id_rol: 1, nombre_rol: 'Asistente Técnico (AT)' },
+  { id_rol: 1, nombre_rol: 'Asistente Técnico (AT)' },
   { id_rol: 2, nombre_rol: 'Socia de Cocina Tipo 1' },
   { id_rol: 3, nombre_rol: 'Socia de Cocina Tipo 2' },
-  { id_rol: 4, nombre_rol: 'Socia de Cocina Tipo 2' },
   { id_rol: 5, nombre_rol: 'Experta en Nutrición' },
   { id_rol: 6, nombre_rol: 'Madre Cuidadora' },
   { id_rol: 7, nombre_rol: 'Madre Guía' },
 ];
 
-export default function RegistrAcessoScreen() {
+export default function RegisterAdminScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
@@ -51,18 +50,17 @@ export default function RegistrAcessoScreen() {
 
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState<typeof TABLA_DOCUMENTO[number] | null>(null);
   const [generoSeleccionado, setGeneroSeleccionado] = useState<typeof TABLA_GENERO[number] | null>(null);
-  const [rolSeleccionado, setRolSeleccionado] = useState<typeof TABLA_ROLES[number] | null>(null); // 👈 Estado del Rol
+  const [rolSeleccionado, setRolSeleccionado] = useState<typeof TABLA_ROLES[number] | null>(null); 
   
   const [numDocumento, setNumDocumento] = useState('');
   const [nombres, setNombres] = useState('');
   const [apellidoPaterno, setApellidoPaterno] = useState('');
   const [apellidoMaterno, setApellidoMaterno] = useState('');
   const [correo, setCorreo] = useState('');
-  const [password, setPassword] = useState('');
 
   const [mostrarMenuDoc, setMostrarMenuDoc] = useState(false);
   const [mostrarMenuGenero, setMostrarMenuGenero] = useState(false);
-  const [mostrarMenuRol, setMostrarMenuRol] = useState(false); // 👈 Visibilidad del menú de roles
+  const [mostrarMenuRol, setMostrarMenuRol] = useState(false);
 
   useEffect(() => {
     const tecladoMuestra = Keyboard.addListener(
@@ -80,40 +78,79 @@ export default function RegistrAcessoScreen() {
     };
   }, []);
 
-  const manejarRegistro = async () => {
-    if (!documentoSeleccionado || !numDocumento || !nombres || !apellidoPaterno || !generoSeleccionado || !rolSeleccionado || !correo || !password) {
-      Alert.alert('Campos Incompletos', 'Por favor, completa todos los datos obligatorios, incluyendo el Rol.');
+  // Limpia el input del número si cambian de tipo de documento
+  const seleccionarTipoDocumento = (doc: typeof TABLA_DOCUMENTO[number]) => {
+    setDocumentoSeleccionado(doc);
+    setNumDocumento(''); 
+    setMostrarMenuDoc(false);
+  };
+
+  const manejarRegistroAdmin = async () => {
+    if (!documentoSeleccionado || !numDocumento || !nombres || !apellidoPaterno || !generoSeleccionado || !rolSeleccionado || !correo) {
+      Alert.alert('Campos Incompletos', 'Por favor, completa todos los datos obligatorios.');
       return;
     }
 
-    // 🚀 Payload estructurado exactamente como lo requiere tu endpoint
-    const payloadRegistro: any = {
+    // Validación estricta de longitud por tipo de documento
+    const longitudCorrecta = documentoSeleccionado.longitud;
+    if (numDocumento.length !== longitudCorrecta) {
+      Alert.alert(
+        'Documento Inválido', 
+        `El ${documentoSeleccionado.nombre_documento} debe tener exactamente ${longitudCorrecta} caracteres.`
+      );
+      return;
+    }
+
+    const payloadRegistroAdmin: RegisterAdminPayload = {
       persona: {
         idDocumento: documentoSeleccionado.id_documento,
-        numeroDocumento: numDocumento,
-        nombres: nombres,
-        appPaterno: apellidoPaterno,
-        apMaterno: apellidoMaterno,
+        numeroDocumento: numDocumento.trim(),
+        nombres: nombres.trim(),
+        apPaterno: apellidoPaterno.trim(),
+        apMaterno: apellidoMaterno.trim(),
         idGenero: generoSeleccionado.id_genero,
       },
       cuenta: {
         correoElectronico: correo.trim().toLowerCase(),
-        password: password,
       },
       roles: [
-        rolSeleccionado.id_rol // 👈 Se envía como un array de números tal cual tu JSON de ejemplo
+        rolSeleccionado.id_rol 
       ]
     };
 
     try {
       setCargando(true);
-      await registerService(payloadRegistro);
+      console.log('Payload de Registro Admin:', payloadRegistroAdmin);
+      const respuesta = await usuarioService.registrarUsuarioAdmin(payloadRegistroAdmin);
+      
+      const data = respuesta?.data || respuesta;
+      
+      const mensajeBack = data?.mensaje || "Usuario registrado correctamente.";
+      const passTemporal = data?.passwordTemporal || "";
+
+      // Alerta interactiva con opción de copia al portapapeles
       Alert.alert(
-        "¡Registro Exitoso!", 
-        "Tu cuenta ha sido creada correctamente.",
-        "Aceptar",
-        [{ text: "OK", onPress: () => router.replace('/login') }]
+        "¡Registro Exitoso!",
+        `${mensajeBack}\n\n🔑 Contraseña temporal:\n${passTemporal}`,
+        [
+          {
+            text: "Copiar Contraseña y Volver",
+            onPress: async () => {
+              if (passTemporal) {
+                await Clipboard.setStringAsync(passTemporal);
+              }
+              router.back();
+            }
+          },
+          {
+            text: "Solo Volver",
+            style: "cancel",
+            onPress: () => router.back()
+          }
+        ],
+        { cancelable: false }
       );
+
     } catch (error: any) {
       const mensajeError = error.response?.data?.mensaje || "No se pudo completar el registro.";
       Alert.alert("Error en el Registro", mensajeError);
@@ -150,8 +187,8 @@ export default function RegistrAcessoScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={[styles.title, { fontSize: esPantallaGrande ? 44 : 36 }]}>
-            REGISTRO
+          <Text style={[styles.title, { fontSize: esPantallaGrande ? 36 : 28 }]}>
+            CREAR USUARIO (ADMIN)
           </Text>
 
           <View style={styles.form}>
@@ -166,14 +203,27 @@ export default function RegistrAcessoScreen() {
             {mostrarMenuDoc && (
               <View style={styles.dropdownContainer}>
                 {TABLA_DOCUMENTO.map((item) => (
-                  <TouchableOpacity key={item.id_documento} style={styles.dropdownOption} onPress={() => { setDocumentoSeleccionado(item); setMostrarMenuDoc(false); }}>
+                  <TouchableOpacity key={item.id_documento} style={styles.dropdownOption} onPress={() => seleccionarTipoDocumento(item)}>
                     <Text style={styles.dropdownOptionText}>{item.nombre_documento}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
 
-            <View style={styles.inputWrapper}><TextInput style={styles.input} placeholder="N° de Documento" keyboardType="numeric" value={numDocumento} onChangeText={setNumDocumento} editable={!!documentoSeleccionado} /></View>
+            {/* Input de Documento Dinámico */}
+            <View style={styles.inputWrapper}>
+              <TextInput 
+                style={styles.input} 
+                placeholder={documentoSeleccionado ? `N° de Documento (${documentoSeleccionado.longitud} dígitos)` : 'N° de Documento'}
+                keyboardType={documentoSeleccionado ? documentoSeleccionado.teclado : 'default'} 
+                value={numDocumento} 
+                onChangeText={setNumDocumento} 
+                editable={!!documentoSeleccionado} 
+                maxLength={documentoSeleccionado ? documentoSeleccionado.longitud : undefined}
+                autoCapitalize={documentoSeleccionado?.id_documento !== 1 ? 'characters' : 'none'}
+              />
+            </View>
+
             <View style={styles.inputWrapper}><TextInput style={styles.input} placeholder="Nombres" value={nombres} onChangeText={setNombres} /></View>
             <View style={styles.inputWrapper}><TextInput style={styles.input} placeholder="Apellido Paterno" value={apellidoPaterno} onChangeText={setApellidoPaterno} /></View>
             <View style={styles.inputWrapper}><TextInput style={styles.input} placeholder="Apellido Materno" value={apellidoMaterno} onChangeText={setApellidoMaterno} /></View>
@@ -196,10 +246,10 @@ export default function RegistrAcessoScreen() {
               </View>
             )}
 
-            {/* 🆕 Selector de Rol Solicitado */}
+            {/* Selector de Rol */}
             <TouchableOpacity style={[styles.pickerField, mostrarMenuRol && styles.pickerAbierto]} onPress={() => { setMostrarMenuRol(!mostrarMenuRol); setMostrarMenuDoc(false); setMostrarMenuGenero(false); }}>
               <Text style={[styles.pickerText, !rolSeleccionado && { color: '#94A3B8' }]}>
-                {rolSeleccionado ? rolSeleccionado.nombre_rol : 'Selecciona tu Rol'}
+                {rolSeleccionado ? rolSeleccionado.nombre_rol : 'Asignar Rol Directo'}
               </Text>
               {mostrarMenuRol ? <ChevronUp color="#00AEEF" size={22} /> : <ChevronDown color="#94A3B8" size={22} />}
             </TouchableOpacity>
@@ -216,14 +266,13 @@ export default function RegistrAcessoScreen() {
 
             <View style={styles.separator} />
             <View style={styles.inputWrapper}><TextInput style={styles.input} placeholder="Correo Electrónico" keyboardType="email-address" autoCapitalize="none" value={correo} onChangeText={setCorreo} /></View>
-            <View style={styles.inputWrapper}><TextInput style={styles.input} placeholder="Contraseña" secureTextEntry value={password} onChangeText={setPassword} /></View>
           </View>
         </ScrollView>
 
         {!tecladoVisible && (
           <View style={[styles.fixedFooter, esPantallaGrande && styles.tabletContent]}>
-            <TouchableOpacity style={styles.registerButton} onPress={manejarRegistro} disabled={cargando}>
-              {cargando ? <ActivityIndicator color="#FFF" /> : <Text style={styles.registerButtonText}>REGISTRAR</Text>}
+            <TouchableOpacity style={styles.registerButton} onPress={manejarRegistroAdmin} disabled={cargando}>
+              {cargando ? <ActivityIndicator color="#FFF" /> : <Text style={styles.registerButtonText}>CREAR USUARIO</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -253,6 +302,6 @@ const styles = StyleSheet.create({
   dropdownOptionText: { color: '#334155', fontWeight: '600', fontSize: 15 },
   separator: { height: 2, backgroundColor: '#E2E8F0', marginVertical: 18 },
   fixedFooter: { backgroundColor: '#F8FAFC', paddingHorizontal: 24, paddingTop: 10, paddingBottom: 30, width: '100%' },
-  registerButton: { backgroundColor: '#C5D800', width: '100%', height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
+  registerButton: { backgroundColor: '#00AEEF', width: '100%', height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
   registerButtonText: { color: '#FFF', fontWeight: '800', fontSize: 16 }
 });

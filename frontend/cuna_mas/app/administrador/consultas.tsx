@@ -146,10 +146,8 @@ export default function Consulta() {
   activeOpacity={0.8}
   onPress={() => {
     router.push({
-      pathname: '/agregar-local', // Asegúrate de que esta sea tu ruta real (ej. '/(modals)/agregar-local')
-      params: { 
-        idCentroAlimentario: i // Aquí pasas el ID del centro donde estás parado
-      }
+      pathname: '/administrador/agregarServicioA'// Asegúrate de que esta sea tu ruta real (ej. '/(modals)/agregar-local')
+  
     });
   }}
 >

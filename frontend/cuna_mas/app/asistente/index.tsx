@@ -58,7 +58,7 @@ export default function InicioSociaCocinas() {
               <Ionicons name="calculator" size={28} color="#006080" />
             </View>
             <View style={styles.buttonTextContainer}>
-              <Text style={styles.buttonTitle}>Calculadora Dosificadora</Text>
+              <Text style={styles.buttonTitle}>Consultar Asistencia</Text>
               <Text style={styles.buttonDescription}>Calcula porciones e ingredientes para las raciones diarias.</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#006080" />
@@ -75,7 +75,7 @@ router.push('/asistente/servicioAlimentario2')            }}
               <Ionicons name="restaurant" size={26} color="#16A34A" />
             </View>
             <View style={styles.buttonTextContainer}>
-              <Text style={styles.buttonTitle}>Registrar Raciones</Text>
+              <Text style={styles.buttonTitle}>Resumen Asistencia</Text>
               <Text style={styles.buttonDescription}>Controla e ingresa el consumo diario de los módulos.</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#006080" />

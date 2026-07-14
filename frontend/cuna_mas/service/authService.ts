@@ -11,7 +11,7 @@ interface LoginResponse {
   nombre: string;
   roles: string[]; 
   distrito: string | null;
-  tieneDireccion: boolean; // 👈 Registrado correctamente en la interfaz
+  tieneDireccion: boolean; 
 }
 
 export interface RegisterPayload {
@@ -27,12 +27,6 @@ export interface RegisterPayload {
     correoElectronico: string;
     password: string;
   };
-}
-
-// --- 🌟 Nueva Interface para el Refresco ---
-interface RefreshResponse {
-  accessToken: string;
-  refreshToken?: string; // Por si tu backend también rota el refresh token
 }
 
 /**
@@ -63,43 +57,6 @@ export const loginService = async (numeroDocumento: string, password: string): P
   }
 };
 
-// 🔄 🌟 NUEVA FUNCIÓN: Petición para Refrescar el Token (POST /auth/refresh)
-export const refrescarTokenService = async (): Promise<string | null> => {
-  try {
-    // 1. Recuperamos el refresh token guardado en el celular
-    const refreshToken = await SecureStore.getItemAsync('refreshToken');
-    
-    if (!refreshToken) {
-      console.log('No se encontró un Refresh Token local.');
-      return null;
-    }
-
-    console.log('====== 🔄 ENVIANDO REFRESH TOKEN (POST /auth/refresh) ======');
-    
-    // 2. Hacemos la petición a tu endpoint de Postman
-    const respuesta = await api.post<RefreshResponse>('/auth/refresh', {
-      refreshToken: refreshToken
-    });
-
-    console.log('====== 📥 REFRESH EXITOSO ======');
-    const { accessToken, refreshToken: nuevoRefreshToken } = respuesta.data;
-
-    // 3. Guardamos los nuevos datos recibidos
-    await SecureStore.setItemAsync('accessToken', accessToken);
-    if (nuevoRefreshToken) {
-      await SecureStore.setItemAsync('refreshToken', nuevoRefreshToken);
-    }
-
-    return accessToken; // Devolvemos la nueva llave para que la petición fallida continúe
-  } catch (error) {
-    console.log('====== ❌ ERROR AL REFRESCAR TOKEN ======', error);
-    // Si falla el refresco, limpiamos todo de inmediato porque la sesión expiró por completo
-    await SecureStore.deleteItemAsync('accessToken');
-    await SecureStore.deleteItemAsync('refreshToken');
-    return null;
-  }
-};
-
 // 🚪 Cierra la sesión de manera segura tanto en el backend como en el dispositivo
 export const cerrarSesionService = async (): Promise<boolean> => { 
   try {
@@ -115,6 +72,7 @@ export const cerrarSesionService = async (): Promise<boolean> => {
   } catch (error) {
     console.warn('El servidor no pudo procesar el logout o el token ya era inválido:', error);
   } finally {
+    // Limpieza absoluta de almacenamiento local
     await SecureStore.deleteItemAsync('accessToken'); 
     await SecureStore.deleteItemAsync('refreshToken');
     console.log('Tokens borrados del almacenamiento local.');

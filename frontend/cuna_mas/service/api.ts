@@ -1,9 +1,15 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
-import { Platform } from 'react-native';
+// services/api.ts
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { Platform, DeviceEventEmitter } from 'react-native'; // 🌟 Importamos DeviceEventEmitter
 import * as SecureStore from 'expo-secure-store';
-import { refrescarTokenService } from './authService';
 
-const getBaseUrl = () => (Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.137.1:8080/api');
+interface RefreshResponse {
+  accessToken: string;
+  refreshToken?: string;
+}
+
+const getBaseUrl = () => 
+  Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.18.233:8080/api';
 
 export const api = axios.create({
   baseURL: getBaseUrl(),
@@ -11,7 +17,6 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
 });
 
-// Variables para gestionar la cola de refresco
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -23,31 +28,75 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// 1. Interceptor de Petición
+const ejecutarRefrescoInterno = async (): Promise<string | null> => {
+  try {
+    const refreshToken = await SecureStore.getItemAsync('refreshToken');
+    if (!refreshToken) {
+      console.log('No se encontró un Refresh Token local.');
+      return null;
+    }
+
+    console.log('====== 🔄 ENVIANDO REFRESH TOKEN (POST /auth/refresh) ======');
+    
+    const respuesta = await axios.post<RefreshResponse>(
+      `${getBaseUrl()}/auth/refresh`, 
+      { refreshToken }
+    );
+
+    console.log('====== 📥 REFRESH EXITOSO ======');
+    const { accessToken, refreshToken: nuevoRefreshToken } = respuesta.data;
+
+    await SecureStore.setItemAsync('accessToken', accessToken);
+    if (nuevoRefreshToken) {
+      await SecureStore.setItemAsync('refreshToken', nuevoRefreshToken);
+    }
+
+    return accessToken;
+  } catch (error) {
+    console.log('====== ❌ ERROR AL REFRESCAR TOKEN ======', error);
+    return null;
+  }
+};
+
 api.interceptors.request.use(async (config) => {
   const token = await SecureStore.getItemAsync('accessToken');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
-// 2. Interceptor de Respuesta
+// Interceptor de Respuesta con Emisión de Eventos
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const status = error.response?.status;
 
-    // Si el error no es 401, simplemente lo rechazamos
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    // 🔴 CASO 1: El servidor responde directamente con 403 (Sesión inválida / Sin permisos)
+    if (status === 403) {
+      console.log('====== 🔒 ACCESO PROHIBIDO (403) - DISPARANDO EVENTO ======');
+      
+      DeviceEventEmitter.emit('EXPIRAR_SESION_GLOBAL', {
+        titulo: "Sesión Vencida",
+        mensaje: "Tu sesión de administrador no es válida o ha caducado. Por favor, vuelve a iniciar sesión."
+      });
+
+      return Promise.reject(error);
+    }
+
+    if (!originalRequest || status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }
 
     if (isRefreshing) {
-      // Si ya hay un refresco en curso, añadimos esta petición a la cola
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       })
         .then((token) => {
-          if (originalRequest.headers) originalRequest.headers.Authorization = `Bearer ${token}`;
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+          }
           return api(originalRequest);
         })
         .catch((err) => Promise.reject(err));
@@ -57,21 +106,35 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const nuevoToken = await refrescarTokenService();
+      const nuevoToken = await ejecutarRefrescoInterno();
       
+      // 🔴 CASO 2: El refresh token no funcionó (venció o fue rechazado)
       if (!nuevoToken) {
-        // El refresco falló, probablemente el refresh token también expiró
         processQueue(new Error('Sesión expirada'));
-        // Aquí podrías disparar un evento para cerrar sesión globalmente
+        console.log('====== ❌ REFRESH TOKEN NO FUNCIONÓ - DISPARANDO EVENTO ======');
+        
+        DeviceEventEmitter.emit('EXPIRAR_SESION_GLOBAL', {
+          titulo: "Sesión Expirada",
+          mensaje: "Tu sesión ha vencido porque no se pudo renovar la autenticación. Por favor, inicia sesión de nuevo."
+        });
+        
         return Promise.reject(error);
       }
 
-      // Éxito: refrescamos la cola y reintentamos la petición original
       processQueue(null, nuevoToken);
-      if (originalRequest.headers) originalRequest.headers.Authorization = `Bearer ${nuevoToken}`;
+      if (originalRequest.headers) {
+        originalRequest.headers.Authorization = `Bearer ${nuevoToken}`;
+      }
       return api(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
+      
+      // 🔴 CASO 3: Error de red durante el refresco de sesión
+      DeviceEventEmitter.emit('EXPIRAR_SESION_GLOBAL', {
+        titulo: "Error de Conexión",
+        mensaje: "No se pudo verificar tu sesión. Por favor, ingresa tus credenciales nuevamente."
+      });
+      
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

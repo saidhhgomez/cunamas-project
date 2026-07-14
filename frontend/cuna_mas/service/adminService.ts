@@ -1,5 +1,22 @@
+// services/usuarioService.ts
 // 🌟 Importamos tu instancia configurada de Axios desde api.ts
 import { api } from './api';
+
+// --- Interfaces para el nuevo endpoint del Admin ---
+export interface RegisterAdminPayload {
+  persona: {
+    idDocumento: number;     
+    numeroDocumento: string; 
+    nombres: string;
+    apPaterno: string;      
+    apMaterno: string;
+    idGenero: number;        
+  };
+  cuenta: {
+    correoElectronico: string;
+  };
+  roles: number[]; // Array de IDs de roles asignados directamente (ej. [5])
+}
 
 export const usuarioService = {
   /**
@@ -32,7 +49,7 @@ export const usuarioService = {
       console.error('Error en usuarioService.aprobarUsuario:', error);
       throw error;
     }
-  }, // <-- ✅ Se agregó la coma que faltaba aquí
+  },
 
   /**
    * Obtiene el detalle de un único usuario pendiente mediante su ID
@@ -40,7 +57,6 @@ export const usuarioService = {
    */
   obtenerPendientePorId: async (idPersona: number) => {
     try {
-      // ✅ Se removió el '/api' del inicio para mantener consistencia con tu Axios BaseURL
       const response = await api.get(`/admin/usuarios/pendientes/${idPersona}`);
       return response.data;
     } catch (error) {
@@ -48,4 +64,25 @@ export const usuarioService = {
       throw error;
     }
   },
+
+  /**
+   * 🌟 NUEVO: Registra un usuario directamente desde el panel de Administrador asignando roles
+   * POST /api/admin/usuarios
+   * @param datosRegistro Payload con datos de persona, cuenta y roles directos
+   */
+  registrarUsuarioAdmin: async (datosRegistro: RegisterAdminPayload) => {
+    if (datosRegistro.persona?.numeroDocumento) {
+      datosRegistro.persona.numeroDocumento = datosRegistro.persona.numeroDocumento.trim();
+    }
+
+    console.log('====== 🚀 ENVIANDO REGISTRO ADMIN ======');
+    try {
+      // Concuerda con tu endpoint de Postman: http://localhost:8080/api/admin/usuarios
+      const response = await api.post('/admin/usuarios', datosRegistro);
+      return response.data;
+    } catch (error) {
+      console.error('Error en usuarioService.registrarUsuarioAdmin:', error);
+      throw error;
+    }
+  }
 };

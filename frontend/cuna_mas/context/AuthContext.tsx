@@ -1,6 +1,8 @@
 // context/AuthContext.tsx
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { DeviceEventEmitter, Alert } from 'react-native'; // 🌟 Importamos DeviceEventEmitter y Alert
 import * as SecureStore from 'expo-secure-store';
+import { useRouter } from 'expo-router'; // 🌟 Importamos useRouter
 import { loginService, cerrarSesionService } from '../service/authService';
 
 interface UserSession {
@@ -10,15 +12,14 @@ interface UserSession {
   nombre: string;
   roles: string[]; 
   distrito: string | null;
-  tieneDireccion: boolean; // 👈 Registrado correctamente en la interfaz
+  tieneDireccion: boolean;
 }
 
-// 1. Agrega esto a la interfaz
 interface AuthContextType {
   user: UserSession | null;
   login: (numeroDocumento: string, contrasena: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateUser: (newData: Partial<UserSession>) => Promise<void>; // 👈 NUEVA FUNCIÓN
+  updateUser: (newData: Partial<UserSession>) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -27,9 +28,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter(); // 🌟 Instanciamos el router aquí dentro del ciclo de React
 
-
- 
   // 🔄 1. Restaurar Sesión al abrir la app
   useEffect(() => {
     const checkPersistedUser = async () => {
@@ -49,9 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             idPersona: Number(idPersona),
             nombre,
             roles: JSON.parse(roles),
-            // Si en SecureStore se guardó un string vacío o la palabra "null", lo restauramos como null real
             distrito: (distrito === '' || distrito === 'null') ? null : distrito,
-            // Recuperamos el booleano (si es el string "true" será true, de lo contrario false)
             tieneDireccion: tieneDireccion === 'true',
           });
         }
@@ -64,54 +62,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkPersistedUser();
   }, []);
 
+  // 🌟 ESCUCHADOR GLOBAL DE EXPIRACIÓN DE SESIÓN (Cierre de sesión forzado desde Axios)
+  useEffect(() => {
+    const logoutLimpiezaLocal = async () => {
+      try {
+        // Borramos todos los datos del almacenamiento local de inmediato
+        await SecureStore.deleteItemAsync('accessToken');
+        await SecureStore.deleteItemAsync('refreshToken');
+        await SecureStore.deleteItemAsync('idPersona');
+        await SecureStore.deleteItemAsync('userRoles');
+        await SecureStore.deleteItemAsync('userDistrito');
+        await SecureStore.deleteItemAsync('userName');
+        await SecureStore.deleteItemAsync('userTieneDireccion');
+      } catch (err) {
+        console.error("Error al limpiar persistencia en logout forzado:", err);
+      } finally {
+        // 🌟 CLAVE: Seteamos el estado de React a null para que los Layouts detecten que ya no hay usuario
+        setUser(null);
+        router.replace('/(auth)/login');
+      }
+    };
 
-  // 2. Dentro del componente AuthProvider, define la función:
-const updateUser = async (newData: Partial<UserSession>) => {
-  if (!user) return;
+    const subscripcion = DeviceEventEmitter.addListener('EXPIRAR_SESION_GLOBAL', (data) => {
+      Alert.alert(
+        data?.titulo || "Sesión Expirada",
+        data?.mensaje || "Por favor, vuelve a iniciar sesión.",
+        [{ text: "Entendido", onPress: () => logoutLimpiezaLocal() }],
+        { cancelable: false }
+      );
+    });
 
-  const updatedUser = { ...user, ...newData };
-  
-  // Actualizamos el SecureStore con los nuevos valores
-  if (newData.tieneDireccion !== undefined) {
-    await SecureStore.setItemAsync('userTieneDireccion', String(newData.tieneDireccion));
-  }
-  if (newData.distrito !== undefined) {
-    await SecureStore.setItemAsync('userDistrito', newData.distrito || '');
-  }
+    return () => subscripcion.remove();
+  }, []);
 
-  // Actualizamos el estado en memoria
-  setUser(updatedUser);
-};
+  // ... (Tu código existente de updateUser, login y logout permanece igual)
+  const updateUser = async (newData: Partial<UserSession>) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...newData };
+    if (newData.tieneDireccion !== undefined) {
+      await SecureStore.setItemAsync('userTieneDireccion', String(newData.tieneDireccion));
+    }
+    if (newData.distrito !== undefined) {
+      await SecureStore.setItemAsync('userDistrito', newData.distrito || '');
+    }
+    setUser(updatedUser);
+  };
 
-  // 🚀 2. Login REAL conectado a tu API
   const login = async (numeroDocumento: string, contrasena: string) => {
     setIsLoading(true);
     try {
       const datosAPI = await loginService(numeroDocumento, contrasena);
-
-      // 🛠️ Tratamiento preventivo para el distrito si viene null de tu servidor
       const distritoString = datosAPI.distrito !== null ? String(datosAPI.distrito) : '';
 
-      // 🌟 Guardamos todos los datos físicamente en el SecureStore como Strings
       await SecureStore.setItemAsync('accessToken', datosAPI.token);
       await SecureStore.setItemAsync('refreshToken', datosAPI.refreshToken);
       await SecureStore.setItemAsync('idPersona', String(datosAPI.idPersona));
       await SecureStore.setItemAsync('userRoles', JSON.stringify(datosAPI.roles));
       await SecureStore.setItemAsync('userName', datosAPI.nombre || '');
       await SecureStore.setItemAsync('userDistrito', distritoString);
-      await SecureStore.setItemAsync('userTieneDireccion', String(datosAPI.tieneDireccion)); // Guardará "true" o "false"
+      await SecureStore.setItemAsync('userTieneDireccion', String(datosAPI.tieneDireccion));
 
-      // Actualizamos el estado global de la sesión
       setUser({
         token: datosAPI.token,
         refreshToken: datosAPI.refreshToken,
         idPersona: datosAPI.idPersona,
         nombre: datosAPI.nombre,
         roles: datosAPI.roles,
-        distrito: datosAPI.distrito || null, // Guardamos null real en el estado de memoria de JS
+        distrito: datosAPI.distrito || null,
         tieneDireccion: datosAPI.tieneDireccion,
       });
-
     } catch (error: any) {
       const mensaje = error.response?.data?.message || 'No se pudo iniciar sesión. Verifica tu red o datos.';
       throw new Error(mensaje);
@@ -120,19 +139,17 @@ const updateUser = async (newData: Partial<UserSession>) => {
     }
   };
 
-  // 🚪 3. Logout Real
   const logout = async () => {
     setIsLoading(true);
     try {
-      // Avisa al backend y remueve 'accessToken' y 'refreshToken'
       await cerrarSesionService();
-
-      // Borramos el resto de datos secundarios del almacenamiento del celular
       await SecureStore.deleteItemAsync('idPersona');
       await SecureStore.deleteItemAsync('userRoles');
       await SecureStore.deleteItemAsync('userDistrito');
       await SecureStore.deleteItemAsync('userName');
-      await SecureStore.deleteItemAsync('userTieneDireccion'); // 👈 Limpieza del nuevo campo
+      await SecureStore.deleteItemAsync('userTieneDireccion');
+      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync('refreshToken');
       
       setUser(null);
     } catch (error) {
@@ -143,7 +160,7 @@ const updateUser = async (newData: Partial<UserSession>) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading,updateUser }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

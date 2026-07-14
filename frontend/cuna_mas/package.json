@@ -15,6 +15,7 @@
     "@react-native-picker/picker": "2.11.1",
     "axios": "^1.18.1",
     "expo": "~54.0.34",
+    "expo-clipboard": "~8.0.8",
     "expo-device": "~8.0.10",
     "expo-linking": "~8.0.12",
     "expo-router": "~6.0.24",
