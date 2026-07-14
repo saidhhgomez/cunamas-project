@@ -129,13 +129,25 @@ activeOpacity={0.8}>
         )}
       </View> 
 
+      {/* ➕ Burbuja Flotante de Agregar */}
+      <TouchableOpacity 
+        style={styles.fabButton} 
+        activeOpacity={0.8}
+        onPress={() => {
+          // Aquí pones la ruta a donde quieras dirigir para agregar
+          router.push('/administrador/Acceso'); // Ejemplo: pantalla de registro de acceso
+        }}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
+
       {/* Navegación Inferior */} 
       <View style={styles.bottomNav}> 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/InicioAdmin')}> 
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
           <Ionicons name="home-outline" size={22} color="#757575" /> 
           <Text style={styles.navLabel}>Inicio</Text> 
         </TouchableOpacity> 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6}> 
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
           <Ionicons name="calculator-outline" size={22} color="#006080" /> 
           <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Calculadora</Text> 
         </TouchableOpacity> 
@@ -171,5 +183,24 @@ const styles = StyleSheet.create({
   emptyText: { color: '#999', marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20 },
   bottomNav: { flexDirection: 'row', height: 68, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E0E0E0', position: 'absolute', bottom: 0, width: '100%' }, 
   navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
-  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' }
+  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
+  
+  // Estilos agregados para la burbuja flotante (FAB)
+  fabButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 85, // Posicionado justo arriba del bottomNav para que no lo tape
+    backgroundColor: '#006080',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3.5,
+    zIndex: 10,
+  }
 });

@@ -1,4 +1,3 @@
-// app/cuidadora/_layout.tsx
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router'; 
 import { useAuth } from '../../context/AuthContext'; 

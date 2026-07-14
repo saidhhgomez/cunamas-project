@@ -1,28 +1,40 @@
-    import { Tabs } from 'expo-router';
-    import { Home, Calculator } from 'lucide-react-native';
 
-    export default function CuidadoraLayout() {
-    return (
-        <Tabs screenOptions={{ 
-        headerShown: false, // Oculta la barra blanca nativa de arriba ya que tú tienes tu propio header de Cuna Más
-        tabBarActiveTintColor: '#00AEEF', // Celeste Cuna Más cuando esté activo
-        tabBarLabelStyle: { fontWeight: '700', fontSize: 12 },
-        tabBarStyle: { height: 70, paddingBottom: 10 }
-        }}>
-        <Tabs.Screen 
-            name="inicio" 
-            options={{ 
-            title: 'Inicio',
-            tabBarIcon: ({ color }) => <Home color={color} size={24} />
-            }} 
-        />
-        <Tabs.Screen 
-            name="calculadora" // Recuerda crear luego el archivo app/(cuidadora)/calculadora.tsx si lo necesitas
-            options={{ 
-            title: 'Calculadora',
-            tabBarIcon: ({ color }) => <Calculator color={color} size={24} />
-            }} 
-        />
-        </Tabs>
-    );
-    }
+  // app/administrador/_layout.tsx
+import React from 'react';
+import { Stack, Redirect } from 'expo-router'; 
+import { useAuth } from '../../context/AuthContext'; 
+
+export default function AdministradorLayout() {
+  const { user } = useAuth();
+
+  // 🚨 CANDADO DE SEGURIDAD EXCLUSIVO PARA ADMINISTRADOR
+if (!user || !(
+  user.roles.includes('Socia de Cocina Tipo 1') || 
+  user.roles.includes('Socia de Cocina Tipo 2')
+)) {
+  return <Redirect href="/auth/login" />;
+}
+
+
+
+
+  // Si pasa el filtro, le damos acceso al Stack de administración
+  return (
+    <Stack 
+      screenOptions={{ 
+        // ✅ Cambiado a false para usar tus cabeceras personalizadas y evitar doble barra superior
+        headerShown: false, 
+        headerTintColor: '#006080',
+        headerTitleStyle: { fontWeight: '700' }
+      }}
+    >
+
+      {/* 👥 Primera Pantalla: Lista de usuarios en estado Pendiente */}
+      <Stack.Screen name="index" />
+      <Stack.Screen name="calculadora" />
+    </Stack>
+  );
+}
+  
+  
+

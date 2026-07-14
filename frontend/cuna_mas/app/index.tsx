@@ -7,6 +7,7 @@ import LoginScreen from './auth/login';
 import InicioCuidadora from './cuidadora/inicio';
 
 import UsuariosPendientes from './administrador/inicio';
+import InicioSociaCocinas from './asistente';
 
 export default function IndexScreen() {
   const { user, isLoading } = useAuth();
@@ -31,17 +32,25 @@ export default function IndexScreen() {
   // 2. Validamos Cuidadora
 if (
   user.roles.includes('Madre Guía') || 
-  user.roles.includes('Madre Cuidadora') ||
-  user.roles.includes('Socia de Cocina Tipo 2') ||
-  user.roles.includes('Socia de Cocina Tipo 1')
+  user.roles.includes('Madre Cuidadora')
 ) {
     return <InicioCuidadora />;
   }
 
   // 3. Validamos Asistente Técnico mediante el string real de tu Postman
-  if (user.roles.includes('Asistente Técnico (AT)')) {
+  if (user.roles.includes('Asistente Técnico (AT)') || 
+      user.roles.includes('Experta en Nutrición')) {
     return <UsuariosPendientes />;
   }
+
+    if (user.roles.includes('Socia de Cocina Tipo 2') || 
+      user.roles.includes('Socia de Cocina Tipo 1')) {
+    return <InicioSociaCocinas />;
+  }
+
+
+
+
 
   // Si tiene un token válido pero el rol es desconocido
   return <LoginScreen />;

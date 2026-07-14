@@ -1,5 +1,10 @@
 import { api } from './api';
 
+export interface RegistrarModuloDTO {
+  nombreModulo: string;
+  idLocal: number;
+}
+
 export const ModuloService = {
   /**
    * Obtiene los módulos filtrados por idLocal con paginación
@@ -17,7 +22,6 @@ export const ModuloService = {
         }
       });
       
-      // Mapeamos según los nombres de la imagen image_f7c03c.png
       return {
         modulos: response.data.contenido || [],
         paginaActual: response.data.paginaActual ?? page,
@@ -27,6 +31,21 @@ export const ModuloService = {
       };
     } catch (error) {
       console.error("Error en getModulosPorLocal:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Registra un nuevo módulo en el servidor
+   * POST http://localhost:8080/api/modulos
+   * @param data Objeto con nombreModulo e idLocal
+   */
+  registrarModulo: async (data: RegistrarModuloDTO) => {
+    try {
+      const response = await api.post('/modulos', data);
+      return response.data;
+    } catch (error) {
+      console.error("Error en registrarModulo:", error);
       throw error;
     }
   }

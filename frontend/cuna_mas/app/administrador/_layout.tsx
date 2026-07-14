@@ -7,9 +7,15 @@ export default function AdministradorLayout() {
   const { user } = useAuth();
 
   // 🚨 CANDADO DE SEGURIDAD EXCLUSIVO PARA ADMINISTRADOR
-  if (!user || !user.roles.includes('Asistente Técnico (AT)')) {
-    return <Redirect href="/auth/login" />;
-  }
+if (!user || !(
+  user.roles.includes('Asistente Técnico (AT)') || 
+  user.roles.includes('Experta en Nutrición')
+)) {
+  return <Redirect href="/auth/login" />;
+}
+
+
+
 
   // Si pasa el filtro, le damos acceso al Stack de administración
   return (
@@ -27,6 +33,25 @@ export default function AdministradorLayout() {
 
       {/* 🔑 Segunda Pantalla: Detalle y Asignación de Roles por ID */}
       <Stack.Screen name="aprobacion" />
+
+            {/* 🔑 Segunda Pantalla: Detalle y Asignación de Roles por ID */}
+      <Stack.Screen name="consultas" />
+
+            <Stack.Screen name="consultasLocales" />
+
+      <Stack.Screen name="consultasModulo" />
+      <Stack.Screen name="resumen" />
+      <Stack.Screen name="agregarservicioA" />
+      <Stack.Screen name="agregarCentro" />
+      <Stack.Screen name="agregarLocal" />
+      <Stack.Screen name="agregarModulo" />
+            <Stack.Screen name="calculadora" />
+
+
+
+
+
+
     </Stack>
   );
 }

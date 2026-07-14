@@ -1,179 +1,218 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react'; 
 import { 
+  StyleSheet, 
   View, 
   Text, 
   TouchableOpacity, 
-  StyleSheet, 
-  SafeAreaView, 
-  FlatList,
+  Image, 
+  StatusBar,
   useWindowDimensions,
-  ActivityIndicator
-} from 'react-native';
-import { User, LogOut, UserRound } from 'lucide-react-native';
-import { useAuth } from '../../context/AuthContext'; 
-import { CentroAlimentarioService } from '../../service/servicioAlimentario'; 
-import { useRouter } from 'expo-router'; 
+  Alert
+} from 'react-native'; 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
+import { useAuth } from '../../context/AuthContext';
 
-export default function ServicioAlimentarioScreen() {
-  const { user, logout } = useAuth();
+export default function InicioSociaCocinas() { 
   const { width } = useWindowDimensions();
-  const esPantallaGrande = width > 600;
   const router = useRouter();
+  const insets = useSafeAreaInsets(); 
+  const { user, logout } = useAuth();
 
-  // 🌟 Estados para la lista y paginación real del Postman
-  const [centros, setCentros] = useState<any[]>([]);
-  const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-
-  // Función que consume tu API limpia
-  const cargarCentrosAlimentarios = async (paginaAEnviar: number, reiniciar: boolean = false) => {
-    if (loading) return;
-
-    setLoading(true);
-    try {
-      // Llamada directa usando solo la página
-      const resultado = await CentroAlimentarioService.getCentrosPorDistrito(paginaAEnviar);
-
-      if (resultado.centros.length === 0) {
-        setHasMore(false);
-      } else {
-        setCentros(prevCentros => reiniciar ? resultado.centros : [...prevCentros, ...resultado.centros]);
-        
-        if (resultado.isLast) {
-          setHasMore(false);
-        } else {
-          setPage(paginaAEnviar + 1);
-        }
-      }
-    } catch (error) {
-      console.error("Error al cargar centros en la interfaz:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Carga automática inicial al abrir la pantalla
-  useEffect(() => {
-    setCentros([]);
-    setPage(0);
-    setHasMore(true);
-    cargarCentrosAlimentarios(0, true);
-  }, []);
-
-  // Evento disparador cuando se desliza hasta el fondo de la lista
-  const manejarSiguientePagina = () => {
-    if (!hasMore || loading) return;
-    cargarCentrosAlimentarios(page, false);
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
+  return ( 
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+      <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
-      {/* Header Corporativo Responsivo */}
-      <View style={[styles.header, { height: esPantallaGrande ? 160 : 130 }]}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatarCircle}>
-            <User color="#000" size={esPantallaGrande ? 32 : 26} />
-          </View>
-          <View style={styles.welcomeContainer}>
-            <Text style={[styles.welcomeTitle, { fontSize: esPantallaGrande ? 24 : 20 }]}>
-              Bienvenid@
-            </Text>
-            <Text 
-              style={[styles.userName, { fontSize: esPantallaGrande ? 18 : 15 }]}
-              numberOfLines={1}
-            >
-              {user?.nombre || "Asistente"}
-            </Text>
-          </View>
-        </View>
-        
-        <TouchableOpacity 
-          style={styles.logoutButton} 
-          onPress={logout}
-          activeOpacity={0.8}
-        >
-          <LogOut color="#FFF" size={esPantallaGrande ? 26 : 22} />
-        </TouchableOpacity>
-      </View>
+      {/* Header */} 
+      <View style={styles.header}> 
+        <View style={styles.headerTop}> 
+          <View style={styles.adminInfo}> 
+            <Image 
+              source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} 
+              style={styles.adminAvatar} 
+            /> 
+            <View> 
+              <Text style={styles.roleLabel}>Socia de Cocina</Text> 
+              <Text style={styles.adminWelcome}>Hola, {user?.nombre || 'SOCIA'}</Text> 
+            </View> 
+          </View> 
+          <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
+            <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
+          </TouchableOpacity> 
+        </View> 
+        <Text style={styles.headerTitle}>Resumen Detallado</Text> 
+      </View> 
 
-      {/* FlatList con Scroll Infinito mapeado al JSON de Postman */}
-      <FlatList
-        data={centros}
-        keyExtractor={(item) => item.idCentroAlimentario.toString()} // 🔑 idCentroAlimentario del Postman
-        contentContainerStyle={[
-          styles.scrollContent, 
-          esPantallaGrande && styles.tabletContent
-        ]}
-        showsVerticalScrollIndicator={false}
-        
-        ListHeaderComponent={
-          <Text style={[styles.title, { fontSize: esPantallaGrande ? 32 : 26 }]}>
-            SERVICIO{"\n"}ALIMENTARIO
-          </Text>
-        }
-        
-        renderItem={({ item }) => (
+      {/* Cuerpo del Menú - Dos Botones en el Medio */}
+      <View style={styles.content}>
+        <View style={styles.menuContainer}>
+          
+          {/* BOTÓN 1: Calculadora de Alimentos */}
           <TouchableOpacity 
-            style={styles.centroItem}
-            activeOpacity={0.7}
-            onPress={() => {
-              // Navegación nativa enviando el id capturado en tu Postman
-              router.push({
-                pathname: '/asistente/locales', 
-                params: { idCentroAlimentario: item.idCentroAlimentario }
-              });
-            }}
+            style={styles.menuButton} 
+            activeOpacity={0.8}
+            onPress={() => router.push('/asistente/servicioAlimentario')}
           >
-            <View style={styles.iconWrapper}>
-              <UserRound color="#8A2BE2" size={esPantallaGrande ? 34 : 28} strokeWidth={2.5} />
+            <View style={[styles.iconContainer, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="calculator" size={28} color="#006080" />
             </View>
-            <View style={{ flex: 1, justifyContent: 'center' }}>
-              <Text 
-                style={[styles.centroName, { fontSize: esPantallaGrande ? 20 : 16 }]}
-                numberOfLines={1}
-              >
-                {item.nombreCentro} {/* 🏷️ nombreCentro del Postman */}
-              </Text>
-              <Text style={styles.centroSubtitle} numberOfLines={1}>
-                {item.direccion} {/* 🏷️ direccion del Postman */}
-              </Text>
+            <View style={styles.buttonTextContainer}>
+              <Text style={styles.buttonTitle}>Calculadora Dosificadora</Text>
+              <Text style={styles.buttonDescription}>Calcula porciones e ingredientes para las raciones diarias.</Text>
             </View>
+            <Ionicons name="chevron-forward" size={20} color="#006080" />
           </TouchableOpacity>
-        )}
 
-        onEndReached={manejarSiguientePagina}
-        onEndReachedThreshold={0.4}
-
-        ListFooterComponent={() => (
-          loading && hasMore ? (
-            <View style={styles.footerLoading}>
-              <ActivityIndicator size="small" color="#00AEEF" />
+          {/* BOTÓN 2: Control de Raciones (Ruta de ejemplo o Home) */}
+          <TouchableOpacity 
+            style={styles.menuButton} 
+            activeOpacity={0.8}
+            onPress={() => {
+router.push('/asistente/servicioAlimentario2')            }}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="restaurant" size={26} color="#16A34A" />
             </View>
-          ) : null
-        )}
-      />
+            <View style={styles.buttonTextContainer}>
+              <Text style={styles.buttonTitle}>Registrar Raciones</Text>
+              <Text style={styles.buttonDescription}>Controla e ingresa el consumo diario de los módulos.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#006080" />
+          </TouchableOpacity>
 
-    </SafeAreaView>
-  );
+        </View>
+      </View> 
+
+      {/* Navegación Inferior */} 
+      <View style={styles.bottomNav}> 
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/')}> 
+          <Ionicons name="home-outline" size={22} color="#757575" /> 
+          <Text style={styles.navLabel}>Inicio</Text> 
+        </TouchableOpacity> 
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/asistente/calculadora/categoriaCalculadora')}> 
+          <Ionicons name="calculator-outline" size={22} color="#006080" /> 
+          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Calculadora</Text> 
+        </TouchableOpacity> 
+      </View> 
+    </View> 
+  ); 
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
-  header: { backgroundColor: '#C5D800', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: '6%', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4 },
-  userInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 15 },
-  avatarCircle: { backgroundColor: '#FFF', width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
-  welcomeContainer: { marginLeft: 12, flex: 1 },
-  welcomeTitle: { color: '#00AEEF', fontWeight: 'bold' },
-  userName: { color: '#FFF', fontWeight: '600', marginTop: 2 },
-  logoutButton: { backgroundColor: '#FF007A', padding: 12, borderRadius: 25 },
-  scrollContent: { paddingHorizontal: '6%', paddingBottom: 30, width: '100%' },
-  tabletContent: { maxWidth: 550, alignSelf: 'center' },
-  title: { fontWeight: '900', color: '#00AEEF', textAlign: 'center', marginBottom: 25, marginTop: 25, letterSpacing: 0.5, lineHeight: 32 },
-  centroItem: { width: '100%', height: 76, borderWidth: 2, borderColor: '#8A2BE2', borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 14, backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
-  iconWrapper: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F3E8FF', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
-  centroName: { fontWeight: '800', color: '#1E293B', textTransform: 'uppercase' },
-  centroSubtitle: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  footerLoading: { paddingVertical: 16, alignItems: 'center' }
+const styles = StyleSheet.create({ 
+  container: { flex: 1, backgroundColor: '#FFFFFF' }, 
+  header: { 
+    backgroundColor: '#C5D800', 
+    paddingTop: 20, 
+    paddingHorizontal: 20, 
+    paddingBottom: 40, 
+    borderBottomRightRadius: 60 
+  }, 
+  headerTop: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 20 
+  }, 
+  adminInfo: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  }, 
+  adminAvatar: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    borderWidth: 2, 
+    borderColor: '#FFFFFF', 
+    marginRight: 10 
+  }, 
+  roleLabel: { 
+    fontSize: 10, 
+    color: '#006080', 
+    fontWeight: 'bold' 
+  }, 
+  adminWelcome: { 
+    fontSize: 18, 
+    color: '#006080', 
+    fontWeight: '900' 
+  }, 
+  logoutButton: { 
+    backgroundColor: '#FF0080', 
+    width: 38, 
+    height: 38, 
+    borderRadius: 19, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    elevation: 2 
+  }, 
+  headerTitle: { 
+    fontSize: 26, 
+    color: '#006080', 
+    fontWeight: '900', 
+    marginTop: 10 
+  }, 
+  content: { 
+    flex: 1, 
+    backgroundColor: '#F8FAFC', // Un gris muy claro de fondo para que resalten los botones blancos
+  }, 
+  menuContainer: {
+    padding: 20,
+    paddingTop: 30,
+    gap: 16, // Espaciado nativo entre tarjetas
+  },
+  menuButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  iconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  buttonTextContainer: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  buttonTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  buttonDescription: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  bottomNav: { 
+    flexDirection: 'row', 
+    height: 68, 
+    backgroundColor: '#FFFFFF', 
+    borderTopWidth: 1, 
+    borderTopColor: '#E0E0E0', 
+    position: 'absolute', 
+    bottom: 0, 
+    width: '100%' 
+  }, 
+  navItem: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  }, 
+  navLabel: { 
+    fontSize: 11, 
+    marginTop: 4, 
+    color: '#757575' 
+  }
 });

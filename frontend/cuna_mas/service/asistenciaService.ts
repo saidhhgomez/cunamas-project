@@ -1,5 +1,3 @@
-// 1. Importamos la instancia personalizada que ya creaste en tu api.ts
-// (Ajusta la ruta de importación '../api' según dónde esté guardado tu archivo api.ts)
 import { api } from './api';
 
 export interface CategoriaAsistenciaPayload {
@@ -9,24 +7,64 @@ export interface CategoriaAsistenciaPayload {
 
 export interface RegistrarAsistenciaPayload {
   idModulo: number;
-  idUsuarioCreacion: number; // Mapeado tal cual como se vio en tu Postman
+  idUsuarioCreacion: number; 
   registroCorrelativo: number;
   categorias: CategoriaAsistenciaPayload[];
 }
 
 export const AsistenciaService = {
   /**
-   * Registra la asistencia en el CIAI utilizando la instancia centralizada de la app
+   * 1. REGISTRAR ASISTENCIA (El que ya tenías listo)
+   * Guarda los datos mediante una petición POST
    */
   registrarAsistenciaCiai: async (payload: RegistrarAsistenciaPayload) => {
     try {
-      // Como tu api.ts ya debe tener configurado el baseURL (ej: http://localhost:8080/api),
-      // aquí solo necesitas concatenar el endpoint específico.
       const response = await api.post('/asistencia-ciai', payload);
       return response.data;
     } catch (error: any) {
-      console.error('Error detallado en registrarAsistenciaCiai:', error?.response?.data || error.message);
+      console.error('Error en registrarAsistenciaCiai:', error?.response?.data || error.message);
       throw error;
     }
   },
+
+  /**
+   * 2. OBTENER POR MODULO Y FECHA
+   * Trae el JSON completo con 'registroManana' y 'registroTarde' agrupados
+   * URL: /asistencia-ciai?idModulo=1&fecha=2026-07-11
+   */
+  obtenerAsistenciaPorModuloYFecha: async (idModulo: number, fechaYmd: string) => {
+    try {
+      const response = await api.get('/asistencia-ciai', {
+        params: {
+          idModulo: idModulo,
+          fecha: fechaYmd
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error en obtenerAsistenciaPorModuloYFecha:', error?.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * 3. OBTENER POR MODULO, FECHA Y CORRELATIVO
+   * Filtra directamente desde el Backend una jornada específica
+   * URL: /asistencia-ciai?idModulo=6&fecha=2026-07-12&correlativo=1
+   */
+  obtenerAsistenciaConCorrelativo: async (idModulo: number, fechaYmd: string, correlativo: number) => {
+    try {
+      const response = await api.get('/asistencia-ciai', {
+        params: {
+          idModulo: idModulo,
+          fecha: fechaYmd,
+          correlativo: correlativo
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error en obtenerAsistenciaConCorrelativo:', error?.response?.data || error.message);
+      throw error;
+    }
+  }
 };

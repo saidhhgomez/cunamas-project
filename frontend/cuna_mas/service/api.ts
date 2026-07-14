@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { refrescarTokenService } from './authService';
 
-const getBaseUrl = () => (Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.18.233:8080/api');
+const getBaseUrl = () => (Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.137.1:8080/api');
 
 export const api = axios.create({
   baseURL: getBaseUrl(),
