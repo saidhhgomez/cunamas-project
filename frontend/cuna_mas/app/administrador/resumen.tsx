@@ -223,12 +223,18 @@ export default function Resumen() {
         {/* Barra de Navegación Inferior */} 
         {!tecladoVisible && (
           <View style={styles.bottomNav}> 
-            <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.replace('/inicio')}> 
+            <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.replace('/')}> 
               <Home color="#757575" size={24} strokeWidth={2} /> 
               <Text style={styles.navLabel}>Inicio</Text> 
             </TouchableOpacity> 
 
-            <TouchableOpacity style={styles.navItem} activeOpacity={0.6}> 
+            {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/usuariosPendientes')}> 
+          <Ionicons name="people" size={22} color="#006080" /> 
+          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
+        </TouchableOpacity>
+
+            <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
               <Calculator color="#006080" size={24} strokeWidth={2.5} /> 
               <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Calculadora</Text> 
             </TouchableOpacity> 

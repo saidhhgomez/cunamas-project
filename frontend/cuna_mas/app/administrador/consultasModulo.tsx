@@ -302,23 +302,27 @@ export default function ConsultaModulos() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Navegación Inferior */} 
-      <View style={styles.bottomNav}> 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6}> 
-          <Home color="#006080" size={24} strokeWidth={2.5} /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Inicio</Text> 
-        </TouchableOpacity> 
-
-        <TouchableOpacity 
-          style={styles.navItem} 
-          activeOpacity={0.6} 
-          onPress={() => router.push('/cuidadora/categoriaCalculadora')}
-        > 
-          <Calculator color="#757575" size={24} strokeWidth={2} /> 
-          <Text style={styles.navLabel}>Calculadora</Text> 
-        </TouchableOpacity> 
-      </View>
-    </View> 
+           {/* Navegación Inferior (3 Botones) */} 
+           <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}> 
+             {/* Botón 1: Inicio */}
+             <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
+               <Ionicons name="home-outline" size={22} color="#757575" /> 
+               <Text style={styles.navLabel}>Inicio</Text> 
+             </TouchableOpacity> 
+     
+             {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
+             <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
+               <Ionicons name="people" size={22} color="#006080" /> 
+               <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
+             </TouchableOpacity> 
+     
+             {/* Botón 3: Calculadora / Consultas */}
+             <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
+               <Ionicons name="calculator-outline" size={22} color="#757575" /> 
+               <Text style={styles.navLabel}>Calculadora</Text> 
+             </TouchableOpacity> 
+           </View> 
+         </View> 
   ); 
 }
 

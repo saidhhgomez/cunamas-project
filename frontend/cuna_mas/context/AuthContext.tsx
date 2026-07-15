@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         // 🌟 CLAVE: Seteamos el estado de React a null para que los Layouts detecten que ya no hay usuario
         setUser(null);
-        router.replace('/(auth)/login');
+        router.replace('/auth/login');
       }
     };
 

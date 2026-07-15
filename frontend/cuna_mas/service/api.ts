@@ -9,7 +9,7 @@ interface RefreshResponse {
 }
 
 const getBaseUrl = () => 
-  Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.18.233:8080/api';
+  Platform.OS === 'web' ? 'https://cunamas-project.onrender.com/api' : 'https://cunamas-project.onrender.com/api';
 
 export const api = axios.create({
   baseURL: getBaseUrl(),

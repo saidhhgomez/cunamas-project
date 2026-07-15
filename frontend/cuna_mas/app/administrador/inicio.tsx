@@ -23,7 +23,7 @@ export default function UsuariosPendientes() {
   const esPantallaGrande = width > 600;
   const router = useRouter();
   const insets = useSafeAreaInsets(); 
-  const { user,logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const [users, setUsers] = useState([]); 
   const [isLoading, setIsLoading] = useState(true); 
@@ -54,9 +54,9 @@ export default function UsuariosPendientes() {
       style={styles.userCard} 
       activeOpacity={0.7}
       onPress={() => router.push({
-        pathname: '/administrador/aprobacion', // ✅ Apunta a tu pantalla de asignación
+        pathname: '/administrador/aprobacion', 
         params: { 
-          idPersona: item.idPersona // ✅ Solo pasamos el ID, el destino resolverá el resto por API
+          idPersona: item.idPersona 
         }
       })} 
     > 
@@ -80,7 +80,7 @@ export default function UsuariosPendientes() {
   ); 
 
   return ( 
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
       {/* Header */} 
@@ -96,8 +96,7 @@ export default function UsuariosPendientes() {
               <Text style={styles.adminWelcome}>Hola, {user?.nombre}</Text> 
             </View> 
           </View> 
-          <TouchableOpacity style={styles.logoutButton}           onPress={logout}
-activeOpacity={0.8}> 
+          <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
             <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
           </TouchableOpacity> 
         </View> 
@@ -115,7 +114,11 @@ activeOpacity={0.8}>
             data={users} 
             renderItem={renderUserItem} 
             keyExtractor={item => item.idPersona.toString()} 
-            contentContainerStyle={[styles.listContent, esPantallaGrande && styles.listContentGrande]} 
+            contentContainerStyle={[
+              styles.listContent, 
+              esPantallaGrande && styles.listContentGrande,
+              { paddingBottom: 100 + insets.bottom } // Agrega padding extra para evitar que el FAB y el nav tapen elementos de la lista
+            ]} 
             showsVerticalScrollIndicator={false} 
             refreshing={isLoading}
             onRefresh={cargarUsuarios}
@@ -131,25 +134,33 @@ activeOpacity={0.8}>
 
       {/* ➕ Burbuja Flotante de Agregar */}
       <TouchableOpacity 
-        style={styles.fabButton} 
+        style={[styles.fabButton, { bottom: 85 + insets.bottom }]} 
         activeOpacity={0.8}
         onPress={() => {
-          // Aquí pones la ruta a donde quieras dirigir para agregar
-          router.push('/administrador/Acceso'); // Ejemplo: pantalla de registro de acceso
+          router.push('/administrador/Acceso'); 
         }}
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
 
-      {/* Navegación Inferior */} 
-      <View style={styles.bottomNav}> 
+      {/* Navegación Inferior (3 Botones) */} 
+      <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}> 
+        {/* Botón 1: Inicio */}
         <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
           <Ionicons name="home-outline" size={22} color="#757575" /> 
           <Text style={styles.navLabel}>Inicio</Text> 
         </TouchableOpacity> 
+
+        {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
         <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
-          <Ionicons name="calculator-outline" size={22} color="#006080" /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Calculadora</Text> 
+          <Ionicons name="people" size={22} color="#006080" /> 
+          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
+        </TouchableOpacity> 
+
+        {/* Botón 3: Calculadora / Consultas */}
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
+          <Ionicons name="calculator-outline" size={22} color="#757575" /> 
+          <Text style={styles.navLabel}>Calculadora</Text> 
         </TouchableOpacity> 
       </View> 
     </View> 
@@ -167,7 +178,7 @@ const styles = StyleSheet.create({
   logoutButton: { backgroundColor: '#FF0080', width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', elevation: 2 }, 
   headerTitle: { fontSize: 26, color: '#006080', fontWeight: '900', marginTop: 10 }, 
   content: { flex: 1, marginTop: 15 }, 
-  listContent: { paddingHorizontal: 20, paddingBottom: 100 }, 
+  listContent: { paddingHorizontal: 20 }, 
   listContentGrande: { maxWidth: 800, alignSelf: 'center', width: '100%' },
   userCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 }, 
   avatarPlaceholder: { width: 52, height: 52, borderRadius: 26, marginRight: 15, backgroundColor: '#006080', justifyContent: 'center', alignItems: 'center' },
@@ -181,15 +192,12 @@ const styles = StyleSheet.create({
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 60, paddingHorizontal: 40 },
   emptyText: { color: '#999', marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  bottomNav: { flexDirection: 'row', height: 68, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E0E0E0', position: 'absolute', bottom: 0, width: '100%' }, 
+  bottomNav: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E0E0E0', position: 'absolute', bottom: 0, width: '100%' }, 
   navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
   navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
-  
-  // Estilos agregados para la burbuja flotante (FAB)
   fabButton: {
     position: 'absolute',
     right: 20,
-    bottom: 85, // Posicionado justo arriba del bottomNav para que no lo tape
     backgroundColor: '#006080',
     width: 56,
     height: 56,
