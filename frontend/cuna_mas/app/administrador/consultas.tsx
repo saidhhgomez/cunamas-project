@@ -105,7 +105,7 @@ export default function Consulta() {
             /> 
             <View> 
               <Text style={styles.roleLabel}>Administrador</Text> 
-              <Text style={styles.adminWelcome}>Hola, {user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
+              <Text style={styles.adminWelcome}>{user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
             </View> 
           </View> 
           <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 

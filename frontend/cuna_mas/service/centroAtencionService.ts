@@ -38,7 +38,6 @@ export const LocalService = {
       return response.data.content || [];
     } catch (error) {
       console.error("Error al obtener locales por centro:", error);
-      throw error;
     }
   },
 
@@ -57,7 +56,6 @@ export const LocalService = {
       return response.data;
     } catch (error) {
       console.error("Error al obtener locales paginados:", error);
-      throw error;
     }
   },
 
@@ -75,7 +73,6 @@ export const LocalService = {
       return response.data;
     } catch (error) {
       console.error("Error al registrar local básico:", error);
-      throw error;
     }
   },
 
@@ -89,7 +86,6 @@ export const LocalService = {
       return response.data;
     } catch (error) {
       console.error("Error al registrar local completo:", error);
-      throw error;
     }
   }
 

@@ -23,7 +23,6 @@ export const AsistenciaService = {
       return response.data;
     } catch (error: any) {
       console.error('Error en registrarAsistenciaCiai:', error?.response?.data || error.message);
-      throw error;
     }
   },
 
@@ -43,7 +42,6 @@ export const AsistenciaService = {
       return response.data;
     } catch (error: any) {
       console.error('Error en obtenerAsistenciaPorModuloYFecha:', error?.response?.data || error.message);
-      throw error;
     }
   },
 
@@ -64,7 +62,6 @@ export const AsistenciaService = {
       return response.data;
     } catch (error: any) {
       console.error('Error en obtenerAsistenciaConCorrelativo:', error?.response?.data || error.message);
-      throw error;
     }
   }
 };

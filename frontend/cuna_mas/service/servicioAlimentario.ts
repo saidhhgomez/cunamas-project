@@ -31,7 +31,6 @@ export const CentroAlimentarioService = {
       };
     } catch (error) {
       console.error("Error consultando el API de servicios alimentarios:", error);
-      throw error;
     } 
   },
 
@@ -45,7 +44,6 @@ export const CentroAlimentarioService = {
       return response.data.content || response.data || [];
     } catch (error) {
       console.error("Error consultando todos los centros (sin paginación):", error);
-      throw error;
     }
   },
 
@@ -59,7 +57,6 @@ export const CentroAlimentarioService = {
       return response.data;
     } catch (error) {
       console.error("Error al registrar el servicio alimentario:", error);
-      throw error;
     }
   }
 };

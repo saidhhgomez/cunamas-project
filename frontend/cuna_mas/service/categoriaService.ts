@@ -11,7 +11,6 @@ export const CategoriaService = {
       return response.data; // Retorna el array [ {idCategoriaGrupo, nombreCategoria}, ... ]
     } catch (error) {
       console.error("Error en CategoriaService.getListaCategorias:", error);
-      throw error;
     }
   }
 };

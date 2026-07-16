@@ -50,7 +50,6 @@ export const DistritoService = {
       return response.data;
     } catch (error) {
       console.error("Error al registrar la dirección:", error);
-      throw error;
     }
   },
 
@@ -65,7 +64,6 @@ export const DistritoService = {
       return response.data;
     } catch (error) {
       console.error("Error al actualizar dirección en perfil:", error);
-      throw error;
     }
   }
 };

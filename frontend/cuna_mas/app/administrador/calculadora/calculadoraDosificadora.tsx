@@ -231,7 +231,7 @@ const manejarCambioValor = (id: string, nuevoTexto: string) => {
 
         {!tecladoVisible && (
           <View style={styles.bottomBarContainer}>
-            <TouchableOpacity style={styles.homeButtonCircle} onPress={() => router.replace('/inicio')}><Ionicons name="home" size={24} color="#00AEEF" /><Text style={styles.homeButtonText}>Inicio</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.homeButtonCircle} onPress={() => router.replace('/')}><Ionicons name="home" size={24} color="#00AEEF" /><Text style={styles.homeButtonText}>Inicio</Text></TouchableOpacity>
           </View>
         )}
       </KeyboardAvoidingView>

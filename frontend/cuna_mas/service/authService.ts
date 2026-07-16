@@ -19,7 +19,7 @@ export interface RegisterPayload {
     idDocumento: number;     
     numeroDocumento: string; 
     nombres: string;
-    appPaterno: string;      
+    apPaterno: string;      
     apMaterno: string;
     idGenero: number;        
   };

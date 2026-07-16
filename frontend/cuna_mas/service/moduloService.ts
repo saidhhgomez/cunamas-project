@@ -46,7 +46,6 @@ export const ModuloService = {
       return response.data;
     } catch (error) {
       console.error("Error en registrarModulo:", error);
-      throw error;
     }
   }
 };

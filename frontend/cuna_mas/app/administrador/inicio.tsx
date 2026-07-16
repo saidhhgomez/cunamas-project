@@ -93,7 +93,7 @@ export default function UsuariosPendientes() {
             /> 
             <View> 
               <Text style={styles.roleLabel}>Administrador</Text> 
-              <Text style={styles.adminWelcome}>Hola, {user?.nombre}</Text> 
+              <Text style={styles.adminWelcome}>{user?.nombre}</Text> 
             </View> 
           </View> 
           <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
@@ -154,7 +154,7 @@ export default function UsuariosPendientes() {
         {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
         <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
           <Ionicons name="people" size={22} color="#006080" /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
+          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Gestion</Text> 
         </TouchableOpacity> 
 
         {/* Botón 3: Calculadora / Consultas */}

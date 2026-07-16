@@ -4,6 +4,7 @@ import { DeviceEventEmitter, Alert } from 'react-native'; // 🌟 Importamos Dev
 import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router'; // 🌟 Importamos useRouter
 import { loginService, cerrarSesionService } from '../service/authService';
+import { resetSesionExpirada } from '../service/api'; // 🌟 FIX: para rearmar el guard tras login
 
 interface UserSession {
   token: string;
@@ -67,6 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logoutLimpiezaLocal = async () => {
       try {
         // Borramos todos los datos del almacenamiento local de inmediato
+        // (accessToken/refreshToken ya se limpian dentro de api.ts al disparar el evento,
+        // pero los repetimos aquí para no depender del orden y limpiar también el resto)
         await SecureStore.deleteItemAsync('accessToken');
         await SecureStore.deleteItemAsync('refreshToken');
         await SecureStore.deleteItemAsync('idPersona');
@@ -83,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const subscripcion = DeviceEventEmitter.addListener('EXPIRAR_SESION_GLOBAL', (data) => {
+    const subscripcionExpiracion = DeviceEventEmitter.addListener('EXPIRAR_SESION_GLOBAL', (data) => {
       Alert.alert(
         data?.titulo || "Sesión Expirada",
         data?.mensaje || "Por favor, vuelve a iniciar sesión.",
@@ -92,10 +95,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     });
 
-    return () => subscripcion.remove();
+    // 🌟 FIX 2: Escuchamos cuando api.ts renueva el token exitosamente,
+    // para mantener sincronizado el estado de React (user.token) con SecureStore.
+    const subscripcionRefresh = DeviceEventEmitter.addListener(
+      'TOKEN_REFRESCADO',
+      ({ accessToken, refreshToken }) => {
+        setUser((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            token: accessToken,
+            refreshToken: refreshToken || prev.refreshToken,
+          };
+        });
+      }
+    );
+
+    return () => {
+      subscripcionExpiracion.remove();
+      subscripcionRefresh.remove();
+    };
   }, []);
 
-  // ... (Tu código existente de updateUser, login y logout permanece igual)
   const updateUser = async (newData: Partial<UserSession>) => {
     if (!user) return;
     const updatedUser = { ...user, ...newData };
@@ -121,6 +142,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await SecureStore.setItemAsync('userName', datosAPI.nombre || '');
       await SecureStore.setItemAsync('userDistrito', distritoString);
       await SecureStore.setItemAsync('userTieneDireccion', String(datosAPI.tieneDireccion));
+
+      // 🌟 FIX 1: Rearmamos el guard de expiración; si el usuario vuelve a loguearse
+      // tras una sesión vencida, un futuro 401/403 debe poder disparar el evento otra vez.
+      resetSesionExpirada();
 
       setUser({
         token: datosAPI.token,
@@ -151,6 +176,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await SecureStore.deleteItemAsync('accessToken');
       await SecureStore.deleteItemAsync('refreshToken');
       
+      // 🌟 FIX 1: también rearmamos el guard en un logout manual del usuario
+      resetSesionExpirada();
+
       setUser(null);
     } catch (error) {
       console.error('Error al limpiar la sesión:', error);

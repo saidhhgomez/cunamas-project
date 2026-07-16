@@ -10,7 +10,6 @@ export const CalculadoraService = {
       return response.data; 
     } catch (error) {
       console.error("Error al obtener categorías de alimentos:", error);
-      throw error;
     }
   },
 
@@ -22,7 +21,6 @@ export const CalculadoraService = {
       return response.data;
     } catch (error) {
       console.error("Error en servicio preparaciones:", error);
-      throw error;
     }
   },
 
@@ -41,7 +39,6 @@ getResumenServicio: async (id: number, fecha: string, correlativo: number): Prom
     return response.data;
   } catch (error) {
     console.error(`Error al obtener resumen:`, error);
-    throw error;
   }
 },
 // calculadoraService.ts

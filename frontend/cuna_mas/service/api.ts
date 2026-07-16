@@ -20,6 +20,31 @@ export const api = axios.create({
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
+// 🌟 FIX 1: Guard para evitar múltiples Alerts/emits simultáneos
+// Si varias peticiones fallan en paralelo, solo se dispara UN evento de expiración.
+let sesionYaExpirada = false;
+
+// 🌟 Se llama desde AuthContext.login() para "rearmar" el guard tras un login exitoso
+export const resetSesionExpirada = () => {
+  sesionYaExpirada = false;
+};
+
+const dispararExpiracion = async (data: { titulo: string; mensaje: string }) => {
+  if (sesionYaExpirada) return;
+  sesionYaExpirada = true;
+
+  // 🌟 FIX (del punto anterior): limpiamos SecureStore ANTES de emitir,
+  // así el estado persistido nunca queda con tokens vencidos.
+  try {
+    await SecureStore.deleteItemAsync('accessToken');
+    await SecureStore.deleteItemAsync('refreshToken');
+  } catch (err) {
+    console.log('====== ⚠️ ERROR LIMPIANDO TOKENS LOCALES ======', err);
+  }
+
+  DeviceEventEmitter.emit('EXPIRAR_SESION_GLOBAL', data);
+};
+
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) prom.reject(error);
@@ -51,6 +76,13 @@ const ejecutarRefrescoInterno = async (): Promise<string | null> => {
       await SecureStore.setItemAsync('refreshToken', nuevoRefreshToken);
     }
 
+    // 🌟 FIX 2: avisamos al resto de la app (AuthContext) que el token cambió,
+    // para que el estado de React (user.token) no quede desactualizado.
+    DeviceEventEmitter.emit('TOKEN_REFRESCADO', {
+      accessToken,
+      refreshToken: nuevoRefreshToken,
+    });
+
     return accessToken;
   } catch (error) {
     console.log('====== ❌ ERROR AL REFRESCAR TOKEN ======', error);
@@ -77,7 +109,7 @@ api.interceptors.response.use(
     if (status === 403) {
       console.log('====== 🔒 ACCESO PROHIBIDO (403) - DISPARANDO EVENTO ======');
       
-      DeviceEventEmitter.emit('EXPIRAR_SESION_GLOBAL', {
+      await dispararExpiracion({
         titulo: "Sesión Vencida",
         mensaje: "Tu sesión de administrador no es válida o ha caducado. Por favor, vuelve a iniciar sesión."
       });
@@ -113,7 +145,7 @@ api.interceptors.response.use(
         processQueue(new Error('Sesión expirada'));
         console.log('====== ❌ REFRESH TOKEN NO FUNCIONÓ - DISPARANDO EVENTO ======');
         
-        DeviceEventEmitter.emit('EXPIRAR_SESION_GLOBAL', {
+        await dispararExpiracion({
           titulo: "Sesión Expirada",
           mensaje: "Tu sesión ha vencido porque no se pudo renovar la autenticación. Por favor, inicia sesión de nuevo."
         });
@@ -130,7 +162,7 @@ api.interceptors.response.use(
       processQueue(refreshError, null);
       
       // 🔴 CASO 3: Error de red durante el refresco de sesión
-      DeviceEventEmitter.emit('EXPIRAR_SESION_GLOBAL', {
+      await dispararExpiracion({
         titulo: "Error de Conexión",
         mensaje: "No se pudo verificar tu sesión. Por favor, ingresa tus credenciales nuevamente."
       });

@@ -229,7 +229,7 @@ export default function Resumen() {
             </TouchableOpacity> 
 
             {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/usuariosPendientes')}> 
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
           <Ionicons name="people" size={22} color="#006080" /> 
           <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
         </TouchableOpacity>
