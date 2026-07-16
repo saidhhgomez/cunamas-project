@@ -27,6 +27,16 @@ security:
   refresh-token:
     expiration-days: 180
 
+openai:
+
+  api-key: "TU_CLAVE_AQUI"
+
+  model: gpt-4.1-mini
+
+  url: https://api.openai.com/v1/chat/completions
+
+  timeout: 60
+
 server:
   port: 8080
   servlet:
