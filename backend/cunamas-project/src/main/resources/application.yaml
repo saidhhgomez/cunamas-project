@@ -29,7 +29,7 @@ security:
 
 openai:
 
-  api-key: "TU_CLAVE_AQUI"
+  api-key: ${TU_CLAVE_AQUI}
 
   model: gpt-4.1-mini
 
