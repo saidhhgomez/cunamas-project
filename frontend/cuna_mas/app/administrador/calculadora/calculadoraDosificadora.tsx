@@ -214,7 +214,7 @@ const manejarCambioValor = (id: string, nuevoTexto: string) => {
             )}
 
             <View style={styles.guarnicionCard}><MaterialCommunityIcons name="silverware-fork-knife" size={24} color="#006080" /><Text style={styles.guarnicionText}>{nombrePreparacion ? String(nombrePreparacion).toUpperCase() : "ARROZ"}</Text></View> 
-            <TouchableOpacity style={[styles.continueButton, (!selectedSA || !selectedCorrelativo) && styles.continueButtonDisabled]} onPress={manejarContinuar} disabled={!selectedSA || !selectedCorrelativo || loading}><Text style={styles.continueButtonText}>CONTINUAR</Text></TouchableOpacity> 
+            <TouchableOpacity style={[styles.continueButton, (!selectedSA || !selectedCorrelativo) && styles.continueButtonDisabled]} onPress={manejarContinuar} disabled={!selectedSA || !selectedCorrelativo || loading}><Text style={styles.continueButtonText}>Calcular</Text></TouchableOpacity> 
 
             {datosInsumos && (
               <View>

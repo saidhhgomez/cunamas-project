@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CalculadoraService } from '../../../service/calculadoraService'; 
 import { CentroAlimentarioService } from '../../../service/servicioAlimentario'; 
 import { useAuth } from '../../../context/AuthContext';
+import { analizarAlimentosService } from '../../../service/iaService'; // <-- Ajusta la ruta según donde guardes iaService.ts
 
 const OPCIONES_CORRELATIVO = [
   { label: 'Media Mañana ', value: '1' },
@@ -66,6 +67,7 @@ export default function CalculadoraUnificada() {
   const [cargandoPreparaciones, setCargandoPreparaciones] = useState(false);
   const [loadingTotales, setLoadingTotales] = useState(false);
   const [loadingCalcular, setLoadingCalcular] = useState(false);
+  const [loadingIA, setLoadingIA] = useState(false);
 
   const [resultados, setResultados] = useState([
     { id: '1', label: "Niños de 6 a 9 Meses", value: "0", color: "#4CAF50" }, 
@@ -319,6 +321,34 @@ export default function CalculadoraUnificada() {
     setModalJsonVisible(true);
   };
 
+  // 🤖 Envía el JSON acumulado a la IA y navega a la pantalla de resultado
+  const manejarEnviarAIA = async () => {
+    try {
+      const guardado = await AsyncStorage.getItem(STORAGE_KEY);
+      const payload = guardado ? JSON.parse(guardado) : ESTRUCTURA_VACIA;
+
+      if (!payload.alimentos || payload.alimentos.length === 0) {
+        Alert.alert('Sin datos', 'Primero calcula al menos un alimento antes de enviar a la IA.');
+        return;
+      }
+
+      setLoadingIA(true);
+      console.log("Enviando a IA:", JSON.stringify(payload, null, 2));
+      const respuestaIA = await analizarAlimentosService(payload);
+      console.log("Respuesta de IA:", respuestaIA);
+
+      router.push({
+        pathname: '/asistente/resumenIA', // Ajusta esta ruta según dónde guardes resultado-ia.tsx
+        params: { data: JSON.stringify(respuestaIA) },
+      });
+    } catch (err) {
+      console.error('Error al analizar con IA:', err);
+      Alert.alert('Error', 'No se pudo procesar el análisis con la IA.');
+    } finally {
+      setLoadingIA(false);
+    }
+  };
+
   const listoParaCalcular = selectedSA && selectedCorrelativo && selectedPreparacion;
 
   return ( 
@@ -437,14 +467,21 @@ export default function CalculadoraUnificada() {
               )}
             </TouchableOpacity> 
 
-            {/* BOTÓN VER JSON COMPLETO */}
+            {/* BOTÓN ANALIZAR CON IA */}
             <TouchableOpacity 
-              style={styles.jsonButton} 
-              onPress={manejarMostrarJSON}
+              style={[styles.iaButton, loadingIA && styles.continueButtonDisabled]} 
+              onPress={manejarEnviarAIA}
+              disabled={loadingIA}
               activeOpacity={0.8}
             >
-              <Ionicons name="code-working" size={22} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.jsonButtonText}>VER JSON ACUMULADO</Text>
+              {loadingIA ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.jsonButtonText}>ANALIZAR CON IA</Text>
+                </>
+              )}
             </TouchableOpacity>
 
             {/* VISTA DE INSUMOS */}
@@ -546,6 +583,7 @@ const styles = StyleSheet.create({
   continueButtonDisabled: { backgroundColor: '#94A3B8' },
   continueButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
   jsonButton: { backgroundColor: '#FF8000', paddingVertical: 14, borderRadius: 30, alignItems: 'center', marginBottom: 25, flexDirection: 'row', justifyContent: 'center' },
+  iaButton: { backgroundColor: '#7F77DD', paddingVertical: 14, borderRadius: 30, alignItems: 'center', marginBottom: 25, flexDirection: 'row', justifyContent: 'center' },
   jsonButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
   jsonConsoleContainer: { flex: 1, backgroundColor: '#1E1E1E', borderRadius: 10, padding: 12, marginBottom: 15 },
   jsonText: { fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontSize: 12, color: '#A9FF1C' },
