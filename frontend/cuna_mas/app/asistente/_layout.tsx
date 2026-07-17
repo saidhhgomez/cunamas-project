@@ -31,7 +31,9 @@ if (!user || !(
 
       {/* 👥 Primera Pantalla: Lista de usuarios en estado Pendiente */}
       <Stack.Screen name="index" />
-      <Stack.Screen name="calculadora" />
+      <Stack.Screen name="calculadora/calculadoraDosificadora" />
+      <Stack.Screen name="servicioAlimentario" />
+      <Stack.Screen name="resumenIA" />
     </Stack>
   );
 }

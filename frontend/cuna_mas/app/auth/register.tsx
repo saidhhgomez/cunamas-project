@@ -98,10 +98,15 @@ export default function RegistroScreen() {
 
     try {
       setCargando(true);
-      await registerService(payloadRegistro);
+      // Guardamos la respuesta del backend
+      const respuesta = await registerService(payloadRegistro);
+      
+      // Extraemos el mensaje de éxito que viene del backend (ajusta 'respuesta?.data?.mensaje' según la estructura de tu axios/fetch)
+      const mensajeExito = respuesta?.data?.mensaje || "Tu cuenta ha sido creada correctamente.";
+
       Alert.alert(
         "¡Registro Exitoso!", 
-        "Tu cuenta ha sido creada correctamente.",
+        mensajeExito,
         [{ text: "OK", onPress: () => router.replace('/') }]
       );
     } catch (error: any) {
@@ -114,9 +119,14 @@ export default function RegistroScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* 
+        pointerEvents="none" bloquea de forma nativa cualquier interacción táctil (inputs, botones, scrolls) 
+        en toda la pantalla mientras la variable 'cargando' sea verdadera.
+      */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flexible}
+        pointerEvents={cargando ? "none" : "auto"}
       >
         {/* Cabecera */}
         <View style={[styles.header, { height: esPantallaGrande ? 130 : 110 }]}>
@@ -270,8 +280,6 @@ export default function RegistroScreen() {
             style={styles.registerButton} 
             onPress={manejarRegistro} 
             disabled={cargando}
-            
-
           >
             {cargando ? <ActivityIndicator color="#FFF" /> : <Text style={styles.registerButtonText}>REGISTRAR</Text>}
           </TouchableOpacity>

@@ -144,16 +144,6 @@ export default function CalculadoraUnificada() {
     }
   };
 
-  // Borrar todo el historial acumulado
-  const limpiarHistorialJSON = async () => {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
-      setJsonActualFormateado(JSON.stringify(ESTRUCTURA_VACIA, null, 2));
-      Alert.alert("Éxito", "El historial acumulado de alimentos ha sido borrado.");
-    } catch (e) {
-      console.error("Error al limpiar:", e);
-    }
-  };
 
   // 🔄 CARGA INICIAL
   useEffect(() => {
@@ -333,6 +323,8 @@ export default function CalculadoraUnificada() {
       }
 
       setLoadingIA(true);
+
+      
       console.log("Enviando a IA:", JSON.stringify(payload, null, 2));
       const respuestaIA = await analizarAlimentosService(payload);
       console.log("Respuesta de IA:", respuestaIA);
@@ -348,6 +340,31 @@ export default function CalculadoraUnificada() {
       setLoadingIA(false);
     }
   };
+
+  // Borrar todo el historial acumulado
+const limpiarHistorialJSON = async () => {
+  Alert.alert(
+    "¿Borrar historial?",
+    "Se eliminarán todos los alimentos acumulados. Esta acción no se puede deshacer.",
+    [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Borrar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await AsyncStorage.removeItem(STORAGE_KEY);
+            setJsonActualFormateado(JSON.stringify(ESTRUCTURA_VACIA, null, 2));
+            Alert.alert("Éxito", "El historial acumulado de alimentos ha sido borrado.");
+          } catch (e) {
+            console.error("Error al limpiar:", e);
+            Alert.alert("Error", "No se pudo borrar el historial.");
+          }
+        }
+      }
+    ]
+  );
+};
 
   const listoParaCalcular = selectedSA && selectedCorrelativo && selectedPreparacion;
 
@@ -467,22 +484,43 @@ export default function CalculadoraUnificada() {
               )}
             </TouchableOpacity> 
 
-            {/* BOTÓN ANALIZAR CON IA */}
-            <TouchableOpacity 
-              style={[styles.iaButton, loadingIA && styles.continueButtonDisabled]} 
-              onPress={manejarEnviarAIA}
-              disabled={loadingIA}
-              activeOpacity={0.8}
-            >
-              {loadingIA ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <>
-                  <Ionicons name="sparkles" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.jsonButtonText}>ANALIZAR CON IA</Text>
-                </>
-              )}
-            </TouchableOpacity>
+{/* BOTÓN ANALIZAR CON IA */}
+<TouchableOpacity 
+  style={[styles.iaButton, loadingIA && styles.continueButtonDisabled]} 
+  onPress={manejarEnviarAIA}
+  disabled={loadingIA}
+  activeOpacity={0.8}
+>
+  {loadingIA ? (
+    <ActivityIndicator size="small" color="#FFF" />
+  ) : (
+    <>
+      <Ionicons name="sparkles" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+      <Text style={styles.jsonButtonText}>ANALIZAR CON IA</Text>
+    </>
+  )}
+</TouchableOpacity>
+
+{/* 👇 NUEVOS BOTONES: VER Y BORRAR JSON 👇 */}
+<View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 }}>
+  <TouchableOpacity 
+    style={[styles.jsonButton, { flex: 0.48, marginBottom: 0, backgroundColor: '#006080' }]} 
+    onPress={manejarMostrarJSON}
+    activeOpacity={0.8}
+  >
+    <Ionicons name="eye" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+    <Text style={styles.jsonButtonText}>Ver JSON</Text>
+  </TouchableOpacity>
+
+  <TouchableOpacity 
+    style={[styles.jsonButton, { flex: 0.48, marginBottom: 0, backgroundColor: '#FF003C' }]} 
+    onPress={limpiarHistorialJSON}
+    activeOpacity={0.8}
+  >
+    <Ionicons name="trash" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+    <Text style={styles.jsonButtonText}>Borrar JSON</Text>
+  </TouchableOpacity>
+</View>
 
             {/* VISTA DE INSUMOS */}
             {datosInsumos && (

@@ -1,6 +1,5 @@
-import {api} from '../service/api'; // <--- Ajusta la ruta a tu archivo api.ts base
+import { api } from '../service/api'; 
 
-// 1. Interfaces para el payload que se envía (coincide con tu JSON acumulado)
 export interface CategoriaEtaria {
   ninos6a9Meses: number;
   ninos10a12Meses: number;
@@ -25,21 +24,22 @@ export interface AnalisisAlimentosPayload {
   alimentos: Alimento[];
 }
 
-// 2. Interface para la respuesta que devuelve tu backend/IA
 export interface AnalisisAlimentosRespuesta {
   titulo: string;
   contenido: string;
 }
 
 /**
- * Envía el listado de alimentos acumulados al backend usando la API base.
- * @param datosAlimentos Objeto con la lista de alimentos a analizar.
- * @returns { titulo, contenido } generado por la IA.
+ * Envía la estructura completa { alimentos: [...] } tal como está guardada.
  */
-export const analizarAlimentosService = async (
-  datosAlimentos: AnalisisAlimentosPayload
-): Promise<AnalisisAlimentosRespuesta> => {
-  // Usamos el endpoint relativo ya que tu api.ts base maneja la URL del servidor
-  const { data } = await api.post<AnalisisAlimentosRespuesta>('/ia/analizar-alimentos', datosAlimentos);
+// En iaService.ts
+export const analizarAlimentosService = async (payload: AnalisisAlimentosPayload) => {
+  // Imprime el cliente Axios para ver si tiene el token configurado
+  console.log("Token actual en Axios:", api.defaults.headers.common['Authorization']);
+  
+  const { data } = await api.post<AnalisisAlimentosRespuesta>(
+    '/ia/analizar-alimentos', 
+    payload
+  );
   return data;
 };

@@ -1,15 +1,21 @@
-// services/api.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { Platform, DeviceEventEmitter } from 'react-native'; // 🌟 Importamos DeviceEventEmitter
+import { Platform, DeviceEventEmitter } from 'react-native'; 
 import * as SecureStore from 'expo-secure-store';
 
 interface RefreshResponse {
-  accessToken: string;
-  refreshToken?: string;
+  token: string;          
+  refreshToken: string;
+  tipo: string;
+  expiraEn: number;
+  idPersona: number;
+  nombre: string;
+  roles: string[];
+  distrito: string | null;
+  tieneDireccion: boolean;
 }
 
 const getBaseUrl = () => 
-  Platform.OS === 'web' ? 'http://192.168.137.1:8080/api' : 'http://192.168.137.1:8080/api';
+  Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.18.233:8080/api';
 
 export const api = axios.create({
   baseURL: getBaseUrl(),
@@ -19,12 +25,8 @@ export const api = axios.create({
 
 let isRefreshing = false;
 let failedQueue: any[] = [];
-
-// 🌟 FIX 1: Guard para evitar múltiples Alerts/emits simultáneos
-// Si varias peticiones fallan en paralelo, solo se dispara UN evento de expiración.
 let sesionYaExpirada = false;
 
-// 🌟 Se llama desde AuthContext.login() para "rearmar" el guard tras un login exitoso
 export const resetSesionExpirada = () => {
   sesionYaExpirada = false;
 };
@@ -33,11 +35,14 @@ const dispararExpiracion = async (data: { titulo: string; mensaje: string }) => 
   if (sesionYaExpirada) return;
   sesionYaExpirada = true;
 
-  // 🌟 FIX (del punto anterior): limpiamos SecureStore ANTES de emitir,
-  // así el estado persistido nunca queda con tokens vencidos.
   try {
     await SecureStore.deleteItemAsync('accessToken');
     await SecureStore.deleteItemAsync('refreshToken');
+    await SecureStore.deleteItemAsync('idPersona');
+    await SecureStore.deleteItemAsync('userRoles');
+    await SecureStore.deleteItemAsync('userDistrito');
+    await SecureStore.deleteItemAsync('userName');
+    await SecureStore.deleteItemAsync('userTieneDireccion');
   } catch (err) {
     console.log('====== ⚠️ ERROR LIMPIANDO TOKENS LOCALES ======', err);
   }
@@ -69,55 +74,80 @@ const ejecutarRefrescoInterno = async (): Promise<string | null> => {
     );
 
     console.log('====== 📥 REFRESH EXITOSO ======');
-    const { accessToken, refreshToken: nuevoRefreshToken } = respuesta.data;
+    
+    const datosNuevos = respuesta.data;
 
-    await SecureStore.setItemAsync('accessToken', accessToken);
-    if (nuevoRefreshToken) {
-      await SecureStore.setItemAsync('refreshToken', nuevoRefreshToken);
+    if (!datosNuevos.token || typeof datosNuevos.token !== 'string') {
+      throw new Error('El token de acceso recibido no es válido o está vacío.');
     }
 
-    // 🌟 FIX 2: avisamos al resto de la app (AuthContext) que el token cambió,
-    // para que el estado de React (user.token) no quede desactualizado.
+    const distritoString = datosNuevos.distrito !== null ? String(datosNuevos.distrito) : '';
+
+    await SecureStore.setItemAsync('accessToken', datosNuevos.token);
+    await SecureStore.setItemAsync('refreshToken', datosNuevos.refreshToken);
+    await SecureStore.setItemAsync('idPersona', String(datosNuevos.idPersona));
+    await SecureStore.setItemAsync('userRoles', JSON.stringify(datosNuevos.roles));
+    await SecureStore.setItemAsync('userName', datosNuevos.nombre || '');
+    await SecureStore.setItemAsync('userDistrito', distritoString);
+    await SecureStore.setItemAsync('userTieneDireccion', String(datosNuevos.tieneDireccion));
+
     DeviceEventEmitter.emit('TOKEN_REFRESCADO', {
-      accessToken,
-      refreshToken: nuevoRefreshToken,
+      token: datosNuevos.token,
+      refreshToken: datosNuevos.refreshToken,
+      idPersona: datosNuevos.idPersona,
+      nombre: datosNuevos.nombre,
+      roles: datosNuevos.roles,
+      distrito: datosNuevos.distrito,
+      tieneDireccion: datosNuevos.tieneDireccion,
     });
 
-    return accessToken;
+    return datosNuevos.token;
   } catch (error) {
     console.log('====== ❌ ERROR AL REFRESCAR TOKEN ======', error);
     return null;
   }
 };
 
-api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// =========================================================================
+// INTERCEPTOR DE PETICIÓN (Request)
+// =========================================================================
+api.interceptors.request.use(
+  async (config: any) => {
+    // Si la petición es un reintento del interceptor de errores, no modificamos nada
+    if (config._isRetry) {
+      return config;
+    }
 
-// Interceptor de Respuesta con Emisión de Eventos
+    try {
+      const token = await SecureStore.getItemAsync('accessToken');
+      if (token) {
+        config.headers = config.headers || {};
+        if (typeof config.headers.set === 'function') {
+          config.headers.set('Authorization', `Bearer ${token}`);
+        } else {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+    } catch (error) {
+      console.log('====== ⚠️ ERROR OBTENIENDO ACCESS_TOKEN EN PETICIÓN ======', error);
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// =========================================================================
+// INTERCEPTOR DE RESPUESTA (Response) - MANEJO DE 401 Y 403
+// =========================================================================
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as any;
     const status = error.response?.status;
 
-    // 🔴 CASO 1: El servidor responde directamente con 403 (Sesión inválida / Sin permisos)
-    if (status === 403) {
-      console.log('====== 🔒 ACCESO PROHIBIDO (403) - DISPARANDO EVENTO ======');
-      
-      await dispararExpiracion({
-        titulo: "Sesión Vencida",
-        mensaje: "Tu sesión de administrador no es válida o ha caducado. Por favor, vuelve a iniciar sesión."
-      });
-
-      return Promise.reject(error);
-    }
-
-    if (!originalRequest || status !== 401 || originalRequest._retry) {
+    if (!originalRequest || (status !== 401 && status !== 403) || originalRequest._retry) {
       return Promise.reject(error);
     }
 
@@ -126,9 +156,15 @@ api.interceptors.response.use(
         failedQueue.push({ resolve, reject });
       })
         .then((token) => {
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-          }
+          originalRequest._retry = true;
+          originalRequest._isRetry = true; 
+
+          // Seteo robusto de cabeceras para solicitudes en cola
+          originalRequest.headers = {
+            ...originalRequest.headers,
+            'Authorization': `Bearer ${token}`
+          };
+          
           return api(originalRequest);
         })
         .catch((err) => Promise.reject(err));
@@ -140,7 +176,6 @@ api.interceptors.response.use(
     try {
       const nuevoToken = await ejecutarRefrescoInterno();
       
-      // 🔴 CASO 2: El refresh token no funcionó (venció o fue rechazado)
       if (!nuevoToken) {
         processQueue(new Error('Sesión expirada'));
         console.log('====== ❌ REFRESH TOKEN NO FUNCIONÓ - DISPARANDO EVENTO ======');
@@ -154,14 +189,39 @@ api.interceptors.response.use(
       }
 
       processQueue(null, nuevoToken);
-      if (originalRequest.headers) {
-        originalRequest.headers.Authorization = `Bearer ${nuevoToken}`;
+      
+      // Construimos una configuración de cabeceras completamente limpia para evitar errores con AxiosHeaders
+      originalRequest._isRetry = true;
+      const headersLimpios = {
+        ...originalRequest.headers,
+        'Authorization': `Bearer ${nuevoToken}`
+      };
+      
+      // Si Axios empaquetó headers en formato interno, los aplanamos
+      if (originalRequest.headers && typeof originalRequest.headers.toJSON === 'function') {
+        originalRequest.headers = {
+          ...originalRequest.headers.toJSON(),
+          'Authorization': `Bearer ${nuevoToken}`
+        };
+      } else {
+        originalRequest.headers = headersLimpios;
       }
+      
+         console.log('====== 🚀 REINTENDANDO PETICIÓN ORIGINAL CON CABECERA FORZADA ======');
+      console.log('Authorization enviada:', originalRequest.headers['Authorization'] || originalRequest.headers['authorization']);
+      
+      // 👇 AGREGA ESTO AQUÍ, justo antes del return api(originalRequest);
+      console.log('====== 🔍 DEBUG PETICIÓN COMPLETA ======');
+      console.log('URL:', originalRequest.url);
+      console.log('BaseURL:', originalRequest.baseURL);
+      console.log('Method:', originalRequest.method);
+      console.log('Headers:', JSON.stringify(originalRequest.headers));
+      console.log('Data:', originalRequest.data);
+      
       return api(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
       
-      // 🔴 CASO 3: Error de red durante el refresco de sesión
       await dispararExpiracion({
         titulo: "Error de Conexión",
         mensaje: "No se pudo verificar tu sesión. Por favor, ingresa tus credenciales nuevamente."

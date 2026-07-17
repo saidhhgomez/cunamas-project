@@ -1,10 +1,9 @@
-// context/AuthContext.tsx
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { DeviceEventEmitter, Alert } from 'react-native'; // 🌟 Importamos DeviceEventEmitter y Alert
+import { DeviceEventEmitter, Alert } from 'react-native'; 
 import * as SecureStore from 'expo-secure-store';
-import { useRouter } from 'expo-router'; // 🌟 Importamos useRouter
+import { useRouter } from 'expo-router'; 
 import { loginService, cerrarSesionService } from '../service/authService';
-import { resetSesionExpirada } from '../service/api'; // 🌟 FIX: para rearmar el guard tras login
+import { resetSesionExpirada } from '../service/api'; 
 
 interface UserSession {
   token: string;
@@ -29,9 +28,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter(); // 🌟 Instanciamos el router aquí dentro del ciclo de React
+  const router = useRouter(); 
 
-  // 🔄 1. Restaurar Sesión al abrir la app
+  // Restaurar Sesión al abrir la app
   useEffect(() => {
     const checkPersistedUser = async () => {
       try {
@@ -63,13 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkPersistedUser();
   }, []);
 
-  // 🌟 ESCUCHADOR GLOBAL DE EXPIRACIÓN DE SESIÓN (Cierre de sesión forzado desde Axios)
+  // Escuchar eventos globales del interceptor
   useEffect(() => {
     const logoutLimpiezaLocal = async () => {
       try {
-        // Borramos todos los datos del almacenamiento local de inmediato
-        // (accessToken/refreshToken ya se limpian dentro de api.ts al disparar el evento,
-        // pero los repetimos aquí para no depender del orden y limpiar también el resto)
         await SecureStore.deleteItemAsync('accessToken');
         await SecureStore.deleteItemAsync('refreshToken');
         await SecureStore.deleteItemAsync('idPersona');
@@ -80,7 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error("Error al limpiar persistencia en logout forzado:", err);
       } finally {
-        // 🌟 CLAVE: Seteamos el estado de React a null para que los Layouts detecten que ya no hay usuario
         setUser(null);
         router.replace('/auth/login');
       }
@@ -95,19 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     });
 
-    // 🌟 FIX 2: Escuchamos cuando api.ts renueva el token exitosamente,
-    // para mantener sincronizado el estado de React (user.token) con SecureStore.
+    // Recibe el objeto del usuario completo del interceptor y lo sincroniza en el estado global
     const subscripcionRefresh = DeviceEventEmitter.addListener(
       'TOKEN_REFRESCADO',
-      ({ accessToken, refreshToken }) => {
-        setUser((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            token: accessToken,
-            refreshToken: refreshToken || prev.refreshToken,
-          };
-        });
+      (nuevoUsuario: UserSession) => {
+        setUser(nuevoUsuario);
       }
     );
 
@@ -143,8 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await SecureStore.setItemAsync('userDistrito', distritoString);
       await SecureStore.setItemAsync('userTieneDireccion', String(datosAPI.tieneDireccion));
 
-      // 🌟 FIX 1: Rearmamos el guard de expiración; si el usuario vuelve a loguearse
-      // tras una sesión vencida, un futuro 401/403 debe poder disparar el evento otra vez.
       resetSesionExpirada();
 
       setUser({
@@ -176,7 +161,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await SecureStore.deleteItemAsync('accessToken');
       await SecureStore.deleteItemAsync('refreshToken');
       
-      // 🌟 FIX 1: también rearmamos el guard en un logout manual del usuario
       resetSesionExpirada();
 
       setUser(null);
