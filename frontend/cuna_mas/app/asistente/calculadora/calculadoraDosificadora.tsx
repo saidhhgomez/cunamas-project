@@ -144,6 +144,43 @@ export default function CalculadoraUnificada() {
     }
   };
 
+  // Borrar todo el historial acumulado (usado por el botón directo, con confirmación)
+  const limpiarHistorialJSON = async () => {
+    Alert.alert(
+      "¿Borrar historial?",
+      "Se eliminarán todos los alimentos acumulados. Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Borrar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem(STORAGE_KEY);
+              setJsonActualFormateado(JSON.stringify(ESTRUCTURA_VACIA, null, 2));
+              setDatosInsumos(null);
+              Alert.alert("Éxito", "El historial acumulado de alimentos ha sido borrado.");
+            } catch (e) {
+              console.error("Error al limpiar:", e);
+              Alert.alert("Error", "No se pudo borrar el historial.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Vacía el historial silenciosamente, sin confirmación ni alertas
+  // (usado internamente tras un análisis de IA exitoso)
+  const vaciarHistorialSilencioso = async () => {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      setJsonActualFormateado(JSON.stringify(ESTRUCTURA_VACIA, null, 2));
+      setDatosInsumos(null);
+    } catch (e) {
+      console.error("Error al vaciar historial silenciosamente:", e);
+    }
+  };
 
   // 🔄 CARGA INICIAL
   useEffect(() => {
@@ -284,8 +321,6 @@ export default function CalculadoraUnificada() {
         // 💾 Guardamos y acumulamos el alimento con el formato exacto solicitado
         await acumularYGuardarAlimento(data);
         
-        Alert.alert("¡Éxito!", "Cálculo procesado y añadido a la lista JSON.");
-        
         setTimeout(() => {
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 120);
@@ -324,47 +359,40 @@ export default function CalculadoraUnificada() {
 
       setLoadingIA(true);
 
-      
       console.log("Enviando a IA:", JSON.stringify(payload, null, 2));
       const respuestaIA = await analizarAlimentosService(payload);
       console.log("Respuesta de IA:", respuestaIA);
 
+      // ✅ Éxito: vaciamos el historial acumulado silenciosamente
+      await vaciarHistorialSilencioso();
+
+      // Navegamos a la pantalla de resultados
       router.push({
         pathname: '/asistente/resumenIA', // Ajusta esta ruta según dónde guardes resultado-ia.tsx
         params: { data: JSON.stringify(respuestaIA) },
       });
+
     } catch (err) {
+      // ❌ Error (timeout, red, backend, etc.): NO tocamos el JSON acumulado,
+      // así el usuario puede reintentar sin perder lo ya calculado.
       console.error('Error al analizar con IA:', err);
-      Alert.alert('Error', 'No se pudo procesar el análisis con la IA.');
+      Alert.alert('Error', 'No se pudo procesar el análisis con la IA. Inténtalo nuevamente.');
     } finally {
       setLoadingIA(false);
     }
   };
 
-  // Borrar todo el historial acumulado
-const limpiarHistorialJSON = async () => {
-  Alert.alert(
-    "¿Borrar historial?",
-    "Se eliminarán todos los alimentos acumulados. Esta acción no se puede deshacer.",
-    [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Borrar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await AsyncStorage.removeItem(STORAGE_KEY);
-            setJsonActualFormateado(JSON.stringify(ESTRUCTURA_VACIA, null, 2));
-            Alert.alert("Éxito", "El historial acumulado de alimentos ha sido borrado.");
-          } catch (e) {
-            console.error("Error al limpiar:", e);
-            Alert.alert("Error", "No se pudo borrar el historial.");
-          }
-        }
-      }
-    ]
-  );
-};
+  // 🚪 Limpia el historial acumulado y regresa a la pantalla anterior
+  const manejarVolver = async () => {
+    await vaciarHistorialSilencioso();
+    router.back();
+  };
+
+  // 🏠 Limpia el historial acumulado y va al inicio
+  const manejarIrAInicio = async () => {
+    await vaciarHistorialSilencioso();
+    router.replace('/');
+  };
 
   const listoParaCalcular = selectedSA && selectedCorrelativo && selectedPreparacion;
 
@@ -379,7 +407,7 @@ const limpiarHistorialJSON = async () => {
               <View style={styles.avatar}><Ionicons name="person" size={24} color="#C5D800" /></View> 
               <View><Text style={styles.welcomeText}>Socia de Cocina</Text><Text style={styles.userName}>{user?.nombre || 'Usuario'}</Text></View> 
             </View> 
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.8}> 
+            <TouchableOpacity style={styles.backButton} onPress={manejarVolver} activeOpacity={0.8}> 
               <Ionicons name="arrow-back" size={20} color="#FFFFFF" /><Text style={styles.backButtonText}>VOLVER</Text> 
             </TouchableOpacity> 
           </View> 
@@ -480,47 +508,26 @@ const limpiarHistorialJSON = async () => {
               {loadingCalcular ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Text style={styles.continueButtonText}>CALCULAR Y AÑADIR AL JSON</Text>
+                <Text style={styles.continueButtonText}>CALCULAR</Text>
               )}
             </TouchableOpacity> 
 
-{/* BOTÓN ANALIZAR CON IA */}
-<TouchableOpacity 
-  style={[styles.iaButton, loadingIA && styles.continueButtonDisabled]} 
-  onPress={manejarEnviarAIA}
-  disabled={loadingIA}
-  activeOpacity={0.8}
->
-  {loadingIA ? (
-    <ActivityIndicator size="small" color="#FFF" />
-  ) : (
-    <>
-      <Ionicons name="sparkles" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-      <Text style={styles.jsonButtonText}>ANALIZAR CON IA</Text>
-    </>
-  )}
-</TouchableOpacity>
-
-{/* 👇 NUEVOS BOTONES: VER Y BORRAR JSON 👇 */}
-<View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 }}>
-  <TouchableOpacity 
-    style={[styles.jsonButton, { flex: 0.48, marginBottom: 0, backgroundColor: '#006080' }]} 
-    onPress={manejarMostrarJSON}
-    activeOpacity={0.8}
-  >
-    <Ionicons name="eye" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-    <Text style={styles.jsonButtonText}>Ver JSON</Text>
-  </TouchableOpacity>
-
-  <TouchableOpacity 
-    style={[styles.jsonButton, { flex: 0.48, marginBottom: 0, backgroundColor: '#FF003C' }]} 
-    onPress={limpiarHistorialJSON}
-    activeOpacity={0.8}
-  >
-    <Ionicons name="trash" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-    <Text style={styles.jsonButtonText}>Borrar JSON</Text>
-  </TouchableOpacity>
-</View>
+            {/* BOTÓN ANALIZAR CON IA */}
+            <TouchableOpacity 
+              style={[styles.iaButton, loadingIA && styles.continueButtonDisabled]} 
+              onPress={manejarEnviarAIA}
+              disabled={loadingIA}
+              activeOpacity={0.8}
+            >
+              {loadingIA ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.jsonButtonText}>ANALIZAR CON IA</Text>
+                </>
+              )}
+            </TouchableOpacity>
 
             {/* VISTA DE INSUMOS */}
             {datosInsumos && (
@@ -538,7 +545,7 @@ const limpiarHistorialJSON = async () => {
 
         {!tecladoVisible && (
           <View style={styles.bottomBarContainer}>
-            <TouchableOpacity style={styles.homeButtonCircle} onPress={() => router.replace('/')}><Ionicons name="home" size={24} color="#00AEEF" /><Text style={styles.homeButtonText}>Inicio</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.homeButtonCircle} onPress={manejarIrAInicio}><Ionicons name="home" size={24} color="#00AEEF" /><Text style={styles.homeButtonText}>Inicio</Text></TouchableOpacity>
           </View>
         )}
       </KeyboardAvoidingView>
@@ -567,6 +574,17 @@ const limpiarHistorialJSON = async () => {
                 <Text style={styles.closeModalButtonText}>Cerrar</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 🔄 OVERLAY DE CARGA - BLOQUEA TODA LA PANTALLA MIENTRAS LA IA PROCESA */}
+      <Modal visible={loadingIA} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.overlayContainer}>
+          <View style={styles.overlayCard}>
+            <ActivityIndicator size="large" color="#7F77DD" />
+            <Text style={styles.overlayTitle}>Generando análisis con IA...</Text>
+            <Text style={styles.overlaySubtitle}>Esto puede tardar unos segundos, por favor espera.</Text>
           </View>
         </View>
       </Modal>
@@ -641,5 +659,34 @@ const styles = StyleSheet.create({
   modalOptionText: { fontSize: 16, color: '#333333', fontWeight: '600' },
   closeModalButton: { paddingVertical: 12, borderRadius: 15, alignItems: 'center' },
   closeModalButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
-  loaderContainer: { marginVertical: 30, alignItems: 'center' }
+  loaderContainer: { marginVertical: 30, alignItems: 'center' },
+  overlayContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlayCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 30,
+    paddingHorizontal: 35,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 320,
+  },
+  overlayTitle: {
+    color: '#333333',
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 15,
+    textAlign: 'center',
+  },
+  overlaySubtitle: {
+    color: '#888888',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 6,
+    textAlign: 'center',
+  },
 });
