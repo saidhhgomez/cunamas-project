@@ -26,6 +26,7 @@ public class CalculadoraServiceImpl implements CalculadoraService {
 
     private final ServicioAlimentarioRepository servicioRepository;
 
+    private final CuentaAccesoRepository cuentaAccesoRepository;
 
     @Override
     public List<CategoriaAlimentoDTO> listarCategorias() {
@@ -393,6 +394,118 @@ public class CalculadoraServiceImpl implements CalculadoraService {
         );
 
         return response;
+    }
+    @Override
+    public ReporteAsistenciaDTO obtenerReporteAsistencia(
+            Integer idServicio,
+            LocalDate fecha,
+            Integer correlativo
+    ) {
+
+        List<RegistroAsistenciaCIAIEntity> registros =
+                registroRepository.obtenerResumenServicio(
+                        idServicio,
+                        fecha,
+                        correlativo
+                );
+
+        ReporteAsistenciaDTO dto = new ReporteAsistenciaDTO();
+
+        dto.setFecha(fecha);
+        dto.setCorrelativo(correlativo);
+
+        if (!registros.isEmpty()) {
+
+            ServicioAlimentarioEntity servicio =
+                    registros.get(0)
+                            .getModulo()
+                            .getLocal()
+                            .getServicioAlimentario();
+
+            dto.setServicioAlimentario(servicio.getNombreCentro());
+
+            dto.setComite(servicio.getNombreComite());
+        }
+
+        Map<String, ReporteSedeDTO> sedes = new LinkedHashMap<>();
+
+        for (RegistroAsistenciaCIAIEntity r : registros) {
+
+            String nombreSede =
+                    r.getModulo()
+                            .getLocal()
+                            .getLocalNombre();
+
+            ReporteSedeDTO sede =
+                    sedes.computeIfAbsent(nombreSede, s -> {
+
+                        ReporteSedeDTO nueva = new ReporteSedeDTO();
+
+                        nueva.setNombreSede(s);
+
+                        nueva.setModulos(new ArrayList<>());
+
+                        return nueva;
+                    });
+
+            ReporteAsistenciaFilaDTO fila = null;
+
+            for (ReporteAsistenciaFilaDTO f : sede.getModulos()) {
+
+                if (f.getModulo().equals(r.getModulo().getNombreModulo())) {
+
+                    fila = f;
+
+                    break;
+                }
+            }
+
+            if (fila == null) {
+
+                fila = new ReporteAsistenciaFilaDTO();
+
+                fila.setModulo(
+                        r.getModulo().getNombreModulo()
+                );
+
+                CuentaAccesoEntity cuenta =
+                        cuentaAccesoRepository
+                                .findByPersona_IdPersona(
+                                        r.getIdUsuarioCreacion()
+                                )
+                                .orElse(null);
+
+                if (cuenta != null) {
+
+                    PersonaEntity persona = cuenta.getPersona();
+
+                    fila.setMadreCuidadora(
+                            persona.getNombres()
+                                    + " "
+                                    + persona.getApPaterno()
+                    );
+                }
+
+                sede.getModulos().add(fila);
+            }
+
+            switch (r.getCategoria().getIdCategoriaGrupo()) {
+
+                case 1 -> fila.setSeisAOcho(r.getCantidad());
+
+                case 2 -> fila.setNueveAOnce(r.getCantidad());
+
+                case 3 -> fila.setDoceAVeintitres(r.getCantidad());
+
+                case 4 -> fila.setVeinticuatroATreintaYSeis(r.getCantidad());
+
+                case 5 -> fila.setActoresComunales(r.getCantidad());
+            }
+        }
+
+        dto.setSedes(new ArrayList<>(sedes.values()));
+
+        return dto;
     }
 
 }

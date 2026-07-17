@@ -73,4 +73,21 @@ public class CalculadoraController {
                 correlativo
         );
     }
+
+    @GetMapping("/reporte-asistencia/{idServicio}")
+    public ReporteAsistenciaDTO obtenerReporteAsistencia(
+
+            @PathVariable Integer idServicio,
+
+            @RequestParam LocalDate fecha,
+
+            @RequestParam Integer correlativo
+    ) {
+
+        return calculadoraService.obtenerReporteAsistencia(
+                idServicio,
+                fecha,
+                correlativo
+        );
+    }
 }

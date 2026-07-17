@@ -32,4 +32,10 @@ public interface CalculadoraService {
             Integer correlativo
     );
 
+    ReporteAsistenciaDTO obtenerReporteAsistencia(
+            Integer idServicio,
+            LocalDate fecha,
+            Integer correlativo
+    );
+
 }
