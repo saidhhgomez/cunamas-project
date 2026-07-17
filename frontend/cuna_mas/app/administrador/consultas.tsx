@@ -24,37 +24,64 @@ export default function Consulta() {
   const esPantallaGrande = width > 600;
   const router = useRouter();
   const insets = useSafeAreaInsets(); 
-  const { user, logout } = useAuth();
+  const { user } = useAuth(); // Se removió 'logout' de aquí ya que no se usa
 
   const [centros, setCentros] = useState([]); 
   const [isLoading, setIsLoading] = useState(true); 
   
+  // --- ESTADOS PARA PAGINACIÓN ---
+  const [pagina, setPagina] = useState(0);
+  const [esUltimaPagina, setEsUltimaPagina] = useState(false);
+  const [isCargandoMas, setIsCargandoMas] = useState(false);
+  
   const isFocused = useIsFocused();
 
-  // Recarga automática al volver a enfocar la pantalla
+  // Recarga automática al volver a enfocar la pantalla (Reinicia a página 0)
   useEffect(() => {
     if (isFocused) {
-      cargarCentrosAlimentarios();
+      reiniciarYObtenerCentros();
     }
   }, [isFocused]);
 
-  const cargarCentrosAlimentarios = async () => {
+  // Función para limpiar estados al refrescar o entrar de cero
+  const reiniciarYObtenerCentros = async () => {
+    setIsLoading(true);
+    setPagina(0);
+    setEsUltimaPagina(false);
+    await cargarCentrosAlimentarios(0, true);
+    setIsLoading(false);
+  };
+
+  const cargarCentrosAlimentarios = async (numPagina, reiniciar = false) => {
     try {
-      setIsLoading(true);
-      const response = await CentroAlimentarioService.getCentrosTodos(); 
+      // Tu servicio devuelve: { centros: [...], isLast: boolean }
+      const response = await CentroAlimentarioService.getCentrosPorDistrito(numPagina); 
       
-      if (response && response.content) {
-        setCentros(response.content);
-      } else if (Array.isArray(response)) {
-        setCentros(response); 
+      if (response && response.centros) {
+        if (reiniciar) {
+          setCentros(response.centros);
+        } else {
+          // Concatena los nuevos elementos si no se está reiniciando la lista
+          setCentros(prevCentros => [...prevCentros, ...response.centros]);
+        }
+        setEsUltimaPagina(response.isLast);
       } else {
-        setCentros([]);
+        if (reiniciar) setCentros([]);
       }
     } catch (error) {
       Alert.alert("Error", "No se pudo obtener la lista de centros alimentarios.");
-    } finally {
-      setIsLoading(false);
     }
+  };
+
+  // Disparador cuando llegas al final de la lista
+  const cargarMasElementos = async () => {
+    if (isCargandoMas || esUltimaPagina) return;
+
+    setIsCargandoMas(true);
+    const siguientePagina = pagina + 1;
+    setPagina(siguientePagina);
+    await cargarCentrosAlimentarios(siguientePagina, false);
+    setIsCargandoMas(false);
   };
 
   const renderCentroItem = ({ item }) => ( 
@@ -91,8 +118,18 @@ export default function Consulta() {
     </TouchableOpacity> 
   ); 
 
+  // Indicador de carga inferior (Loading de paginación)
+  const renderFooter = () => {
+    if (!isCargandoMas) return null;
+    return (
+      <View style={{ paddingVertical: 20 }}>
+        <ActivityIndicator size="small" color="#006080" />
+      </View>
+    );
+  };
+
   return ( 
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
       {/* Header */} 
@@ -108,8 +145,9 @@ export default function Consulta() {
               <Text style={styles.adminWelcome}>{user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
             </View> 
           </View> 
-          <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
-            <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
+          {/* MODIFICADO: Cambiado el botón de salir por un botón de volver atrás */}
+          <TouchableOpacity style={styles.logoutButton} onPress={() => router.back()} activeOpacity={0.8}> 
+            <Ionicons name="arrow-back" size={20} color="#FFFFFF" /> 
           </TouchableOpacity> 
         </View> 
         <Text style={styles.headerTitle}>Consulta</Text> 
@@ -129,7 +167,10 @@ export default function Consulta() {
             contentContainerStyle={[styles.listContent, esPantallaGrande && styles.listContentGrande]} 
             showsVerticalScrollIndicator={false} 
             refreshing={isLoading}
-            onRefresh={cargarCentrosAlimentarios}
+            onRefresh={reiniciarYObtenerCentros} // Reinicia desde pág 0
+            onEndReached={cargarMasElementos}    // Detecta final de lista
+            onEndReachedThreshold={0.3}          // Umbral de disparo
+            ListFooterComponent={renderFooter}   // Loader al pie de lista
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="fast-food-outline" size={54} color="#CCCCCC" />
@@ -141,40 +182,39 @@ export default function Consulta() {
       </View> 
 
       {/* BOTÓN FLOTANTE (BURBUJA PARA AGREGAR) */}
-<TouchableOpacity 
-  style={styles.fab} 
-  activeOpacity={0.8}
-  onPress={() => {
-    router.push({
-      pathname: '/administrador/agregarservicioA'// Asegúrate de que esta sea tu ruta real (ej. '/(modals)/agregar-local')
-  
-    });
-  }}
->
+      <TouchableOpacity 
+        style={[styles.fab, { bottom: 88 + insets.bottom }]} 
+        activeOpacity={0.8}
+        onPress={() => {
+          router.push({
+            pathname: '/administrador/agregarservicioA'
+          });
+        }}
+      >
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
 
-       {/* Navegación Inferior (3 Botones) */} 
-       <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}> 
-         {/* Botón 1: Inicio */}
-         <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
-           <Ionicons name="home-outline" size={22} color="#757575" /> 
-           <Text style={styles.navLabel}>Inicio</Text> 
-         </TouchableOpacity> 
- 
-         {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
-         <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
-           <Ionicons name="people" size={22} color="#006080" /> 
-           <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
-         </TouchableOpacity> 
- 
-         {/* Botón 3: Calculadora / Consultas */}
-         <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
-           <Ionicons name="calculator-outline" size={22} color="#757575" /> 
-           <Text style={styles.navLabel}>Calculadora</Text> 
-         </TouchableOpacity> 
-       </View> 
-     </View> 
+      {/* Navegación Inferior (3 Botones) */} 
+      <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}> 
+        {/* Botón 1: Inicio */}
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
+          <Ionicons name="home-outline" size={22} color="#757575" /> 
+          <Text style={styles.navLabel}>Inicio</Text> 
+        </TouchableOpacity> 
+
+        {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
+          <Ionicons name="people" size={22} color="#006080" /> 
+          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
+        </TouchableOpacity> 
+
+        {/* Botón 3: Calculadora / Consultas */}
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
+          <Ionicons name="calculator-outline" size={22} color="#757575" /> 
+          <Text style={styles.navLabel}>Calculadora</Text> 
+        </TouchableOpacity> 
+      </View> 
+    </View> 
   ); 
 }
 
@@ -257,11 +297,9 @@ const styles = StyleSheet.create({
   navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
   navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
 
-  // Estilo de la Burbuja Flotante (FAB)
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 88, // Despega el botón por encima de los 72px de la barra inferior
     backgroundColor: '#006080',
     width: 56,
     height: 56,

@@ -12,7 +12,7 @@ export const CentroAlimentarioService = {
    * Obtiene la lista de centros alimentarios paginados
    * Endpoint de Postman: /api/servicios-alimentarios?page=0&size=10
    */
-  getCentrosPorDistrito: async (page: number, size: number = 5) => {
+  getCentrosPorDistrito: async (page: number, size: number = 10) => {
     try {
       const response = await api.get('/servicios-alimentarios', {
         params: { page, size }
@@ -33,6 +33,9 @@ export const CentroAlimentarioService = {
       console.error("Error consultando el API de servicios alimentarios:", error);
     } 
   },
+
+
+  
 
   getCentrosTodos: async () => {
     try {

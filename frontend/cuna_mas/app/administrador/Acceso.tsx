@@ -35,9 +35,9 @@ const TABLA_ROLES = [
   { id_rol: 1, nombre_rol: 'Asistente Técnico (AT)' },
   { id_rol: 2, nombre_rol: 'Socia de Cocina Tipo 1' },
   { id_rol: 3, nombre_rol: 'Socia de Cocina Tipo 2' },
-  { id_rol: 5, nombre_rol: 'Experta en Nutrición' },
-  { id_rol: 6, nombre_rol: 'Madre Cuidadora' },
-  { id_rol: 7, nombre_rol: 'Madre Guía' },
+  { id_rol: 4, nombre_rol: 'Experta en Nutrición' },
+  { id_rol: 5, nombre_rol: 'Madre Cuidadora' },
+  { id_rol: 6, nombre_rol: 'Madre Guía' },
 ];
 
 export default function RegisterAdminScreen() {

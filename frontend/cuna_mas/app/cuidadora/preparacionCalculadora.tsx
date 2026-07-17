@@ -132,7 +132,7 @@ export default function TipoPreparacion() {
       <View style={[styles.bottomBarContainer, { paddingBottom: Math.max(insets.bottom, 15) }]}>
         <TouchableOpacity 
           style={styles.homeButtonCircle}
-          onPress={() => router.replace('/inicio')}
+          onPress={() => router.replace('/')}
           activeOpacity={0.85}
         >
           <Home color="#00AEEF" size={24} />

@@ -33,7 +33,7 @@ export default function ConsultaModulos() {
   const esPantallaGrande = width > 600;
   const router = useRouter();
   const insets = useSafeAreaInsets(); 
-  const { user, logout } = useAuth();
+  const { user } = useAuth(); // Se removió logout de aquí ya que no se usa
   const { idLocal } = useLocalSearchParams();
 
   // Estados de la lista de módulos
@@ -182,7 +182,8 @@ export default function ConsultaModulos() {
   };
 
   return ( 
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    /* MODIFICADO: Se quitó paddingBottom de este contenedor principal */
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
       {/* Header */} 
@@ -195,11 +196,12 @@ export default function ConsultaModulos() {
             /> 
             <View> 
               <Text style={styles.roleLabel}>Administrador</Text> 
-              <Text style={styles.adminWelcome}>Hola, {user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
+              <Text style={styles.adminWelcome}>{user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
             </View> 
           </View> 
-          <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
-            <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
+          {/* MODIFICADO: Cambiado el botón de salir por un botón de volver atrás */}
+          <TouchableOpacity style={styles.logoutButton} onPress={() => router.back()} activeOpacity={0.8}> 
+            <Ionicons name="arrow-back" size={20} color="#FFFFFF" /> 
           </TouchableOpacity> 
         </View> 
         <Text style={styles.headerTitle}>Módulos</Text> 
@@ -232,8 +234,9 @@ export default function ConsultaModulos() {
       </View> 
 
       {/* Burbuja Flotante de Agregar (Abre el Modal nativo) */}
+      {/* MODIFICADO: Se calcula la posición sumando el insets.bottom directo en línea */}
       <TouchableOpacity 
-        style={[styles.fabButton, { bottom: 88 }]} 
+        style={[styles.fabButton, { bottom: 88 + insets.bottom }]} 
         activeOpacity={0.85}
         onPress={() => setModalVisible(true)}
       >
@@ -277,7 +280,6 @@ export default function ConsultaModulos() {
                 autoFocus={true}
               />
 
-
               {/* Botón de envío con estado de carga interactivo */}
               <TouchableOpacity
                 style={[
@@ -302,27 +304,27 @@ export default function ConsultaModulos() {
         </KeyboardAvoidingView>
       </Modal>
 
-           {/* Navegación Inferior (3 Botones) */} 
-           <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}> 
-             {/* Botón 1: Inicio */}
-             <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
-               <Ionicons name="home-outline" size={22} color="#757575" /> 
-               <Text style={styles.navLabel}>Inicio</Text> 
-             </TouchableOpacity> 
-     
-             {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
-             <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
-               <Ionicons name="people" size={22} color="#006080" /> 
-               <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
-             </TouchableOpacity> 
-     
-             {/* Botón 3: Calculadora / Consultas */}
-             <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
-               <Ionicons name="calculator-outline" size={22} color="#757575" /> 
-               <Text style={styles.navLabel}>Calculadora</Text> 
-             </TouchableOpacity> 
-           </View> 
-         </View> 
+      {/* Navegación Inferior (3 Botones) */} 
+      <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}> 
+        {/* Botón 1: Inicio */}
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
+          <Ionicons name="home-outline" size={22} color="#757575" /> 
+          <Text style={styles.navLabel}>Inicio</Text> 
+        </TouchableOpacity> 
+
+        {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
+          <Ionicons name="people" size={22} color="#006080" /> 
+          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
+        </TouchableOpacity> 
+
+        {/* Botón 3: Calculadora / Consultas */}
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
+          <Ionicons name="calculator-outline" size={22} color="#757575" /> 
+          <Text style={styles.navLabel}>Calculadora</Text> 
+        </TouchableOpacity> 
+      </View> 
+    </View> 
   ); 
 }
 

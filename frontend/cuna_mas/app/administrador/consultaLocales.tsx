@@ -24,7 +24,7 @@ export default function ConsultaLocales() {
   const esPantallaGrande = width > 600;
   const router = useRouter();
   const insets = useSafeAreaInsets(); 
-  const { user, logout } = useAuth();
+  const { user } = useAuth(); // Se removió logout de aquí
   const { idCentroAlimentario } = useLocalSearchParams();
 
   const [centros, setCentros] = useState([]); 
@@ -95,7 +95,8 @@ export default function ConsultaLocales() {
   ); 
 
   return ( 
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    /* MODIFICADO: Se quitó paddingBottom de este contenedor principal */
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
       {/* Header */} 
@@ -111,11 +112,12 @@ export default function ConsultaLocales() {
               <Text style={styles.adminWelcome}>{user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
             </View> 
           </View> 
-          <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
-            <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
+          {/* MODIFICADO: Cambiado el botón de salir por un botón de volver atrás */}
+          <TouchableOpacity style={styles.logoutButton} onPress={() => router.back()} activeOpacity={0.8}> 
+            <Ionicons name="arrow-back" size={20} color="#FFFFFF" /> 
           </TouchableOpacity> 
         </View> 
-        <Text style={styles.headerTitle}>Consulta</Text> 
+        <Text style={styles.headerTitle}>Consulta Locales</Text> 
       </View> 
 
       {/* Cuerpo de la Lista */}
@@ -144,8 +146,9 @@ export default function ConsultaLocales() {
       </View> 
 
       {/* Burbuja Flotante de Agregar */}
+      {/* MODIFICADO: Se calcula la posición sumando el insets.bottom directo en línea */}
       <TouchableOpacity 
-        style={styles.fabButton}
+        style={[styles.fabButton, { bottom: 88 + insets.bottom }]}
         activeOpacity={0.85}
         onPress={() => router.push({
           pathname: '/administrador/agregarCentro', // Reemplaza por tu ruta exacta de registro si varía
@@ -242,7 +245,7 @@ const styles = StyleSheet.create({
   // Burbuja flotante (FAB)
   fabButton: {
     position: 'absolute',
-    bottom: 92, // Se posiciona cómodamente encima del bottomNav (72px)
+    /* MODIFICADO: Se eliminó bottom estático de aquí para manejarlo dinámicamente en el JSX */
     right: 20,
     backgroundColor: '#C5D800',
     width: 56,

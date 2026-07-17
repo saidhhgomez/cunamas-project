@@ -134,7 +134,7 @@ export default function CalculadoraCategorias() {
       ]}>
         <TouchableOpacity 
           style={styles.homeButtonCircle}
-          onPress={() => router.replace('/cuidadora/calculadoraDosificadora')}
+          onPress={() => router.replace('/')}
           activeOpacity={0.85}
         >
           <Home color="#00AEEF" size={24} />
