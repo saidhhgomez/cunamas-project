@@ -15,7 +15,7 @@ interface RefreshResponse {
 }
 
 const getBaseUrl = () => 
-  Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.18.233:8080/api';
+  Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.137.1:8080/api';
 
 export const api = axios.create({
   baseURL: getBaseUrl(),
