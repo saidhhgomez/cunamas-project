@@ -1,14 +1,8 @@
 package com.cunamas.service;
 
 import com.cunamas.dto.*;
-import com.cunamas.entity.CentroAtencionInfantilEntity;
-import com.cunamas.entity.DireccionEntity;
-import com.cunamas.entity.ModuloEntity;
-import com.cunamas.entity.ServicioAlimentarioEntity;
-import com.cunamas.repository.CentroAtencionInfantilRepository;
-import com.cunamas.repository.DireccionRepository;
-import com.cunamas.repository.ModuloRepository;
-import com.cunamas.repository.ServicioAlimentarioRepository;
+import com.cunamas.entity.*;
+import com.cunamas.repository.*;
 import com.cunamas.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,11 +26,14 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
 
     private final ServicioAlimentarioRepository servicioRepository;
 
+    private final DistritoRepository distritoRepository;
+
     private final ModuloRepository moduloRepository;
 
     private final SecurityUtils securityUtils;
 
     @Override
+    @Transactional
     public CentroAtencionInfantilResponseDTO registrar(
             CentroAtencionInfantilRequestDTO request
     ) {
@@ -46,6 +43,14 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
 
             throw new RuntimeException(
                     "El nombre del local es obligatorio"
+            );
+        }
+
+        if (request.getNombreDireccion() == null
+                || request.getNombreDireccion().trim().isEmpty()) {
+
+            throw new RuntimeException(
+                    "La dirección es obligatoria"
             );
         }
 
@@ -62,15 +67,6 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
             );
         }
 
-        DireccionEntity direccion =
-                direccionRepository.findById(
-                        request.getIdDireccion()
-                ).orElseThrow(() ->
-                        new RuntimeException(
-                                "Dirección no encontrada"
-                        )
-                );
-
         ServicioAlimentarioEntity servicio =
                 servicioRepository.findById(
                         request.getIdCentroAlimentario()
@@ -80,12 +76,55 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                         )
                 );
 
+        DistritoEntity distrito =
+                servicio
+                        .getDireccion()
+                        .getDistrito();
+
+        boolean existeDireccion =
+                direccionRepository
+                        .existsByNombreDireccionIgnoreCaseAndDistrito_IdDistrito(
+                                request.getNombreDireccion().trim(),
+                                distrito.getIdDistrito()
+                        );
+
+        if (existeDireccion) {
+
+            throw new RuntimeException(
+                    "Ya existe una dirección registrada"
+            );
+
+        }
+
+        DireccionEntity direccion =
+                new DireccionEntity();
+
+        direccion.setNombreDireccion(
+                request.getNombreDireccion().trim()
+        );
+
+        LocalDateTime ahora =
+                LocalDateTime.now();
+
+        direccion.setFechaCreacion(ahora);
+
+        direccion.setFechaModificacion(ahora);
+
+        direccion.setDistrito(distrito);
+
+        DireccionEntity direccionGuardada =
+                direccionRepository.save(direccion);
+
         CentroAtencionInfantilEntity centro =
                 new CentroAtencionInfantilEntity();
 
-        centro.setDireccion(direccion);
+        centro.setDireccion(
+                direccionGuardada
+        );
 
-        centro.setServicioAlimentario(servicio);
+        centro.setServicioAlimentario(
+                servicio
+        );
 
         centro.setLocalNombre(
                 request.getLocalNombre().trim()
@@ -95,15 +134,14 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                 securityUtils.getIdPersona()
         );
 
-        LocalDateTime ahora =
-                LocalDateTime.now();
-
         centro.setFechaCreacion(ahora);
 
         centro.setFechaModificacion(ahora);
 
         CentroAtencionInfantilEntity guardado =
-                centroRepository.save(centro);
+                centroRepository.save(
+                        centro
+                );
 
         return new CentroAtencionInfantilResponseDTO(
                 "Centro de atención infantil registrado correctamente",
@@ -115,9 +153,23 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
     public CentroAtencionInfantilPageDTO listar(
             Integer idCentroAlimentario,
             String distrito,
+            String ubigeo,
             int page,
             int size
     ) {
+
+        if (ubigeo != null && !ubigeo.isBlank()) {
+
+            distrito = distritoRepository
+                    .findByUbigeo(ubigeo.trim())
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "No existe un distrito para el ubigeo enviado."
+                            )
+                    )
+                    .getNombreDistrito();
+
+        }
 
         Pageable pageable =
                 PageRequest.of(

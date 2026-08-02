@@ -431,20 +431,23 @@ public class AuthServiceImpl implements AuthService {
 
         String distrito = null;
 
+        String ubigeo = null;
+
         boolean tieneDireccion = false;
 
         if (persona.getDireccion() != null) {
 
             tieneDireccion = true;
 
-            distrito =
-
-                    persona.getDireccion()
-
+            ubigeo =
+                    String.valueOf(persona.getDireccion()
                             .getDistrito()
+                            .getUbigeo());
 
+            distrito =
+                    persona.getDireccion()
+                            .getDistrito()
                             .getNombreDistrito();
-
         }
 
         String token =
@@ -485,6 +488,8 @@ public class AuthServiceImpl implements AuthService {
                 roles,
 
                 distrito,
+
+                ubigeo,
 
                 tieneDireccion
 
