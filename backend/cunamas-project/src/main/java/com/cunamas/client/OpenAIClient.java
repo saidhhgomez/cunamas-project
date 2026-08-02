@@ -1,7 +1,11 @@
 package com.cunamas.client;
 
+import com.cunamas.dto.IAAnalisisResponseDTO;
+
 public interface OpenAIClient {
 
-    String analizarAlimentos(String prompt);
+    IAAnalisisResponseDTO analizarAlimentos(
+            String prompt
+    );
 
 }
