@@ -5,7 +5,6 @@ import {
   Text, 
   TouchableOpacity, 
   ScrollView, 
-  SafeAreaView, 
   Image, 
   StatusBar,
   ActivityIndicator,
@@ -13,7 +12,7 @@ import {
   useWindowDimensions
 } from 'react-native'; 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, usePathname } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { usuarioService } from '../../service/adminService'; 
 
@@ -32,7 +31,8 @@ export default function ActivarCuentaMartina() {
   const esPantallaGrande = width > 600;
   const router = useRouter();
   const insets = useSafeAreaInsets(); 
-  
+  const pathname = usePathname(); // 👈 para resaltar el tab activo en el nav
+
   const { idPersona } = useLocalSearchParams();
 
   const [usuario, setUsuario] = useState<UsuarioPendiente | null>(null);
@@ -107,24 +107,25 @@ export default function ActivarCuentaMartina() {
     : '';
 
   return ( 
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
-      <StatusBar barStyle="dark-content" /> 
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
+      <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
 
-      {/* Header Curvo */} 
-      <View style={styles.header}> 
-        <View style={styles.headerRow}> 
-          <TouchableOpacity onPress={() => router.back()} disabled={isSubmitting}> 
-            <Ionicons name="arrow-back" size={28} color="#006080" /> 
-          </TouchableOpacity> 
-          <Text style={styles.headerTitle}>Activar Cuenta</Text> 
-          <View style={styles.headerActions}> 
-            <Image source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} style={styles.adminAvatar} /> 
-            <TouchableOpacity style={styles.logoutButton} disabled={isSubmitting}> 
-              <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
-            </TouchableOpacity> 
-          </View> 
-        </View> 
-      </View> 
+      {/* Header curvo (mismo estilo que UsuariosPendientes) */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View style={styles.adminInfo}>
+            <TouchableOpacity onPress={() => router.back()} disabled={isSubmitting} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#006080" />
+            </TouchableOpacity>
+          </View>
+
+        </View>
+      </View>
+
+      {/* Barra de título blanca (igual que UsuariosPendientes) */}
+      <View style={styles.titleBar}>
+        <Text style={styles.headerTitle}>Activar Cuenta</Text>
+      </View>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, esPantallaGrande && styles.scrollContentGrande]} showsVerticalScrollIndicator={false}> 
         
@@ -185,17 +186,7 @@ export default function ActivarCuentaMartina() {
         </TouchableOpacity> 
       </ScrollView> 
 
-      {/* Navegación Inferior */} 
-      <View style={styles.navBar}> 
-        <TouchableOpacity style={styles.navBtn} onPress={() => router.push('/InicioAdmin')} disabled={isSubmitting}> 
-          <Ionicons name="home-outline" size={24} color="#757575" /> 
-          <Text style={styles.navText}>Inicio</Text> 
-        </TouchableOpacity> 
-        <TouchableOpacity style={styles.navBtn} disabled={isSubmitting}> 
-          <Ionicons name="calculator" size={24} color="#006080" /> 
-          <Text style={[styles.navText, {color: '#006080'}]}>Calculadora</Text> 
-        </TouchableOpacity> 
-      </View>
+
 
       {/* 🔒 CAPA DE BLOQUEO ABSOLUTO DE PANTALLA */}
       {isSubmitting && (
@@ -207,7 +198,7 @@ export default function ActivarCuentaMartina() {
           </View>
         </View>
       )}
-    </SafeAreaView> 
+    </View> 
   ); 
 }
 
@@ -233,12 +224,29 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9F9F9' }, 
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9F9F9' },
   loadingText: { marginTop: 12, color: '#006080', fontWeight: '600', fontSize: 16 },
-  header: { backgroundColor: '#C5D800', height: 110, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, paddingHorizontal: 20, justifyContent: 'center' }, 
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, 
-  headerTitle: { fontSize: 22, fontWeight: '900', color: '#006080', flex: 1, marginLeft: 15 }, 
-  headerActions: { flexDirection: 'row', alignItems: 'center' }, 
-  adminAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: '#FFF', marginRight: 10 }, 
-  logoutButton: { backgroundColor: '#FF0080', width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' }, 
+
+  // Header (mismo estilo que UsuariosPendientes)
+  header: { 
+    backgroundColor: '#C5D800', 
+    paddingHorizontal: 20, 
+  }, 
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, 
+  adminInfo: { flexDirection: 'row', alignItems: 'center' }, 
+  backButton: { marginRight: 12 },
+  adminAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#FFFFFF', marginRight: 10 }, 
+  logoutButton: { backgroundColor: '#FF0080', width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', elevation: 2 }, 
+  titleBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 25,
+  },
+  headerTitle: { 
+    fontSize: 26, 
+    color: '#006080', 
+    fontWeight: '900' 
+  }, 
+
   scrollContent: { padding: 20, paddingBottom: 100 }, 
   scrollContentGrande: { maxWidth: 600, width: '100%', alignSelf: 'center' },
   card: { backgroundColor: '#FFF', borderRadius: 30, padding: 20, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, marginBottom: 25 }, 
@@ -266,9 +274,11 @@ const styles = StyleSheet.create({
 
   mainButton: { backgroundColor: '#03A9F4', flexDirection: 'row', height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', shadowColor: '#03A9F4', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 6 }, 
   mainButtonText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' }, 
-  navBar: { flexDirection: 'row', height: 70, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EEE', position: 'absolute', bottom: 0, width: '100%' }, 
-  navBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
-  navText: { fontSize: 12, marginTop: 2, color: '#757575' },
+
+  // Nav inferior (mismo estilo que UsuariosPendientes, 3 botones)
+  bottomNav: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E0E0E0', position: 'absolute', bottom: 0, width: '100%' }, 
+  navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
+  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
 
   // Estilos de la Capa de Bloqueo Total
   blockingOverlay: {
@@ -305,4 +315,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   }
 });
-

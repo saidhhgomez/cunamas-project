@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react'; 
 import { 
   StyleSheet, 
   View, 
@@ -18,6 +18,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Calculator, Home } from 'lucide-react-native';
 import { LocalService } from '../../service/centroAtencionService'; 
+import HeaderCocina from '../components/sociaCocina/HeaderCocina';
+import BottomNavCocina from '../components/sociaCocina/BottomNavCocina';
+import IndicadorLateralScroll from '../components/admin/IndicadorLateralScroll';
 
 export default function ConsultaLocales() { 
   const { width } = useWindowDimensions();
@@ -26,38 +29,92 @@ export default function ConsultaLocales() {
   const insets = useSafeAreaInsets(); 
   const { user, logout } = useAuth();
   const { idCentroAlimentario } = useLocalSearchParams();
+const RUTA_ACTUAL = '/asistente/cons';
 
   const [centros, setCentros] = useState([]); 
   const [isLoading, setIsLoading] = useState(true); 
+
+  // --- ESTADOS PARA PAGINACIÓN (scroll infinito real) ---
+  const [pagina, setPagina] = useState(0);
+  const [esUltimaPagina, setEsUltimaPagina] = useState(false);
+  const [isCargandoMas, setIsCargandoMas] = useState(false);
+  const [totalRegistros, setTotalRegistros] = useState<number | null>(null);
+
+  // --- ESTADOS PARA EL INDICADOR LATERAL DE SCROLL ---
+  const [progresoScroll, setProgresoScroll] = useState(0);
+  const [indicadorVisible, setIndicadorVisible] = useState(false);
+  const timeoutOcultarRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const isFocused = useIsFocused();
 
-  // Recarga automática al volver a enfocar la pantalla
+  // Recarga automática al volver a enfocar la pantalla (reinicia a página 0)
   useEffect(() => {
     if (isFocused) {
-      cargarCentrosAlimentarios();
+      reiniciarYObtenerLocales();
     }
   }, [isFocused]);
 
-  const cargarCentrosAlimentarios = async () => {
+  const reiniciarYObtenerLocales = async () => {
+    setIsLoading(true);
+    setPagina(0);
+    setEsUltimaPagina(false);
+    await cargarCentrosAlimentarios(0, true);
+    setIsLoading(false);
+  };
+
+  const cargarCentrosAlimentarios = async (numPagina: number, reiniciar = false) => {
     try {
-      setIsLoading(true);
-      const response = await LocalService.getLocalesPorCentroPaginado(Number(idCentroAlimentario)); 
-      
-      // Validamos la estructura del JSON con la propiedad "content"
-      if (response && response.content) {
-        setCentros(response.content);
-      } else if (Array.isArray(response)) {
-        setCentros(response); 
+      const response = await LocalService.getLocalesPorCentroPaginado(Number(idCentroAlimentario), numPagina, 10);
+
+      // Spring Page<T> trae { content, last, totalElements, ... }.
+      // Mantenemos el fallback por si el backend cambia el shape.
+      const content = response?.content ?? (Array.isArray(response) ? response : []);
+      const esUltima = typeof response?.last === 'boolean' ? response.last : content.length < 10;
+      const total = response?.totalElements ?? content.length;
+
+      if (reiniciar) {
+        setCentros(content);
       } else {
-        setCentros([]);
+        // Concatena en vez de reemplazar, para no perder lo ya cargado
+        setCentros(prev => [...prev, ...content]);
       }
+      setEsUltimaPagina(esUltima);
+      setTotalRegistros(total);
     } catch (error) {
       Alert.alert("Error", "No se pudo obtener la lista de centros alimentarios.");
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  // Disparador cuando llegas al final de la lista
+  const cargarMasElementos = async () => {
+    if (isCargandoMas || esUltimaPagina) return;
+
+    setIsCargandoMas(true);
+    const siguientePagina = pagina + 1;
+    setPagina(siguientePagina);
+    await cargarCentrosAlimentarios(siguientePagina, false);
+    setIsCargandoMas(false);
+  };
+
+  // Calcula el progreso (0-1) del scroll y controla la visibilidad del
+  // indicador lateral; se oculta solo 800ms después de dejar de scrollear.
+  const manejarScroll = (event) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const maxScroll = Math.max(contentSize.height - layoutMeasurement.height, 1);
+    const progreso = contentOffset.y / maxScroll;
+
+    setProgresoScroll(progreso);
+    setIndicadorVisible(true);
+
+    if (timeoutOcultarRef.current) clearTimeout(timeoutOcultarRef.current);
+    timeoutOcultarRef.current = setTimeout(() => setIndicadorVisible(false), 800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutOcultarRef.current) clearTimeout(timeoutOcultarRef.current);
+    };
+  }, []);
 
   const renderCentroItem = ({ item }) => ( 
     <TouchableOpacity 
@@ -94,29 +151,34 @@ export default function ConsultaLocales() {
     </TouchableOpacity> 
   ); 
 
+  // Indicador de carga inferior (loading de paginación)
+  const renderFooter = () => {
+    if (!isCargandoMas) return null;
+    return (
+      <View style={{ paddingVertical: 20 }}>
+        <ActivityIndicator size="small" color="#006080" />
+      </View>
+    );
+  };
+
   return ( 
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
-      {/* Header */} 
-      <View style={styles.header}> 
-        <View style={styles.headerTop}> 
-          <View style={styles.adminInfo}> 
-            <Image 
-              source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} 
-              style={styles.adminAvatar} 
-            /> 
-            <View> 
-              <Text style={styles.roleLabel}>Socia de Cocina</Text> 
-              <Text style={styles.adminWelcome}>Hola, {user?.nombre || 'Socia de Cocina'}</Text> 
-            </View> 
-          </View> 
-          <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
-            <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
-          </TouchableOpacity> 
-        </View> 
+      {/* Header (mismo estilo que las otras pantallas) */} 
+    <HeaderCocina
+      user={user}
+      titulo=""
+      modo="volver"
+      onPress={() => {
+        router.back();
+      }}
+    />
+
+      {/* Barra de título blanca */}
+      <View style={styles.titleBar}>
         <Text style={styles.headerTitle}>Locales</Text> 
-      </View> 
+      </View>
 
       {/* Cuerpo de la Lista */}
       <View style={styles.content}> 
@@ -129,10 +191,19 @@ export default function ConsultaLocales() {
             data={centros} 
             renderItem={renderCentroItem} 
             keyExtractor={item => item.idLocal.toString()} // Usamos idLocal como key única
-            contentContainerStyle={[styles.listContent, esPantallaGrande && styles.listContentGrande]} 
+            contentContainerStyle={[
+              styles.listContent, 
+              esPantallaGrande && styles.listContentGrande,
+              { paddingBottom: 120 + insets.bottom } // espacio extra para el FAB + nav
+            ]} 
             showsVerticalScrollIndicator={false} 
+            onScroll={manejarScroll}
+            scrollEventThrottle={16}
             refreshing={isLoading}
-            onRefresh={cargarCentrosAlimentarios}
+            onRefresh={reiniciarYObtenerLocales}
+            onEndReached={cargarMasElementos}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={renderFooter}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="fast-food-outline" size={54} color="#CCCCCC" />
@@ -141,39 +212,29 @@ export default function ConsultaLocales() {
             }
           /> 
         )}
+
+        {/* Índice rápido lateral: aparece al scrollear, muestra la página actual */}
+        <IndicadorLateralScroll
+          visible={indicadorVisible && centros.length > 0}
+          progreso={progresoScroll}
+          valor={pagina + 1}
+        />
       </View> 
 
-
-
-      {/* Navegación Inferior */} 
-      <View style={styles.bottomNav}> 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6}> 
-          <Home color="#006080" size={24} strokeWidth={2.5} /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Inicio</Text> 
-        </TouchableOpacity> 
-
-        <TouchableOpacity 
-          style={styles.navItem} 
-          activeOpacity={0.6} 
-          onPress={() => router.push('/asistente/calculadora/categoriaCalculadora')}
-        > 
-          <Calculator color="#757575" size={24} strokeWidth={2} /> 
-          <Text style={styles.navLabel}>Calculadora</Text> 
-        </TouchableOpacity> 
-      </View>
+      {/* Navegación Inferior (mismo estilo que las otras pantallas) */} 
+    <BottomNavCocina rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
 
     </View> 
   ); 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' }, 
+  container: { flex: 1, backgroundColor: '#F9F9F9' }, 
+
+  // Header (mismo estilo que las otras pantallas)
   header: { 
     backgroundColor: '#C5D800', 
-    paddingTop: 20, 
     paddingHorizontal: 20, 
-    paddingBottom: 40, 
-    borderBottomRightRadius: 60 
   }, 
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, 
   adminInfo: { flexDirection: 'row', alignItems: 'center' }, 
@@ -189,9 +250,18 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     elevation: 2 
   }, 
-  headerTitle: { fontSize: 26, color: '#006080', fontWeight: '900', marginTop: 10 }, 
+
+  // Barra de título blanca
+  titleBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 25,
+  },
+  headerTitle: { fontSize: 26, color: '#006080', fontWeight: '900' }, 
+
   content: { flex: 1 }, 
-  listContent: { paddingHorizontal: 20, paddingBottom: 120, paddingTop: 15 }, // padding aumentado para evitar que el FAB tape el contenido útil
+  listContent: { paddingHorizontal: 20, paddingTop: 15 },
   listContentGrande: { maxWidth: 800, alignSelf: 'center', width: '100%' },
   userCard: { 
     backgroundColor: '#FFFFFF', 
@@ -226,10 +296,10 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
   emptyText: { color: '#999', marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20 },
   
-  // Burbuja flotante (FAB)
+  // Burbuja flotante (FAB) — se mantiene igual
   fabButton: {
     position: 'absolute',
-    bottom: 92, // Se posiciona cómodamente encima del bottomNav (72px)
+    bottom: 92, // Se posiciona cómodamente encima del bottomNav
     right: 20,
     backgroundColor: '#C5D800',
     width: 56,
@@ -245,21 +315,15 @@ const styles = StyleSheet.create({
     zIndex: 999
   },
 
+  // Nav inferior (mismo estilo que las otras pantallas)
   bottomNav: { 
     flexDirection: 'row', 
-    height: 72, 
     backgroundColor: '#FFFFFF', 
     borderTopWidth: 1, 
-    borderTopColor: '#E2E8F0', 
+    borderTopColor: '#E0E0E0', 
     position: 'absolute', 
     bottom: 0, 
-    width: '100%',
-    paddingBottom: 4, 
-    elevation: 8, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    width: '100%' 
   }, 
   navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
   navLabel: { fontSize: 11, marginTop: 4, color: '#757575' }

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, View, Text, FlatList, TouchableOpacity,
   useWindowDimensions, Modal, TextInput, Keyboard, Platform,
-  KeyboardAvoidingView, ActivityIndicator, StatusBar
+  KeyboardAvoidingView, ActivityIndicator, StatusBar,
+  LayoutAnimation, UIManager
 } from 'react-native'; 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { useRouter, useLocalSearchParams } from 'expo-router'; 
@@ -10,7 +11,13 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AsistenciaService } from '../../service/asistenciaService'; 
 import { useAuth } from '../../context/AuthContext';
-import { Calculator, Home } from 'lucide-react-native';
+import HeaderCocina from '../components/sociaCocina/HeaderCocina';
+import BottomNavCocina from '../components/sociaCocina/BottomNavCocina';
+
+// Habilita LayoutAnimation en Android (en iOS ya viene activado por defecto)
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const OPCIONES_CORRELATIVO = [
   { label: 'Vista General (Ambos Turnos)', value: '0' }, 
@@ -31,8 +38,7 @@ export default function Resumen() {
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth(); 
-  
+  const { user } = useAuth(); 
   const params = useLocalSearchParams();
   const idModulo = params.idCentroAlimentario || params.idModulo;
 
@@ -45,9 +51,14 @@ export default function Resumen() {
   // Estados de Carga y Datos Divididos
   const [tecladoVisible, setTecladoVisible] = useState(false);
   const [loading, setLoading] = useState<boolean>(false);
-  
+  const RUTA_ACTUAL = '/asistente/resumen';
+
   const [registroManana, setRegistroManana] = useState<any[]>([]);
   const [registroTarde, setRegistroTarde] = useState<any[]>([]);
+
+  // 🔽 Estados para expandir/contraer cada sección (abiertas por defecto)
+  const [manianaExpandida, setManianaExpandida] = useState(true);
+  const [tardeExpandida, setTardeExpandida] = useState(true);
 
   const formatearFechaParaAPI = (date: Date) => {
     const año = date.getFullYear();
@@ -98,6 +109,20 @@ export default function Resumen() {
     return () => { tecladoMuestra.remove(); tecladoOculta.remove(); };
   }, []);
 
+  // 🔽 Alterna la visibilidad de una sección con animación suave
+  const alternarSeccion = (turno: 'manana' | 'tarde') => {
+    LayoutAnimation.configureNext(LayoutAnimation.create(
+      220,
+      LayoutAnimation.Types.easeInEaseOut,
+      LayoutAnimation.Properties.opacity
+    ));
+    if (turno === 'manana') {
+      setManianaExpandida(prev => !prev);
+    } else {
+      setTardeExpandida(prev => !prev);
+    }
+  };
+
   // Renderizador de cada tarjeta de categoría
   const renderItemCategoria = (item: any, turno: 'manana' | 'tarde') => {
     const color = MAPA_COLORES[item.idCategoriaGrupo] || "#757575";
@@ -132,24 +157,16 @@ export default function Resumen() {
       
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flexible}>
         
-        {/* Header */}
-        <View style={styles.header}> 
-          <View style={styles.headerTop}> 
-            <View style={styles.adminInfo}> 
-              <View style={styles.adminAvatarCircle}>
-                <Ionicons name="person" size={22} color="#006080" />
-              </View>
-              <View> 
-                <Text style={styles.roleLabel}>Administrador</Text> 
-                <Text style={styles.adminWelcome}>Hola, {user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
-              </View> 
-            </View> 
-            <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
-              <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
-            </TouchableOpacity> 
-          </View> 
-          <Text style={styles.headerTitle}>Totales de Dosificación</Text> 
-        </View> 
+      <HeaderCocina
+        user={user}
+        titulo=""
+        modo="volver"
+        onPress={() => router.back}
+      />      
+
+<View style={styles.titleBar}>
+  <Text style={styles.headerTitle}>Asistencia del {params?.nombreModulo}</Text> 
+</View>
 
         {/* Contenido principal */}
         <View style={styles.content}>
@@ -183,25 +200,47 @@ export default function Resumen() {
 
             renderItem={() => (
               <View>
-                {/* Sección Turno Mañana */}
+                {/* Sección Turno Mañana (desplegable) */}
                 {registroManana.length > 0 && (
                   <View style={styles.seccionTurno}>
-                    <View style={styles.seccionHeader}>
-                      <Ionicons name="sunny-outline" size={20} color="#006080" style={{marginRight: 6}} />
-                      <Text style={styles.seccionTitle}>Turno Mañana</Text>
-                    </View>
-                    {registroManana.map(item => renderItemCategoria(item, 'manana'))}
+                    <TouchableOpacity 
+                      style={styles.seccionHeader} 
+                      activeOpacity={0.7}
+                      onPress={() => alternarSeccion('manana')}
+                    >
+                      <View style={styles.seccionHeaderIzquierda}>
+                        <Ionicons name="sunny-outline" size={20} color="#006080" style={{marginRight: 6}} />
+                        <Text style={styles.seccionTitle}>Turno Mañana</Text>
+                      </View>
+                      <Ionicons 
+                        name={manianaExpandida ? "chevron-up" : "chevron-down"} 
+                        size={20} 
+                        color="#006080" 
+                      />
+                    </TouchableOpacity>
+                    {manianaExpandida && registroManana.map(item => renderItemCategoria(item, 'manana'))}
                   </View>
                 )}
 
-                {/* Sección Turno Tarde */}
+                {/* Sección Turno Tarde (desplegable) */}
                 {registroTarde.length > 0 && (
                   <View style={[styles.seccionTurno, { marginTop: 15 }]}>
-                    <View style={styles.seccionHeader}>
-                      <Ionicons name="partly-sunny-outline" size={20} color="#006080" style={{marginRight: 6}} />
-                      <Text style={styles.seccionTitle}>Turno Tarde</Text>
-                    </View>
-                    {registroTarde.map(item => renderItemCategoria(item, 'tarde'))}
+                    <TouchableOpacity 
+                      style={styles.seccionHeader} 
+                      activeOpacity={0.7}
+                      onPress={() => alternarSeccion('tarde')}
+                    >
+                      <View style={styles.seccionHeaderIzquierda}>
+                        <Ionicons name="partly-sunny-outline" size={20} color="#006080" style={{marginRight: 6}} />
+                        <Text style={styles.seccionTitle}>Turno Tarde</Text>
+                      </View>
+                      <Ionicons 
+                        name={tardeExpandida ? "chevron-up" : "chevron-down"} 
+                        size={20} 
+                        color="#006080" 
+                      />
+                    </TouchableOpacity>
+                    {tardeExpandida && registroTarde.map(item => renderItemCategoria(item, 'tarde'))}
                   </View>
                 )}
               </View>
@@ -220,20 +259,8 @@ export default function Resumen() {
           />
         </View>
 
-        {/* Barra de Navegación Inferior */} 
-        {!tecladoVisible && (
-          <View style={styles.bottomNav}> 
-            <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.replace('/')}> 
-              <Home color="#757575" size={24} strokeWidth={2} /> 
-              <Text style={styles.navLabel}>Inicio</Text> 
-            </TouchableOpacity> 
+      <BottomNavCocina rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
 
-            <TouchableOpacity style={styles.navItem} activeOpacity={0.6}> 
-              <Calculator color="#006080" size={24} strokeWidth={2.5} /> 
-              <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Calculadora</Text> 
-            </TouchableOpacity> 
-          </View>
-        )}
       </KeyboardAvoidingView>
 
       {/* Modal de Correlativo */}
@@ -264,13 +291,10 @@ export default function Resumen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' }, 
   flexible: { flex: 1 },
-  header: { 
-    backgroundColor: '#C5D800', 
-    paddingTop: 20, 
-    paddingHorizontal: 20, 
-    paddingBottom: 40, 
-    borderBottomRightRadius: 60 
-  }, 
+header: { 
+  backgroundColor: '#C5D800', 
+  paddingHorizontal: 20, 
+},
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, 
   adminInfo: { flexDirection: 'row', alignItems: 'center' }, 
   adminAvatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 10 }, 
@@ -281,7 +305,13 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: 19, 
     justifyContent: 'center', alignItems: 'center', elevation: 2 
   }, 
-  headerTitle: { fontSize: 24, color: '#006080', fontWeight: '900', marginTop: 10 }, 
+  titleBar: {
+  backgroundColor: '#FFFFFF',
+  paddingHorizontal: 20,
+  paddingTop: 15,
+  paddingBottom: 25,
+},
+  headerTitle: { fontSize: 24, color: '#006080', fontWeight: '900' }, 
   content: { flex: 1 }, 
   listContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 15 }, 
   listContentGrande: { maxWidth: 800, alignSelf: 'center', width: '100%' },
@@ -291,7 +321,15 @@ const styles = StyleSheet.create({
   pickerSelectedText: { color: '#333333', fontWeight: '800', fontSize: 14 },
   
   seccionTurno: { backgroundColor: '#F8FAFC', borderRadius: 20, padding: 12, borderWidth: 1, borderColor: '#F1F5F9' },
-  seccionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, marginLeft: 4 },
+  seccionHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    marginBottom: 4, 
+    marginLeft: 4,
+    paddingVertical: 8,
+  },
+  seccionHeaderIzquierda: { flexDirection: 'row', alignItems: 'center' },
   seccionTitle: { fontSize: 16, fontWeight: '800', color: '#006080' },
 
   resultItem: { 

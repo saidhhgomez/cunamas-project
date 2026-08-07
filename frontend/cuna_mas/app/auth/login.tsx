@@ -11,12 +11,12 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Alert,
   useWindowDimensions 
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext'; 
 import { Link } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ModalMensaje, { TipoModalMensaje } from '../../app/components/ModalMensaje';
 
 export default function LoginScreen() {
   const [dni, setDni] = useState('');
@@ -24,7 +24,13 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   // 🌟 Estado para controlar la visibilidad de la contraseña
   const [securePassword, setSecurePassword] = useState(true);
-  
+
+  // Modal de resultado (reemplaza Alert.alert nativo)
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTipo, setModalTipo] = useState<TipoModalMensaje>('error');
+  const [modalTitulo, setModalTitulo] = useState('');
+  const [modalMensaje, setModalMensaje] = useState('');
+
   const { login } = useAuth();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets(); 
@@ -32,9 +38,16 @@ export default function LoginScreen() {
   const esPantallaGrande = width > 600;
   const tamañoLogo = esPantallaGrande ? 260 : width * 0.55; 
 
+  const mostrarModal = (tipo: TipoModalMensaje, titulo: string, mensaje: string) => {
+    setModalTipo(tipo);
+    setModalTitulo(titulo);
+    setModalMensaje(mensaje);
+    setModalVisible(true);
+  };
+
   const handleIngresar = async () => {
     if (!dni || !password) {
-      Alert.alert('Error', 'Por favor, complete todos los campos');
+      mostrarModal('error', 'Campos Incompletos', 'Por favor, completa el DNI y la contraseña.');
       return;
     }
 
@@ -43,7 +56,10 @@ export default function LoginScreen() {
       // 🚀 .trim() para evitar los espacios fantasmas que causaban el error de login simulado
       await login(dni.trim(), password.trim());
     } catch (error: any) {
-      Alert.alert('Error de Inicio de Sesión', error.message || 'DNI o contraseña incorrectos');
+      // El mensaje del backend (p. ej. "Su cuenta aún no ha sido aprobada." en un 403)
+      // se muestra tal cual lo envía la API; no hay lógica adicional que aplicar aquí.
+      const mensaje = error.message || 'DNI o contraseña incorrectos';
+      mostrarModal('error', 'Error de Inicio de Sesión', mensaje);
     } finally {
       setLoading(false);
     }
@@ -153,6 +169,16 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Modal de error (reemplaza Alert.alert) */}
+      <ModalMensaje
+        visible={modalVisible}
+        tipo={modalTipo}
+        titulo={modalTitulo}
+        mensaje={modalMensaje}
+        onCerrar={() => setModalVisible(false)}
+        colorAccento="#00AEEF"
+      />
     </SafeAreaView>
   );
 }

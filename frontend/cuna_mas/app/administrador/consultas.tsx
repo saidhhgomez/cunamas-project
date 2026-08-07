@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react'; 
 import { 
   StyleSheet, 
   View, 
@@ -9,6 +9,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
+  TextInput,
   useWindowDimensions
 } from 'react-native'; 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +19,12 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Calculator, Home } from 'lucide-react-native';
 import { CentroAlimentarioService } from '../../service/servicioAlimentario'; 
+import BottomNavAdmin from '../components/admin/BottomNavAdmin';
+import IndicadorLateralScroll from '../components/admin/IndicadorLateralScroll';
+
+// Esta pantalla ES "/administrador/consultas" (botón "Gestión" de la barra).
+// Constante fija en vez de usePathname(): ver comentario en BottomNavAdmin.
+const RUTA_ACTUAL = '/administrador/consultas';
 
 export default function Consulta() { 
   const { width } = useWindowDimensions();
@@ -33,29 +40,51 @@ export default function Consulta() {
   const [pagina, setPagina] = useState(0);
   const [esUltimaPagina, setEsUltimaPagina] = useState(false);
   const [isCargandoMas, setIsCargandoMas] = useState(false);
+
+  // --- ESTADOS PARA BÚSQUEDA POR DISTRITO ---
+  // textoBusqueda: lo que el usuario está escribiendo (se actualiza en cada tecla)
+  // distritoFiltro: el valor "aplicado" tras el debounce, el que realmente se manda al backend
+  const [textoBusqueda, setTextoBusqueda] = useState('');
+  const [distritoFiltro, setDistritoFiltro] = useState('');
+
+  // --- ESTADOS PARA EL INDICADOR LATERAL DE SCROLL ---
+  const [progresoScroll, setProgresoScroll] = useState(0);
+  const [indicadorVisible, setIndicadorVisible] = useState(false);
+  const timeoutOcultarRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const isFocused = useIsFocused();
 
-  // Recarga automática al volver a enfocar la pantalla (Reinicia a página 0)
+  // Debounce: espera 500ms sin que el usuario escriba antes de aplicar el filtro,
+  // para no disparar un GET por cada letra tecleada.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDistritoFiltro(textoBusqueda.trim());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [textoBusqueda]);
+
+  // Recarga automática al volver a enfocar la pantalla, o cuando cambia el
+  // filtro de distrito aplicado. Ambos casos reinician a página 0.
   useEffect(() => {
     if (isFocused) {
-      reiniciarYObtenerCentros();
+      reiniciarYObtenerCentros(distritoFiltro);
     }
-  }, [isFocused]);
+  }, [isFocused, distritoFiltro]);
 
   // Función para limpiar estados al refrescar o entrar de cero
-  const reiniciarYObtenerCentros = async () => {
+  const reiniciarYObtenerCentros = async (distrito: string) => {
     setIsLoading(true);
     setPagina(0);
     setEsUltimaPagina(false);
-    await cargarCentrosAlimentarios(0, true);
+    await cargarCentrosAlimentarios(0, true, distrito);
     setIsLoading(false);
   };
 
-  const cargarCentrosAlimentarios = async (numPagina, reiniciar = false) => {
+  const cargarCentrosAlimentarios = async (numPagina: number, reiniciar = false, distrito: string = '') => {
     try {
+      // Sin distrito -> "carga todos" paginado. Con distrito -> búsqueda paginada.
       // Tu servicio devuelve: { centros: [...], isLast: boolean }
-      const response = await CentroAlimentarioService.getCentrosPorDistrito(numPagina); 
+      const response = await CentroAlimentarioService.getCentrosPorDistrito(numPagina, 10, distrito); 
       
       if (response && response.centros) {
         if (reiniciar) {
@@ -80,9 +109,30 @@ export default function Consulta() {
     setIsCargandoMas(true);
     const siguientePagina = pagina + 1;
     setPagina(siguientePagina);
-    await cargarCentrosAlimentarios(siguientePagina, false);
+    await cargarCentrosAlimentarios(siguientePagina, false, distritoFiltro);
     setIsCargandoMas(false);
   };
+
+  // Calcula el progreso (0-1) del scroll dentro de la lista y muestra el
+  // indicador lateral; lo oculta automáticamente 800ms después de que el
+  // usuario deja de scrollear.
+  const manejarScroll = (event) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const maxScroll = Math.max(contentSize.height - layoutMeasurement.height, 1);
+    const progreso = contentOffset.y / maxScroll;
+
+    setProgresoScroll(progreso);
+    setIndicadorVisible(true);
+
+    if (timeoutOcultarRef.current) clearTimeout(timeoutOcultarRef.current);
+    timeoutOcultarRef.current = setTimeout(() => setIndicadorVisible(false), 800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutOcultarRef.current) clearTimeout(timeoutOcultarRef.current);
+    };
+  }, []);
 
   const renderCentroItem = ({ item }) => ( 
     <TouchableOpacity 
@@ -131,27 +181,70 @@ export default function Consulta() {
   return ( 
     <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
-      
-      {/* Header */} 
-      <View style={styles.header}> 
-        <View style={styles.headerTop}> 
-          <View style={styles.adminInfo}> 
-            <Image 
-              source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} 
-              style={styles.adminAvatar} 
-            /> 
-            <View> 
-              <Text style={styles.roleLabel}>Administrador</Text> 
-              <Text style={styles.adminWelcome}>{user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
-            </View> 
-          </View> 
-          {/* MODIFICADO: Cambiado el botón de salir por un botón de volver atrás */}
-          <TouchableOpacity style={styles.logoutButton} onPress={() => router.back()} activeOpacity={0.8}> 
-            <Ionicons name="arrow-back" size={20} color="#FFFFFF" /> 
-          </TouchableOpacity> 
-        </View> 
-        <Text style={styles.headerTitle}>Consulta</Text> 
+{/* Header */} 
+<View style={styles.header}> 
+  <View style={styles.headerTop}> 
+    <View style={styles.adminInfo}> 
+      {/* Foto de perfil: hasta que exista el atributo real de imagen del usuario,
+          se muestra un placeholder con la inicial en vez de una foto estática
+          que no correspondía al usuario logueado (mismo criterio que en Inicio). */}
+      {user?.foto ? (
+        <Image source={{ uri: user.foto }} style={styles.adminAvatar} />
+      ) : (
+        <View style={[styles.adminAvatar, styles.adminAvatarPlaceholder]}>
+          <Text style={styles.adminAvatarInitial}>
+            {user?.nombre?.charAt(0)?.toUpperCase() ?? '?'}
+          </Text>
+        </View>
+      )}
+      <View> 
+        <Text style={styles.roleLabel}>Administrador</Text> 
+        <Text style={styles.adminWelcome}>{user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
       </View> 
+    </View> 
+<TouchableOpacity 
+  style={styles.logoutButton} 
+  onPress={() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/administrador/inicio'); // fallback si no hay historial
+    }
+  }} 
+  activeOpacity={0.8}
+> 
+  <Ionicons name="arrow-back" size={20} color="#FFFFFF" /> 
+</TouchableOpacity>
+  </View> 
+</View>
+
+<View style={styles.titleBar}>
+  <Text style={styles.headerTitle}>Consulta</Text> 
+</View>
+
+      {/* Buscador por distrito */}
+      <View style={[styles.searchWrapper, esPantallaGrande && styles.listContentGrande]}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={18} color="#94A3B8" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por distrito..."
+            placeholderTextColor="#94A3B8"
+            value={textoBusqueda}
+            onChangeText={setTextoBusqueda}
+            autoCapitalize="characters"
+            returnKeyType="search"
+          />
+          {textoBusqueda.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setTextoBusqueda('')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
       {/* Cuerpo de la Lista */}
       <View style={styles.content}> 
@@ -166,19 +259,32 @@ export default function Consulta() {
             keyExtractor={item => item.idCentroAlimentario.toString()} 
             contentContainerStyle={[styles.listContent, esPantallaGrande && styles.listContentGrande]} 
             showsVerticalScrollIndicator={false} 
+            onScroll={manejarScroll}
+            scrollEventThrottle={16}
             refreshing={isLoading}
-            onRefresh={reiniciarYObtenerCentros} // Reinicia desde pág 0
+            onRefresh={() => reiniciarYObtenerCentros(distritoFiltro)} // Reinicia desde pág 0
             onEndReached={cargarMasElementos}    // Detecta final de lista
             onEndReachedThreshold={0.3}          // Umbral de disparo
             ListFooterComponent={renderFooter}   // Loader al pie de lista
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="fast-food-outline" size={54} color="#CCCCCC" />
-                <Text style={styles.emptyText}>No hay centros alimentarios registrados</Text>
+                <Text style={styles.emptyText}>
+                  {distritoFiltro
+                    ? `No se encontraron centros en "${distritoFiltro}"`
+                    : 'No hay centros alimentarios registrados'}
+                </Text>
               </View>
             }
           /> 
         )}
+
+        {/* Índice rápido lateral: aparece al scrollear, muestra la página actual */}
+        <IndicadorLateralScroll
+          visible={indicadorVisible && centros.length > 0}
+          progreso={progresoScroll}
+          valor={pagina + 1}
+        />
       </View> 
 
       {/* BOTÓN FLOTANTE (BURBUJA PARA AGREGAR) */}
@@ -194,42 +300,23 @@ export default function Consulta() {
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
 
-      {/* Navegación Inferior (3 Botones) */} 
-      <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}> 
-        {/* Botón 1: Inicio */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
-          <Ionicons name="home-outline" size={22} color="#757575" /> 
-          <Text style={styles.navLabel}>Inicio</Text> 
-        </TouchableOpacity> 
-
-        {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
-          <Ionicons name="people" size={22} color="#006080" /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
-        </TouchableOpacity> 
-
-        {/* Botón 3: Calculadora / Consultas */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
-          <Ionicons name="calculator-outline" size={22} color="#757575" /> 
-          <Text style={styles.navLabel}>Calculadora</Text> 
-        </TouchableOpacity> 
-      </View> 
+      {/* Navegación Inferior — componente compartido, misma fuente de verdad en todas las pantallas */}
+      <BottomNavAdmin rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
     </View> 
   ); 
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' }, 
-  header: { 
-    backgroundColor: '#C5D800', 
-    paddingTop: 20, 
-    paddingHorizontal: 20, 
-    paddingBottom: 40, 
-    borderBottomRightRadius: 60 
-  }, 
+header: { 
+  backgroundColor: '#C5D800', 
+  paddingHorizontal: 20, 
+}, 
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, 
   adminInfo: { flexDirection: 'row', alignItems: 'center' }, 
   adminAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#FFFFFF', marginRight: 10 }, 
+  adminAvatarPlaceholder: { backgroundColor: '#006080', justifyContent: 'center', alignItems: 'center' },
+  adminAvatarInitial: { color: '#FFF', fontSize: 18, fontWeight: '900' },
   roleLabel: { fontSize: 10, color: '#006080', fontWeight: 'bold' }, 
   adminWelcome: { fontSize: 18, color: '#006080', fontWeight: '900' }, 
   logoutButton: { 
@@ -241,8 +328,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     elevation: 2 
   }, 
-  headerTitle: { fontSize: 26, color: '#006080', fontWeight: '900', marginTop: 10 }, 
-  content: { flex: 1 }, 
+headerTitle: { 
+  fontSize: 26, 
+  color: '#006080', 
+  fontWeight: '900' 
+},  content: { flex: 1 }, 
   listContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 15 }, 
   listContentGrande: { maxWidth: 800, alignSelf: 'center', width: '100%' },
   userCard: { 
@@ -267,6 +357,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center' 
   },
+  titleBar: {
+  backgroundColor: '#FFFFFF',
+  paddingHorizontal: 20,
+  paddingTop: 15,
+  paddingBottom: 25,
+},
+  searchWrapper: { paddingHorizontal: 20, backgroundColor: '#FFFFFF' },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    marginBottom: 12,
+    gap: 8,
+  },
+  searchInput: { flex: 1, height: '100%', fontSize: 14, color: '#333', fontWeight: '500' },
   avatarText: { color: '#FFF', fontSize: 22, fontWeight: 'bold' },
   userInfo: { flex: 1, paddingRight: 10 }, 
   userName: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 4 }, 
@@ -277,25 +385,6 @@ const styles = StyleSheet.create({
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
   emptyText: { color: '#999', marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  
-  bottomNav: { 
-    flexDirection: 'row', 
-    height: 72, 
-    backgroundColor: '#FFFFFF', 
-    borderTopWidth: 1, 
-    borderTopColor: '#E2E8F0', 
-    position: 'absolute', 
-    bottom: 0, 
-    width: '100%',
-    paddingBottom: 4, 
-    elevation: 8, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-  }, 
-  navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
-  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
 
   fab: {
     position: 'absolute',

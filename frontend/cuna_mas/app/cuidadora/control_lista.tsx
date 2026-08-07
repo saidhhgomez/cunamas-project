@@ -4,34 +4,40 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  SafeAreaView, 
   FlatList,
   TextInput,
   ActivityIndicator,
   Alert,
   Modal,
   TouchableWithoutFeedback,
-  useWindowDimensions 
+  useWindowDimensions,
+  StatusBar
 } from 'react-native';
-import { ArrowLeft, Plus, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, Plus, ChevronDown, Home } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Importación de tus servicios
 import { CategoriaService } from '../../service/categoriaService';
 import { AsistenciaService } from '../../service/asistenciaService';
+import BottomNavMadre from '../components/cuidadora/BottomNavMadre';
 
-const COLORES_INDICADORES = ['#C5D800', '#FF7A00', '#00D12E', '#00AEEF'];
+const COLORES_INDICADORES = ['#C5D800', '#FF7A00', '#00D12E', '#006080'];
 
 const OPCIONES_TURNO = [
   { id: 1, nombre: 'Media Mañana' },
   { id: 2, nombre: 'Media Tarde' }
 ];
 
+// Cantidad máxima de dígitos permitidos por categoría (ej. 999 raciones máx.)
+const MAX_DIGITOS_CANTIDAD = 3;
+
 export default function AsistenciaStatsScreen() {
   const router = useRouter();
   const { user } = useAuth(); 
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   
   const params = useLocalSearchParams();
   const idModuloReal = params.idModulo ? Number(params.idModulo) : 1; 
@@ -69,18 +75,16 @@ export default function AsistenciaStatsScreen() {
     cargarCategorias();
   }, [idModuloReal]);
 
-  // 👈 NUEVA FUNCIÓN: Ahora usa router.back() con un fallback seguro
+  // El usuario pidió que el botón de volver sea solo hacia atrás (sin
+  // fallback a otra pantalla), tanto al tocar VOLVER como al cerrar el
+  // mensaje de éxito tras guardar.
   const manejarRetornoSeguro = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      // Si por alguna razón se limpia el historial, te saca al inicio del flujo cuidadora
-      router.replace('/cuidadora/control_lista'); 
-    }
+    router.back();
   };
 
   const manejarCambioCantidad = (idCategoriaGrupo: number, texto: string) => {
-    const textoLimpio = texto.replace(/[^0-9]/g, '');
+    // Solo dígitos, y como máximo MAX_DIGITOS_CANTIDAD cifras
+    const textoLimpio = texto.replace(/[^0-9]/g, '').slice(0, MAX_DIGITOS_CANTIDAD);
     setValoresAsistencia(prev => ({
       ...prev,
       [idCategoriaGrupo]: textoLimpio === '' ? '0' : textoLimpio
@@ -118,40 +122,50 @@ export default function AsistenciaStatsScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer} accessible={false}>
-        <ActivityIndicator size="large" color="#00AEEF" />
+        <ActivityIndicator size="large" color="#006080" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#C5D800" />
       
-      {/* Header Superior */}
-      <View style={[styles.header, { height: esPantallaGrande ? 140 : 115 }]}>
-        <TouchableOpacity 
-          style={[styles.backButton, { width: esPantallaGrande ? 150 : 125, height: esPantallaGrande ? 46 : 40 }]}
-          onPress={manejarRetornoSeguro}
-          activeOpacity={0.85}
-        >
-          <View style={styles.backContent}>
-            <ArrowLeft color="#FFF" size={esPantallaGrande ? 22 : 18} strokeWidth={3} />
-            <Text style={[styles.backText, { fontSize: esPantallaGrande ? 15 : 13 }]}>VOLVER</Text>
-          </View>
-        </TouchableOpacity>
+      {/* Header (mismo estilo, con botón VOLVER en lugar de logout) */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={manejarRetornoSeguro}
+            activeOpacity={0.85}
+          >
+            <View style={styles.backContent}>
+              <ArrowLeft color="#FFF" size={18} strokeWidth={3} />
+              <Text style={styles.backText}>VOLVER</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Barra de título blanca */}
+      <View style={styles.titleBar}>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {nombreModuloReal.toUpperCase()}
+        </Text>
       </View>
 
       <FlatList
         data={categorias}
         keyExtractor={(item) => item.idCategoriaGrupo.toString()}
-        contentContainerStyle={[styles.scrollContent, esPantallaGrande && styles.tabletContent]}
+        contentContainerStyle={[
+          styles.scrollContent, 
+          esPantallaGrande && styles.tabletContent,
+          { paddingBottom: 100 + insets.bottom }
+        ]}
         showsVerticalScrollIndicator={false}
         
         ListHeaderComponent={
           <View style={styles.headerComponentContainer}>
-            <Text style={[styles.title, { fontSize: esPantallaGrande ? 34 : 28 }]}>
-              {nombreModuloReal.toUpperCase()}
-            </Text>
-
             {/* Selector de Turno */}
             <View style={styles.comboWrapper}>
               <TouchableOpacity 
@@ -186,6 +200,7 @@ export default function AsistenciaStatsScreen() {
                   onChangeText={(texto) => manejarCambioCantidad(item.idCategoriaGrupo, texto)}
                   selectTextOnFocus
                   editable={!enviando}
+                  maxLength={MAX_DIGITOS_CANTIDAD}
                 />
               </View>
             </View>
@@ -205,6 +220,9 @@ export default function AsistenciaStatsScreen() {
           </TouchableOpacity>
         }
       />
+
+      {/* Navegación Inferior (mismo diseño que las demás pantallas) */}
+        <BottomNavMadre rutaActual="/cuidadora/control_lista" insetsBottom={insets.bottom} />
 
       {/* MODAL DEL COMBOBOX */}
       <Modal
@@ -250,44 +268,46 @@ export default function AsistenciaStatsScreen() {
       >
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#FF007A" />
+            <ActivityIndicator size="large" color="#FF0080" />
             <Text style={styles.loadingText}>Guardando asistencia...</Text>
           </View>
         </View>
       </Modal>
 
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#F8FAFC' 
+    backgroundColor: '#F9F9F9' 
   },
   centerContainer: { 
     flex: 1, 
     justifyContent: 'center', 
     alignItems: 'center', 
-    backgroundColor: '#F8FAFC' 
+    backgroundColor: '#F9F9F9' 
   },
+
+  // Header (mismo estilo, con botón VOLVER)
   header: { 
     backgroundColor: '#C5D800', 
-    borderBottomLeftRadius: 35, 
-    borderBottomRightRadius: 35, 
-    justifyContent: 'center', 
-    paddingHorizontal: 24, 
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 3 
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   backButton: { 
-    backgroundColor: '#FF007A', 
+    backgroundColor: '#FF0080', 
     borderRadius: 20, 
     justifyContent: 'center', 
     alignItems: 'center',
+    height: 40,
+    paddingHorizontal: 16,
   },
   backContent: { 
     flexDirection: 'row', 
@@ -296,11 +316,27 @@ const styles = StyleSheet.create({
   backText: { 
     color: '#FFF', 
     fontWeight: '800', 
-    marginLeft: 4, 
+    marginLeft: 4,
+    fontSize: 13,
   },
+
+  // Barra de título blanca
+  titleBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 22,
+    color: '#006080',
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+
   scrollContent: { 
     paddingHorizontal: 20, 
-    paddingBottom: 40, 
+    paddingTop: 20,
     width: '100%' 
   },
   tabletContent: { 
@@ -309,13 +345,6 @@ const styles = StyleSheet.create({
   },
   headerComponentContainer: {
     marginBottom: 20,
-  },
-  title: { 
-    fontWeight: '900', 
-    color: '#00AEEF', 
-    marginTop: 25, 
-    marginBottom: 15, 
-    textAlign: 'center' 
   },
   comboWrapper: {
     width: '100%',
@@ -384,7 +413,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   dropdownItemTextActive: {
-    color: '#FF007A',
+    color: '#FF0080',
     fontWeight: '800',
   },
   loadingOverlay: {
@@ -447,13 +476,13 @@ const styles = StyleSheet.create({
     paddingVertical: 0 
   },
   submitButton: { 
-    backgroundColor: '#FF007A', 
+    backgroundColor: '#FF0080', 
     height: 52, 
     borderRadius: 26, 
     justifyContent: 'center', 
     alignItems: 'center', 
     marginTop: 20, 
-    shadowColor: '#FF007A', 
+    shadowColor: '#FF0080', 
     shadowOffset: { width: 0, height: 4 }, 
     shadowOpacity: 0.2, 
     shadowRadius: 5, 
@@ -469,5 +498,24 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     marginLeft: 6, 
     letterSpacing: 0.5 
-  }
+  },
+
+  // Nav inferior (mismo diseño recto que las demás pantallas)
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    width: '100%',
+  },
+  navItem: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  navLabel: { 
+    fontSize: 11, 
+    marginTop: 4, 
+    color: '#757575' 
+  },
 });

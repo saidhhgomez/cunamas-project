@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react'; 
 import { 
   StyleSheet, 
   View, 
@@ -9,6 +9,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
+  TextInput,
   useWindowDimensions
 } from 'react-native'; 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,46 +17,118 @@ import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { useAuth } from '../../context/AuthContext';
-import { Calculator, Home } from 'lucide-react-native';
 import { CentroAlimentarioService } from '../../service/servicioAlimentario'; 
+import HeaderCocina from '../components/sociaCocina/HeaderCocina';
+import BottomNavCocina from '../components/sociaCocina/BottomNavCocina';
+import IndicadorLateralScroll from '../components/admin/IndicadorLateralScroll';
+
+// ⚠️ Ajusta este valor a la ruta real de ESTE archivo dentro de app/asistente/.
+// BottomNavCocina la usa para resaltar el botón correcto de la barra inferior.
+const RUTA_ACTUAL = '/asistente/consultas2';
 
 export default function Consulta() { 
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
   const router = useRouter();
   const insets = useSafeAreaInsets(); 
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const [centros, setCentros] = useState([]); 
   const [isLoading, setIsLoading] = useState(true); 
+
+  // --- ESTADOS PARA PAGINACIÓN ---
+  const [pagina, setPagina] = useState(0);
+  const [esUltimaPagina, setEsUltimaPagina] = useState(false);
+  const [isCargandoMas, setIsCargandoMas] = useState(false);
+
+  // --- ESTADOS PARA BÚSQUEDA POR DISTRITO ---
+  const [textoBusqueda, setTextoBusqueda] = useState('');
+  const [distritoFiltro, setDistritoFiltro] = useState('');
+  const [totalRegistros, setTotalRegistros] = useState<number | null>(null);
+
+  // --- ESTADOS PARA EL INDICADOR LATERAL DE SCROLL ---
+  const [progresoScroll, setProgresoScroll] = useState(0);
+  const [indicadorVisible, setIndicadorVisible] = useState(false);
+  const timeoutOcultarRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const isFocused = useIsFocused();
 
-  // Recarga automática al volver a enfocar la pantalla
+  // Debounce: espera 500ms sin que el usuario escriba antes de aplicar el filtro
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDistritoFiltro(textoBusqueda.trim());
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [textoBusqueda]);
+
+  // Recarga automática al volver a enfocar la pantalla, o al cambiar el filtro
   useEffect(() => {
     if (isFocused) {
-      cargarCentrosAlimentarios();
+      reiniciarYObtenerCentros(distritoFiltro);
     }
-  }, [isFocused]);
+  }, [isFocused, distritoFiltro]);
 
-  const cargarCentrosAlimentarios = async () => {
+  const reiniciarYObtenerCentros = async (distrito: string) => {
+    setIsLoading(true);
+    setPagina(0);
+    setEsUltimaPagina(false);
+    await cargarCentrosAlimentarios(0, true, distrito);
+    setIsLoading(false);
+  };
+
+  const cargarCentrosAlimentarios = async (numPagina: number, reiniciar = false, distrito: string = '') => {
     try {
-      setIsLoading(true);
-      const response = await CentroAlimentarioService.getCentrosTodos(); 
-      
-      if (response && response.content) {
-        setCentros(response.content);
-      } else if (Array.isArray(response)) {
-        setCentros(response); 
+      // Sin distrito -> carga todos paginado. Con distrito -> búsqueda paginada.
+      const response = await CentroAlimentarioService.getCentrosPorDistrito(numPagina, 10, distrito);
+
+      if (response && response.centros) {
+        if (reiniciar) {
+          setCentros(response.centros);
+        } else {
+          setCentros(prevCentros => [...prevCentros, ...response.centros]);
+        }
+        setEsUltimaPagina(response.isLast);
+        setTotalRegistros(response.totalRegistros ?? null);
       } else {
-        setCentros([]);
+        if (reiniciar) {
+          setCentros([]);
+          setTotalRegistros(0);
+        }
       }
     } catch (error) {
       Alert.alert("Error", "No se pudo obtener la lista de centros alimentarios.");
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  const cargarMasElementos = async () => {
+    if (isCargandoMas || esUltimaPagina) return;
+
+    setIsCargandoMas(true);
+    const siguientePagina = pagina + 1;
+    setPagina(siguientePagina);
+    await cargarCentrosAlimentarios(siguientePagina, false, distritoFiltro);
+    setIsCargandoMas(false);
+  };
+
+  // Calcula el progreso (0-1) del scroll y controla la visibilidad del
+  // indicador lateral; se oculta solo 800ms después de dejar de scrollear.
+  const manejarScroll = (event) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const maxScroll = Math.max(contentSize.height - layoutMeasurement.height, 1);
+    const progreso = contentOffset.y / maxScroll;
+
+    setProgresoScroll(progreso);
+    setIndicadorVisible(true);
+
+    if (timeoutOcultarRef.current) clearTimeout(timeoutOcultarRef.current);
+    timeoutOcultarRef.current = setTimeout(() => setIndicadorVisible(false), 800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutOcultarRef.current) clearTimeout(timeoutOcultarRef.current);
+    };
+  }, []);
 
   const renderCentroItem = ({ item }) => ( 
     <TouchableOpacity 
@@ -63,7 +136,9 @@ export default function Consulta() {
       activeOpacity={0.7}
       onPress={() => router.push({
         pathname: '/asistente/resumen2', 
-        params: { idCentroAlimentario: item.idCentroAlimentario }
+        params: { idCentroAlimentario: item.idCentroAlimentario,
+          nombreCentro: item.nombreCentro
+        }
       })} 
     > 
       {/* Inicial del comedor para el avatar circular */}
@@ -91,29 +166,68 @@ export default function Consulta() {
     </TouchableOpacity> 
   ); 
 
+  const renderFooter = () => {
+    if (!isCargandoMas) return null;
+    return (
+      <View style={{ paddingVertical: 20 }}>
+        <ActivityIndicator size="small" color="#006080" />
+      </View>
+    );
+  };
+
   return ( 
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
-      {/* Header */} 
-      <View style={styles.header}> 
-        <View style={styles.headerTop}> 
-          <View style={styles.adminInfo}> 
-            <Image 
-              source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} 
-              style={styles.adminAvatar} 
-            /> 
-            <View> 
-              <Text style={styles.roleLabel}>Administrador</Text> 
-              <Text style={styles.adminWelcome}>Hola, {user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
-            </View> 
-          </View> 
-          <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
-            <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
-          </TouchableOpacity> 
-        </View> 
+      {/* Header (mismo componente que el resto de pantallas de Asistente) */} 
+      <HeaderCocina
+        user={user}
+        titulo=""
+        modo="volver"
+        onPress={() => {
+          router.back();
+        }}
+      />
+
+      {/* Barra de título blanca */}
+      <View style={styles.titleBar}>
         <Text style={styles.headerTitle}>Consulta</Text> 
-      </View> 
+      </View>
+
+      {/* Buscador por distrito */}
+      <View style={[styles.searchWrapper, esPantallaGrande && styles.listContentGrande]}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={18} color="#94A3B8" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por distrito..."
+            placeholderTextColor="#94A3B8"
+            value={textoBusqueda}
+            onChangeText={setTextoBusqueda}
+            autoCapitalize="characters"
+            returnKeyType="search"
+          />
+          {textoBusqueda.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setTextoBusqueda('')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Confirmación visible de que el filtro por distrito está aplicado */}
+        {distritoFiltro.length > 0 && (
+          <View style={styles.filtroChip}>
+            <Ionicons name="funnel-outline" size={13} color="#006080" />
+            <Text style={styles.filtroChipTexto}>
+              Buscando en "{distritoFiltro}"
+              {totalRegistros !== null ? ` · ${totalRegistros} resultado${totalRegistros === 1 ? '' : 's'}` : ''}
+            </Text>
+          </View>
+        )}
+      </View>
 
       {/* Cuerpo de la Lista */}
       <View style={styles.content}> 
@@ -126,53 +240,53 @@ export default function Consulta() {
             data={centros} 
             renderItem={renderCentroItem} 
             keyExtractor={item => item.idCentroAlimentario.toString()} 
-            contentContainerStyle={[styles.listContent, esPantallaGrande && styles.listContentGrande]} 
+            contentContainerStyle={[
+              styles.listContent, 
+              esPantallaGrande && styles.listContentGrande,
+              { paddingBottom: 100 + insets.bottom }
+            ]} 
             showsVerticalScrollIndicator={false} 
+            onScroll={manejarScroll}
+            scrollEventThrottle={16}
             refreshing={isLoading}
-            onRefresh={cargarCentrosAlimentarios}
+            onRefresh={() => reiniciarYObtenerCentros(distritoFiltro)}
+            onEndReached={cargarMasElementos}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={renderFooter}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="fast-food-outline" size={54} color="#CCCCCC" />
-                <Text style={styles.emptyText}>No hay centros alimentarios registrados</Text>
+                <Text style={styles.emptyText}>
+                  {distritoFiltro
+                    ? `No se encontraron centros en "${distritoFiltro}"`
+                    : 'No hay centros alimentarios registrados'}
+                </Text>
               </View>
             }
           /> 
         )}
+
+        {/* Índice rápido lateral: aparece al scrollear, muestra la página actual */}
+        <IndicadorLateralScroll
+          visible={indicadorVisible && centros.length > 0}
+          progreso={progresoScroll}
+          valor={pagina + 1}
+        />
       </View> 
 
-
-
-      {/* Navegación Inferior */} 
-      <View style={styles.bottomNav}> 
-        {/* BOTÓN INICIO (ACTIVO) */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6}> 
-          <Home color="#006080" size={24} strokeWidth={2.5} /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Inicio</Text> 
-        </TouchableOpacity> 
-
-        {/* BOTÓN CALCULADORA (INACTIVO) */}
-        <TouchableOpacity 
-          style={styles.navItem} 
-          activeOpacity={0.6} 
-          onPress={() => router.push('/asistente/calculadora/categoriaCalculadora')}
-        > 
-          <Calculator color="#757575" size={24} strokeWidth={2} /> 
-          <Text style={styles.navLabel}>Calculadora</Text> 
-        </TouchableOpacity> 
-      </View>
+      {/* Navegación Inferior (componente compartido) */} 
+      <BottomNavCocina rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
 
     </View> 
   ); 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' }, 
+  container: { flex: 1, backgroundColor: '#F9F9F9' }, 
+
   header: { 
     backgroundColor: '#C5D800', 
-    paddingTop: 20, 
     paddingHorizontal: 20, 
-    paddingBottom: 40, 
-    borderBottomRightRadius: 60 
   }, 
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, 
   adminInfo: { flexDirection: 'row', alignItems: 'center' }, 
@@ -188,9 +302,42 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     elevation: 2 
   }, 
-  headerTitle: { fontSize: 26, color: '#006080', fontWeight: '900', marginTop: 10 }, 
+
+  titleBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 25,
+  },
+  headerTitle: { fontSize: 26, color: '#006080', fontWeight: '900' }, 
+
+  searchWrapper: { paddingHorizontal: 20, backgroundColor: '#FFFFFF' },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    marginBottom: 12,
+    gap: 8,
+  },
+  searchInput: { flex: 1, height: '100%', fontSize: 14, color: '#333', fontWeight: '500' },
+  filtroChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#E6F4F7',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 12,
+    gap: 6,
+  },
+  filtroChipTexto: { fontSize: 12, color: '#006080', fontWeight: '700' },
+
   content: { flex: 1 }, 
-  listContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 15 }, 
+  listContent: { paddingHorizontal: 20, paddingTop: 15 }, 
   listContentGrande: { maxWidth: 800, alignSelf: 'center', width: '100%' },
   userCard: { 
     backgroundColor: '#FFFFFF', 
@@ -224,41 +371,4 @@ const styles = StyleSheet.create({
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
   emptyText: { color: '#999', marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  
-  bottomNav: { 
-    flexDirection: 'row', 
-    height: 72, 
-    backgroundColor: '#FFFFFF', 
-    borderTopWidth: 1, 
-    borderTopColor: '#E2E8F0', 
-    position: 'absolute', 
-    bottom: 0, 
-    width: '100%',
-    paddingBottom: 4, 
-    elevation: 8, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-  }, 
-  navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
-  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
-
-  // Estilo de la Burbuja Flotante (FAB)
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 88, // Despega el botón por encima de los 72px de la barra inferior
-    backgroundColor: '#006080',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.27,
-    shadowRadius: 4.65,
-  }
 });

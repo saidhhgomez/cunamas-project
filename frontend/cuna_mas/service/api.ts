@@ -15,11 +15,10 @@ interface RefreshResponse {
 }
 
 const getBaseUrl = () => 
-  Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.137.1:8080/api';
+  Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://10.0.2.2:8080/api';
 
 export const api = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 120000, // 12 segundos
   headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
 });
 

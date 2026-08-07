@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  Alert,
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
@@ -20,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../service/api'; 
 import { DistritoService, DistritoResponse } from '../../service/direccion'; 
 import { CentroAlimentarioService } from '../../service/servicioAlimentario';
+import ModalMensaje, { TipoModalMensaje } from '../components/ModalMensaje';
 
 export default function AgregarServicioA() {
   const router = useRouter();
@@ -48,6 +48,28 @@ export default function AgregarServicioA() {
 
   // Posicionamiento dinámico de la lista de sugerencias
   const [buscadorY, setBuscadorY] = useState(0);
+
+  // Modal de resultado (reemplaza Alert.alert para campos incompletos, éxito y error)
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTipo, setModalTipo] = useState<TipoModalMensaje>('error');
+  const [modalTitulo, setModalTitulo] = useState('');
+  const [modalMensaje, setModalMensaje] = useState('');
+
+  const mostrarModal = (tipo: TipoModalMensaje, titulo: string, mensaje: string) => {
+    setModalTipo(tipo);
+    setModalTitulo(titulo);
+    setModalMensaje(mensaje);
+    setModalVisible(true);
+  };
+
+  // El router.back() se dispara al CERRAR el modal de éxito, no antes,
+  // para que el usuario alcance a leer el mensaje antes de salir de la pantalla.
+  const cerrarModal = () => {
+    setModalVisible(false);
+    if (modalTipo === 'exito') {
+      router.back();
+    }
+  };
 
   // Listener para saber si el teclado está activo
   useEffect(() => {
@@ -100,7 +122,7 @@ export default function AgregarServicioA() {
 const handleGuardarTransaccion = async () => {
   // 1. Validaciones iniciales de formulario
   if (!distritoSeleccionado || !nombreDireccion || !nombreCentro || !nombreComite) {
-    Alert.alert("Campos incompletos", "Por favor, complete todos los campos requeridos.");
+    mostrarModal('error', 'Campos Incompletos', 'Por favor, completa todos los campos requeridos.');
     return;
   }
 
@@ -133,11 +155,11 @@ const idDireccionGenerado = resDireccion.idGenerado;
 
     console.log("Paso 2 Completado con éxito.");
 
-    // 4. Si todo salió bien, avisamos al usuario y regresamos
-    Alert.alert(
-      "¡Registro Exitoso!", 
-      "El servicio alimentario y su dirección han sido guardados correctamente.", 
-      [{ text: "Entendido", onPress: () => router.back() }]
+    // 4. Si todo salió bien, avisamos al usuario (el regreso ocurre al cerrar el modal)
+    mostrarModal(
+      'exito',
+      '¡Registro Exitoso!',
+      'El servicio alimentario y su dirección han sido guardados correctamente.'
     );
 
   } catch (error: any) {
@@ -145,7 +167,7 @@ const idDireccionGenerado = resDireccion.idGenerado;
     
     // Mostramos un mensaje claro del error
     const mensajeError = error.response?.data?.mensaje || error.message || "Fallo en la comunicación con el servidor.";
-    Alert.alert("Error al registrar", mensajeError);
+    mostrarModal('error', 'Error al registrar', mensajeError);
   } finally {
     setIsSaving(false);
   }
@@ -157,7 +179,10 @@ const idDireccionGenerado = resDireccion.idGenerado;
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 20}
     >
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View 
+        style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+        pointerEvents={isSaving ? 'none' : 'auto'}
+      >
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
         {/* Barra superior de navegación */}
@@ -306,6 +331,23 @@ const idDireccionGenerado = resDireccion.idGenerado;
 
         </View>
       </View>
+
+      {/* Overlay de carga: feedback claro mientras se guarda (2 POST en cadena) */}
+      {isSaving && (
+        <View style={styles.loadingOverlay} pointerEvents="auto">
+          <ActivityIndicator size="large" color="#006080" />
+          <Text style={styles.loadingOverlayTexto}>Guardando información...</Text>
+        </View>
+      )}
+
+      {/* Modal de resultado (campos incompletos / éxito / error) */}
+      <ModalMensaje
+        visible={modalVisible}
+        tipo={modalTipo}
+        titulo={modalTitulo}
+        mensaje={modalMensaje}
+        onCerrar={cerrarModal}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -314,6 +356,19 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: '#FFFFFF' 
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  loadingOverlayTexto: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#006080',
   },
   header: {
     flexDirection: 'row',

@@ -9,16 +9,15 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
-import { 
-  Undo2, 
-  Home 
-} from 'lucide-react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router'; 
+import { Undo2 } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useLocalSearchParams, usePathname } from 'expo-router'; 
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
 import { CalculadoraService } from '../../../service/calculadoraService'; 
 
 export default function TipoPreparacion() {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   
   // 📥 Recibimos de forma segura el idCategoria enviado por la pantalla anterior
@@ -73,11 +72,17 @@ export default function TipoPreparacion() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       
-      {/* 🟢 HEADER CURVO PROPIO */}
+      {/* 🟢 HEADER (rectangular, solo botón volver) */}
       <View style={[styles.header, { height: esPantallaGrande ? 120 : 100 }]}>
         <TouchableOpacity 
           style={[styles.backButton, { width: esPantallaGrande ? 140 : 125, height: esPantallaGrande ? 46 : 40 }]} 
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/administrador/inicio');
+            }
+          }}
           activeOpacity={0.85}
         >
           <View style={styles.backContent}>
@@ -128,15 +133,19 @@ export default function TipoPreparacion() {
         </ScrollView>
       </View>
 
-      {/* 🌟 BOTÓN FIJO INFERIOR */}
-      <View style={[styles.bottomBarContainer, { paddingBottom: Math.max(insets.bottom, 15) }]}>
-        <TouchableOpacity 
-          style={styles.homeButtonCircle}
-          onPress={() => router.replace('/')}
-          activeOpacity={0.85}
+      {/* Navegación Inferior (mismo diseño que las demás pantallas, solo Inicio) */}
+      <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}>
+        <TouchableOpacity
+          style={styles.navItem}
+          activeOpacity={0.6}
+          onPress={() => {
+            if (pathname !== '/administrador/inicio') {
+              router.replace('/administrador/inicio');
+            }
+          }}
         >
-          <Home color="#00AEEF" size={24} />
-          <Text style={styles.homeButtonText}>Inicio</Text>
+          <Ionicons name="home-outline" size={22} color="#006080" />
+          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Inicio</Text>
         </TouchableOpacity>
       </View>
 
@@ -167,10 +176,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontWeight: '600'
   },
+
+  // --- Header original, solo se le quitó el borderRadius para que sea rectángulo ---
   header: {
     backgroundColor: '#C5D800',
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
+    // sin borderBottomLeftRadius / borderBottomRightRadius -> queda rectangular
     justifyContent: 'center',
     paddingHorizontal: 25,
     shadowColor: '#000',
@@ -180,7 +190,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   backButton: {
-    backgroundColor: '#D10069',
+    backgroundColor: '#FF007F',
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
@@ -194,13 +204,15 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginLeft: 6,
   },
+
+  // --- Contenido propio de la calculadora (SIN TOCAR) ---
   scrollWrapper: {
     flex: 1,
   },
   scrollContainerInternal: {
     paddingHorizontal: 25,
     paddingTop: 30,
-    paddingBottom: 20,
+    paddingBottom: 100, // espacio para el navbar fijo
   },
   sectionTitle: {
     fontWeight: '900',
@@ -234,34 +246,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.3,
   },
-  bottomBarContainer: {
-    width: '100%',
-    backgroundColor: '#F9F9F9', 
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 15, 
-    borderTopWidth: 1,
-    borderColor: '#E2E8F0', 
-  },
-  homeButtonCircle: {
+
+  // --- Navbar estándar (mismo diseño que las demás pantallas, solo Inicio) ---
+  bottomNav: {
+    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    width: 130,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
-  homeButtonText: {
-    color: '#00AEEF',
-    fontWeight: '800',
-    fontSize: 12,
-    marginTop: 1,
-  }
+  navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
 });

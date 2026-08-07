@@ -12,31 +12,32 @@ import {
 } from 'react-native';
 import { 
   ArrowLeft, 
-  Home,
   Beef, Milk, Egg, Activity 
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, usePathname } from 'expo-router';
 // 💡 Importamos la herramienta nativa para calcular el tamaño de las barras del sistema
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+ 
 import { CalculadoraService } from '../../../service/calculadoraService'; 
-
+ 
 const MAPA_ICONOS: { [key: string]: any } = {
   'LÁCTEOS': Milk,
   'PRODUCTOS DE ORIGEN ANIMAL': Beef,
   'HUEVO': Egg,
   'OVOPRODUCTO': Egg,
 };
-
+ 
 export default function CalculadoraCategorias() {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets(); // 💡 Captura el espacio de la barra de navegación de Android/iOS
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
-
+ 
   const [categorias, setCategorias] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-
+ 
   useEffect(() => {
     const cargarCategorias = async () => {
       try {
@@ -51,7 +52,7 @@ export default function CalculadoraCategorias() {
     };
     cargarCategorias();
   }, []);
-
+ 
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -60,18 +61,24 @@ export default function CalculadoraCategorias() {
       </View>
     );
   }
-
+ 
   return (
     <View style={styles.container}>
       
       {/* 🟢 TOP SAFE AREA */}
       <SafeAreaView style={styles.topSafeArea} />
-
-      {/* 🟢 HEADER CURVO */}
+ 
+      {/* 🟢 HEADER (rectangular, solo botón volver) */}
       <View style={[styles.customHeader, { height: esPantallaGrande ? 120 : 100 }]}>
         <TouchableOpacity 
           style={[styles.backButton, { width: esPantallaGrande ? 140 : 125, height: esPantallaGrande ? 46 : 40 }]} 
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/administrador/inicio');
+            }
+          }}
           activeOpacity={0.85}
         >
           <View style={styles.backContent}>
@@ -80,7 +87,7 @@ export default function CalculadoraCategorias() {
           </View>
         </TouchableOpacity>
       </View>
-
+ 
       {/* 📜 LISTADO DE CATEGORÍAS */}
       <View style={styles.scrollWrapper}>
         <ScrollView 
@@ -90,12 +97,12 @@ export default function CalculadoraCategorias() {
           <Text style={[styles.title, { fontSize: esPantallaGrande ? 42 : 32 }]}>
             Seleccionar Categoría
           </Text>
-
+ 
           <View style={styles.categoryList}>
             {categorias.map((category) => {
               const nombreNormalizado = category.nombreCategoriaAlimento ? category.nombreCategoriaAlimento.toUpperCase().trim() : '';
               const Icon = MAPA_ICONOS[nombreNormalizado] || Activity; 
-
+ 
               return (
                 <TouchableOpacity 
                   key={category.idCategoriaAlimento.toString()} 
@@ -125,27 +132,27 @@ export default function CalculadoraCategorias() {
           </View>
         </ScrollView>
       </View>
-
-      {/* 🌟 BARRA INFERIOR CONTROLADA NATIVAMENTE */}
-      {/* Cambiamos SafeAreaView por un View común y corriente usando los insets calculados */}
-      <View style={[
-        styles.bottomBarContainer, 
-        { paddingBottom: Math.max(insets.bottom, 16) } // Asegura separación en dispositivos con gestos o botones virtuales
-      ]}>
-        <TouchableOpacity 
-          style={styles.homeButtonCircle}
-          onPress={() => router.replace('/administrador/inicio')}
-          activeOpacity={0.85}
+ 
+      {/* Navegación Inferior (mismo diseño que las demás pantallas, solo Inicio) */}
+      <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}>
+        <TouchableOpacity
+          style={styles.navItem}
+          activeOpacity={0.6}
+          onPress={() => {
+            if (pathname !== '/administrador/inicio') {
+              router.replace('/administrador/inicio');
+            }
+          }}
         >
-          <Home color="#00AEEF" size={24} />
-          <Text style={styles.homeButtonText}>Inicio</Text>
+          <Ionicons name="home-outline" size={22} color="#006080" />
+          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Inicio</Text>
         </TouchableOpacity>
       </View>
-
+ 
     </View>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
@@ -166,10 +173,10 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: '600'
   },
+  // --- Header original, solo se le quitó el borderRadius para que sea rectángulo ---
   customHeader: {
     backgroundColor: '#C5D800',
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
+    // sin borderBottomLeftRadius / borderBottomRightRadius -> queda rectangular
     justifyContent: 'center',
     paddingHorizontal: 25,
     shadowColor: '#000',
@@ -193,13 +200,15 @@ const styles = StyleSheet.create({
     fontWeight: '900', 
     marginLeft: 6 
   },
+ 
+  // --- Contenido propio de la calculadora (SIN TOCAR) ---
   scrollWrapper: {
     flex: 1,
   },
   scrollContainerInternal: {
     paddingHorizontal: 25, 
     paddingTop: 30, 
-    paddingBottom: 20, 
+    paddingBottom: 100, // espacio para el navbar fijo
   },
   title: { 
     fontWeight: '900', 
@@ -236,35 +245,22 @@ const styles = StyleSheet.create({
     flex: 1, 
     flexWrap: 'wrap' 
   },
-  /* 🌟 ESTILIZACIÓN DE LA BARRA CONTENEDORA REAL EN LA PARTE INFERIOR */
-  bottomBarContainer: {
-    width: '100%',
-    backgroundColor: '#F9F9F9', // Mismo fondo grisáceo limpio del layout de la app
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  homeButtonCircle: {
+ 
+  // --- Navbar estándar (mismo diseño que las demás pantallas, solo Inicio) ---
+  bottomNav: {
+    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    width: 130,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
-  homeButtonText: {
-    color: '#00AEEF',
-    fontWeight: '800',
-    fontSize: 12,
-    marginTop: 1,
-  }
+  navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
 });

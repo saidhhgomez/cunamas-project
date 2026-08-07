@@ -13,36 +13,33 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { useAuth } from '../../context/AuthContext';
+import HeaderCocina from '../components/sociaCocina/HeaderCocina';
+import BottomNavCocina from '../components/sociaCocina/BottomNavCocina';
 
 export default function InicioSociaCocinas() { 
   const { width } = useWindowDimensions();
   const router = useRouter();
   const insets = useSafeAreaInsets(); 
   const { user, logout } = useAuth();
+const RUTA_ACTUAL = '/asistente/';
 
   return ( 
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
-      {/* Header */} 
-      <View style={styles.header}> 
-        <View style={styles.headerTop}> 
-          <View style={styles.adminInfo}> 
-            <Image 
-              source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} 
-              style={styles.adminAvatar} 
-            /> 
-            <View> 
-              <Text style={styles.roleLabel}>Socia de Cocina</Text> 
-              <Text style={styles.adminWelcome}>Hola, {user?.nombre || 'SOCIA'}</Text> 
-            </View> 
-          </View> 
-          <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
-            <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
-          </TouchableOpacity> 
-        </View> 
+    <HeaderCocina
+      user={user}
+      titulo=""
+      modo="logout"
+      onPress={() => {
+        logout();
+      }}
+    />
+
+      {/* Barra de título blanca (igual patrón que las otras pantallas) */}
+      <View style={styles.titleBar}>
         <Text style={styles.headerTitle}>Resumen Detallado</Text> 
-      </View> 
+      </View>
 
       {/* Cuerpo del Menú - Dos Botones en el Medio */}
       <View style={styles.content}>
@@ -84,29 +81,19 @@ router.push('/asistente/servicioAlimentario2')            }}
         </View>
       </View> 
 
-      {/* Navegación Inferior */} 
-      <View style={styles.bottomNav}> 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/')}> 
-          <Ionicons name="home-outline" size={22} color="#757575" /> 
-          <Text style={styles.navLabel}>Inicio</Text> 
-        </TouchableOpacity> 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/asistente/calculadora/calculadoraDosificadora')}> 
-          <Ionicons name="calculator-outline" size={22} color="#006080" /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Calculadora</Text> 
-        </TouchableOpacity> 
-      </View> 
+    <BottomNavCocina rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
+
     </View> 
   ); 
 }
 
 const styles = StyleSheet.create({ 
-  container: { flex: 1, backgroundColor: '#FFFFFF' }, 
+  container: { flex: 1, backgroundColor: '#F9F9F9' }, 
+
+  // Header (mismo estilo que UsuariosPendientes / Activar Cuenta)
   header: { 
     backgroundColor: '#C5D800', 
-    paddingTop: 20, 
     paddingHorizontal: 20, 
-    paddingBottom: 40, 
-    borderBottomRightRadius: 60 
   }, 
   headerTop: { 
     flexDirection: 'row', 
@@ -145,12 +132,20 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     elevation: 2 
   }, 
+
+  // Barra de título blanca
+  titleBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 25,
+  },
   headerTitle: { 
     fontSize: 26, 
     color: '#006080', 
-    fontWeight: '900', 
-    marginTop: 10 
+    fontWeight: '900' 
   }, 
+
   content: { 
     flex: 1, 
     backgroundColor: '#F8FAFC', // Un gris muy claro de fondo para que resalten los botones blancos
@@ -158,6 +153,7 @@ const styles = StyleSheet.create({
   menuContainer: {
     padding: 20,
     paddingTop: 30,
+    paddingBottom: 100,
     gap: 16, // Espaciado nativo entre tarjetas
   },
   menuButton: {
@@ -195,9 +191,10 @@ const styles = StyleSheet.create({
     color: '#64748B',
     lineHeight: 16,
   },
+
+  // Nav inferior (mismo estilo que las otras pantallas)
   bottomNav: { 
     flexDirection: 'row', 
-    height: 68, 
     backgroundColor: '#FFFFFF', 
     borderTopWidth: 1, 
     borderTopColor: '#E0E0E0', 

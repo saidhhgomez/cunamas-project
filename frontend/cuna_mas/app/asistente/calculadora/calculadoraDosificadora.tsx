@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'; 
-import { 
+import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity, SafeAreaView,
   useWindowDimensions, Modal, FlatList, TextInput, Keyboard, Platform,
-  KeyboardAvoidingView, ActivityIndicator, Alert
+  KeyboardAvoidingView, ActivityIndicator, Alert, StatusBar, Animated
 } from 'react-native'; 
 import { Ionicons } from '@expo/vector-icons'; 
 import { useRouter } from 'expo-router'; 
@@ -12,17 +12,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CalculadoraService } from '../../../service/calculadoraService'; 
 import { CentroAlimentarioService } from '../../../service/servicioAlimentario'; 
 import { useAuth } from '../../../context/AuthContext';
-import { analizarAlimentosService } from '../../../service/iaService'; // <-- Ajusta la ruta según donde guardes iaService.ts
+import { analizarAlimentosService } from '../../../service/iaService';
+import HeaderCocina from '../../components/sociaCocina/HeaderCocina';
+import BottomNavCocina from '../../components/sociaCocina/BottomNavCocina';
 
 const OPCIONES_CORRELATIVO = [
   { label: 'Media Mañana ', value: '1' },
   { label: 'Media Tarde', value: '2' },
 ];
 
-// Clave única para guardar la lista acumulada
 const STORAGE_KEY = '@CalculadoraUnificada:lista_alimentos'; 
 
-// Mapeo fijo de id de categoría -> clave de categoría etaria en el JSON final
 const MAPA_CATEGORIA_ETARIA: Record<string, string> = {
   '1': 'ninos6a9Meses',
   '2': 'ninos10a12Meses',
@@ -33,28 +33,42 @@ const MAPA_CATEGORIA_ETARIA: Record<string, string> = {
 
 const ESTRUCTURA_VACIA = { alimentos: [] as any[] };
 
+// Convierte el total en gramos/ml crudo a una unidad más legible (kg o L),
+// redondeando a máximo 2 decimales y sin decimales innecesarios (ej. 15.0 -> 15).
+const formatearTotalLegible = (valor: number, unidadOriginal?: string) => {
+  const unidadDestino = unidadOriginal === 'g/ml' 
+    ? (valor >= 1000 ? 'kg' : 'g') 
+    : (valor >= 1000 ? 'L' : 'ml');
+
+  const valorConvertido = valor >= 1000 ? valor / 1000 : valor;
+
+  // Quita decimales sobrantes: 15.00 -> "15", 14.8 -> "14.8"
+  const valorFormateado = Number(valorConvertido.toFixed(2))
+    .toLocaleString('es-PE', { maximumFractionDigits: 2 });
+
+  return `${valorFormateado} ${unidadDestino}`;
+};
+
 export default function CalculadoraUnificada() { 
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
   const { user } = useAuth(); 
+  const RUTA_ACTUAL = '/asistente/calculadora/calculadoraDosificadora';
 
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // --- ESTADOS DE DATOS API ---
   const [listaCategorias, setListaCategorias] = useState<any[]>([]);
   const [listaPreparaciones, setListaPreparaciones] = useState<any[]>([]);
   const [listaCentros, setListaCentros] = useState<any[]>([]);
 
-  // --- ESTADOS DE SELECCIÓN ---
   const [selectedCategoria, setSelectedCategoria] = useState<any>(null);
   const [selectedPreparacion, setSelectedPreparacion] = useState<any>(null);
   const [selectedSA, setSelectedSA] = useState<any>(null); 
   const [selectedCorrelativo, setSelectedCorrelativo] = useState<any>(null); 
   const [fecha, setFecha] = useState(new Date());
 
-  // --- ESTADOS DE FLUJO / UI ---
   const [mostrarDatePicker, setMostrarDatePicker] = useState(false);
   const [modalCategoriaVisible, setModalCategoriaVisible] = useState(false);
   const [modalPreparacionVisible, setModalPreparacionVisible] = useState(false);
@@ -81,6 +95,14 @@ export default function CalculadoraUnificada() {
     JSON.stringify(ESTRUCTURA_VACIA, null, 2)
   );
 
+  // 🚦 Evita recalcular en el servidor con los mismos valores: se habilita
+  // solo cuando algo relevante cambia (categoría, preparación, S.A.,
+  // correlativo, fecha o cualquier cantidad ingresada).
+  const [necesitaRecalcular, setNecesitaRecalcular] = useState(true);
+
+  // 🎬 Animación de aparición del bloque "NECESITAS"
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
   const formatearFechaParaAPI = (date: Date) => {
     const año = date.getFullYear();
     const mes = String(date.getMonth() + 1).padStart(2, '0'); 
@@ -88,7 +110,6 @@ export default function CalculadoraUnificada() {
     return `${año}-${mes}-${dia}`;
   };
 
-  // 💾 Crea el objeto con el formato exacto solicitado
   const crearEstructuraAlimento = (insumos: any) => {
     return {
       nombre: selectedPreparacion ? (selectedPreparacion.nombrePreparacion || "Sin nombre") : "",
@@ -107,36 +128,28 @@ export default function CalculadoraUnificada() {
     };
   };
 
-  // 🔥 Obtiene la lista actual, añade el nuevo cálculo y guarda todo dentro de { alimentos: [...] }
   const acumularYGuardarAlimento = async (nuevosInsumos: any) => {
     try {
-      // 1. Obtener lista previa de AsyncStorage
       const stringExistente = await AsyncStorage.getItem(STORAGE_KEY);
       let listaAlimentos: any[] = [];
 
       if (stringExistente) {
         try {
           const parsed = JSON.parse(stringExistente);
-          // Soporta formato viejo (array plano) y el nuevo ({ alimentos: [] })
           listaAlimentos = Array.isArray(parsed) ? parsed : (parsed.alimentos || []);
         } catch {
           listaAlimentos = [];
         }
       }
 
-      // 2. Crear nuevo objeto formateado
       const nuevoRegistro = crearEstructuraAlimento(nuevosInsumos);
-
-      // 3. Añadir a la lista acumulada
       listaAlimentos.push(nuevoRegistro);
 
-      // 4. Guardar objeto completo envuelto en "alimentos"
       const objetoFinal = { alimentos: listaAlimentos };
       const listaSerializada = JSON.stringify(objetoFinal, null, 2);
       await AsyncStorage.setItem(STORAGE_KEY, listaSerializada);
       setJsonActualFormateado(listaSerializada);
 
-      // Mostrar en consola el JSON actualizado
       imprimirJsonConsola(objetoFinal);
 
     } catch (e) {
@@ -144,7 +157,6 @@ export default function CalculadoraUnificada() {
     }
   };
 
-  // Borrar todo el historial acumulado (usado por el botón directo, con confirmación)
   const limpiarHistorialJSON = async () => {
     Alert.alert(
       "¿Borrar historial?",
@@ -170,8 +182,6 @@ export default function CalculadoraUnificada() {
     );
   };
 
-  // Vacía el historial silenciosamente, sin confirmación ni alertas
-  // (usado internamente tras un análisis de IA exitoso)
   const vaciarHistorialSilencioso = async () => {
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
@@ -182,7 +192,6 @@ export default function CalculadoraUnificada() {
     }
   };
 
-  // 🔄 CARGA INICIAL
   useEffect(() => {
     const inicializarCatalogos = async () => {
       try {
@@ -198,7 +207,6 @@ export default function CalculadoraUnificada() {
           })));
         }
 
-        // Cargar lo que ya esté acumulado en memoria
         const guardado = await AsyncStorage.getItem(STORAGE_KEY);
         if (guardado) {
           setJsonActualFormateado(guardado);
@@ -267,6 +275,14 @@ export default function CalculadoraUnificada() {
     setSelectedPreparacion(null); 
     setDatosInsumos(null);
     setModalCategoriaVisible(false);
+    setNecesitaRecalcular(true); // 🚦 cambió la categoría
+  };
+
+  const manejarCambioPreparacion = (item: any) => {
+    setSelectedPreparacion(item);
+    setModalPreparacionVisible(false);
+    setDatosInsumos(null);
+    setNecesitaRecalcular(true); // 🚦 cambió la preparación
   };
 
   const manejarCambioSA = async (item: any) => {
@@ -276,11 +292,23 @@ export default function CalculadoraUnificada() {
     setResultados(resetResultados);
     setDatosInsumos(null);
     setModalSAVisible(false);
+    setNecesitaRecalcular(true); // 🚦 cambió el S.A.
   };
 
   const manejarCambioCorrelativo = async (item: any) => {
     setSelectedCorrelativo(item);
     setModalCorrelativoVisible(false);
+    setDatosInsumos(null);
+    setNecesitaRecalcular(true); // 🚦 cambió el correlativo
+  };
+
+  const manejarCambioFecha = (event: any, d?: Date) => {
+    setMostrarDatePicker(false);
+    if (d) {
+      setFecha(d);
+      setDatosInsumos(null);
+      setNecesitaRecalcular(true); // 🚦 cambió la fecha
+    }
   };
 
   useEffect(() => {
@@ -299,9 +327,9 @@ export default function CalculadoraUnificada() {
       return item;
     });
     setResultados(nuevosResultados);
+    setNecesitaRecalcular(true); // 🚦 el usuario tocó una cantidad manualmente
   };
 
-  // 🔥 CALCULAR Y ADICIONAR AL JSON ACUMULADO
   const manejarCalcular = async () => {
     if (!selectedPreparacion) return;
     
@@ -317,10 +345,17 @@ export default function CalculadoraUnificada() {
       const data = await CalculadoraService.calcularDosificacionInsumos(payload, selectedPreparacion.idTipoPreparacion);
       if (data) {
         setDatosInsumos(data);
-        
-        // 💾 Guardamos y acumulamos el alimento con el formato exacto solicitado
+        setNecesitaRecalcular(false); // 🚦 ya calculamos con estos valores, bloqueamos el botón
         await acumularYGuardarAlimento(data);
         
+        // 🎬 Animación de aparición del resultado
+        fadeAnim.setValue(0);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }).start();
+
         setTimeout(() => {
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 120);
@@ -346,7 +381,6 @@ export default function CalculadoraUnificada() {
     setModalJsonVisible(true);
   };
 
-  // 🤖 Envía el JSON acumulado a la IA y navega a la pantalla de resultado
   const manejarEnviarAIA = async () => {
     try {
       const guardado = await AsyncStorage.getItem(STORAGE_KEY);
@@ -363,18 +397,14 @@ export default function CalculadoraUnificada() {
       const respuestaIA = await analizarAlimentosService(payload);
       console.log("Respuesta de IA:", respuestaIA);
 
-      // ✅ Éxito: vaciamos el historial acumulado silenciosamente
       await vaciarHistorialSilencioso();
 
-      // Navegamos a la pantalla de resultados
       router.push({
-        pathname: '/asistente/resumenIA', // Ajusta esta ruta según dónde guardes resultado-ia.tsx
+        pathname: '/asistente/resumenIA',
         params: { data: JSON.stringify(respuestaIA) },
       });
 
     } catch (err) {
-      // ❌ Error (timeout, red, backend, etc.): NO tocamos el JSON acumulado,
-      // así el usuario puede reintentar sin perder lo ya calculado.
       console.error('Error al analizar con IA:', err);
       Alert.alert('Error', 'No se pudo procesar el análisis con la IA. Inténtalo nuevamente.');
     } finally {
@@ -382,46 +412,47 @@ export default function CalculadoraUnificada() {
     }
   };
 
-  // 🚪 Limpia el historial acumulado y regresa a la pantalla anterior
   const manejarVolver = async () => {
     await vaciarHistorialSilencioso();
     router.back();
   };
 
-  // 🏠 Limpia el historial acumulado y va al inicio
   const manejarIrAInicio = async () => {
     await vaciarHistorialSilencioso();
     router.replace('/');
   };
 
   const listoParaCalcular = selectedSA && selectedCorrelativo && selectedPreparacion;
+  const botonCalcularDeshabilitado = !listoParaCalcular || loadingCalcular || !necesitaRecalcular;
 
   return ( 
     <SafeAreaView style={styles.container}> 
+      <StatusBar barStyle="light-content" backgroundColor="#C5D800" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flexible}>
         
-        {/* HEADER */}
-        <View style={[styles.header, { height: esPantallaGrande ? 120 : 100, paddingTop: insets.top }]}> 
-          <View style={styles.headerContent}> 
-            <View style={styles.userInfo}> 
-              <View style={styles.avatar}><Ionicons name="person" size={24} color="#C5D800" /></View> 
-              <View><Text style={styles.welcomeText}>Socia de Cocina</Text><Text style={styles.userName}>{user?.nombre || 'Usuario'}</Text></View> 
-            </View> 
-            <TouchableOpacity style={styles.backButton} onPress={manejarVolver} activeOpacity={0.8}> 
-              <Ionicons name="arrow-back" size={20} color="#FFFFFF" /><Text style={styles.backButtonText}>VOLVER</Text> 
-            </TouchableOpacity> 
-          </View> 
-        </View> 
+        {/* HEADER (componente compartido del rol Socia de Cocina, con botón VOLVER) */}
+        <HeaderCocina
+          user={user}
+          titulo=""
+          modo="volver"
+          onPress={() => {
+            router.back();
+          }}
+        />
+
+        {/* Barra de título blanca */}
+        <View style={styles.titleBar}>
+          <Text style={styles.headerTitle}>Calculadora Unificada</Text>
+        </View>
 
         <View style={styles.scrollWrapper}>
           <ScrollView 
             ref={scrollViewRef}
-            contentContainerStyle={styles.scrollContent} 
+            contentContainerStyle={[styles.scrollContent, esPantallaGrande && styles.scrollContentGrande]} 
             showsVerticalScrollIndicator={false} 
             keyboardShouldPersistTaps="handled"
           > 
             
-            {/* BLOQUE 1 */}
             <Text style={styles.sectionTitle}>1. Configuración de Alimento:</Text>
             <View style={styles.pickerRow}> 
               <TouchableOpacity style={styles.customPickerButton} onPress={() => setModalCategoriaVisible(true)}>
@@ -449,7 +480,6 @@ export default function CalculadoraUnificada() {
               </TouchableOpacity>
             </View>
 
-            {/* BLOQUE 2 */}
             <Text style={styles.sectionTitle}>2. Detalles de Control:</Text>
             <TouchableOpacity style={[styles.customPickerButton, { marginBottom: 15, flex: 1, width: '100%' }]} onPress={() => setMostrarDatePicker(true)}>
               <Text style={styles.pickerSelectedText}>Fecha: {fecha.toLocaleDateString()}</Text>
@@ -460,10 +490,7 @@ export default function CalculadoraUnificada() {
                 value={fecha} 
                 mode="date" 
                 display="default" 
-                onChange={(e, d) => { 
-                  setMostrarDatePicker(false); 
-                  if(d) setFecha(d); 
-                }} 
+                onChange={manejarCambioFecha} 
               />
             )}
 
@@ -482,7 +509,6 @@ export default function CalculadoraUnificada() {
               </TouchableOpacity>
             </View> 
 
-            {/* BLOQUE 3 */}
             <Text style={styles.sectionTitle}>3. Raciones por Grupo Etario:</Text> 
             {!listoParaCalcular ? (
               <View style={styles.indicacionContainer}>
@@ -499,20 +525,25 @@ export default function CalculadoraUnificada() {
               </View>
             )}
 
-            {/* BOTÓN CALCULAR */}
             <TouchableOpacity 
-              style={[styles.continueButton, (!listoParaCalcular || loadingCalcular) && styles.continueButtonDisabled]} 
+              style={[styles.continueButton, botonCalcularDeshabilitado && styles.continueButtonDisabled]} 
               onPress={manejarCalcular} 
-              disabled={!listoParaCalcular || loadingCalcular}
+              disabled={botonCalcularDeshabilitado}
             >
               {loadingCalcular ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Text style={styles.continueButtonText}>CALCULAR</Text>
+                <Text style={styles.continueButtonText}>
+                  {datosInsumos && !necesitaRecalcular ? "CALCULADO ✓" : "CALCULAR"}
+                </Text>
               )}
             </TouchableOpacity> 
+            {datosInsumos && !necesitaRecalcular && (
+              <Text style={styles.recalculoHint}>
+                Modifica una cantidad, la fecha, el S.A. o el correlativo para volver a calcular.
+              </Text>
+            )}
 
-            {/* BOTÓN ANALIZAR CON IA */}
             <TouchableOpacity 
               style={[styles.iaButton, loadingIA && styles.continueButtonDisabled]} 
               onPress={manejarEnviarAIA}
@@ -529,34 +560,65 @@ export default function CalculadoraUnificada() {
               )}
             </TouchableOpacity>
 
-            {/* VISTA DE INSUMOS */}
             {datosInsumos && (
-              <View style={styles.resultadosInsumosContainer}>
-                <Text style={styles.necesitasTitle}>NECESITAS:</Text> 
+              <Animated.View style={[styles.resultadosInsumosContainer, { opacity: fadeAnim }]}>
+
+                {/* Nombre del alimento calculado */}
+                {datosInsumos.alimento && (
+                  <Text style={styles.alimentoNombre}>{datosInsumos.alimento}</Text>
+                )}
+
+                {/* Total, convertido a kg o L para que sea más legible que gramos/ml crudos */}
+                {typeof datosInsumos.totalGramosO_Ml === 'number' && (
+                  <Text style={styles.totalGramosText}>
+                    Total: {formatearTotalLegible(datosInsumos.totalGramosO_Ml, datosInsumos.unidad)}
+                  </Text>
+                )}
+
+                <Text style={styles.necesitasTitle}>NECESITAS UNA DE ESTAS PRESENTACIONES:</Text> 
+                <Text style={styles.necesitasSubtitle}>
+                  Elige solo una opción de empaque, no se suman entre sí.
+                </Text>
+
                 <View style={styles.necesitasRow}> 
-                  <View style={styles.necesitasCard}><Text style={styles.necesitasValue}>{datosInsumos.empaquesSugeridos?.["Opción en empaques de 1 Kg/L"] || 0}</Text><Text style={styles.necesitasLabel}>BOLSAS 1 KG</Text></View> 
-                  <View style={styles.necesitasCard}><Text style={styles.necesitasValue}>{datosInsumos.empaquesSugeridos?.["Opción en empaques de 500 g/ml"] || 0}</Text><Text style={styles.necesitasLabel}>BOLSAS 1/2 KG</Text></View> 
-                  <View style={styles.necesitasCard}><Text style={styles.necesitasValue}>{datosInsumos.empaquesSugeridos?.["Opción en empaques de 250 g/ml"] || 0}</Text><Text style={styles.necesitasLabel}>BOLSAS 250 G</Text></View> 
-                </View> 
-              </View>
+                  <View style={styles.necesitasCard}>
+                    <Text style={styles.necesitasValue}>{datosInsumos.empaquesSugeridos?.["Opción en empaques de 1 Kg/L"] || 0}</Text>
+                    <Text style={styles.necesitasLabel}>BOLSAS{"\n"}1 KG</Text>
+                  </View>
+
+                  <View style={styles.orDivider}>
+                    <View style={styles.orCircle}><Text style={styles.orText}>O</Text></View>
+                  </View>
+
+                  <View style={styles.necesitasCard}>
+                    <Text style={styles.necesitasValue}>{datosInsumos.empaquesSugeridos?.["Opción en empaques de 500 g/ml"] || 0}</Text>
+                    <Text style={styles.necesitasLabel}>BOLSAS{"\n"}1/2 KG</Text>
+                  </View>
+
+                  <View style={styles.orDivider}>
+                    <View style={styles.orCircle}><Text style={styles.orText}>O</Text></View>
+                  </View>
+
+                  <View style={styles.necesitasCard}>
+                    <Text style={styles.necesitasValue}>{datosInsumos.empaquesSugeridos?.["Opción en empaques de 250 g/ml"] || 0}</Text>
+                    <Text style={styles.necesitasLabel}>BOLSAS{"\n"}250 G</Text>
+                  </View>
+                </View>
+              </Animated.View>
             )}
           </ScrollView> 
         </View>
 
-        {!tecladoVisible && (
-          <View style={styles.bottomBarContainer}>
-            <TouchableOpacity style={styles.homeButtonCircle} onPress={manejarIrAInicio}><Ionicons name="home" size={24} color="#00AEEF" /><Text style={styles.homeButtonText}>Inicio</Text></TouchableOpacity>
-          </View>
-        )}
+                <BottomNavCocina rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
+            
       </KeyboardAvoidingView>
 
       {/* --- MODALES --- */}
       <Modal visible={modalCategoriaVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Categoría</Text><FlatList data={listaCategorias} keyExtractor={(i) => String(i.idCategoriaAlimento)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioCategoria(item)}><Text style={styles.modalOptionText}>{item.nombreCategoriaAlimento}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalCategoriaVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
-      <Modal visible={modalPreparacionVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Preparación</Text><FlatList data={listaPreparaciones} keyExtractor={(i) => String(i.idTipoPreparacion)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => { setSelectedPreparacion(item); setModalPreparacionVisible(false); }}><Text style={styles.modalOptionText}>{item.nombrePreparacion}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalPreparacionVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
+      <Modal visible={modalPreparacionVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Preparación</Text><FlatList data={listaPreparaciones} keyExtractor={(i) => String(i.idTipoPreparacion)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioPreparacion(item)}><Text style={styles.modalOptionText}>{item.nombrePreparacion}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalPreparacionVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
       <Modal visible={modalSAVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Centro</Text><FlatList data={listaCentros} keyExtractor={(i) => String(i.value)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioSA(item)}><Text style={styles.modalOptionText}>{item.label}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalSAVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
-      <Modal visible={modalCorrelativoVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Correlativo</Text><FlatList data={OPCIONES_CORRELATIVO} keyExtractor={(i) => i.value} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => { setSelectedCorrelativo(item); setModalCorrelativoVisible(false); }}><Text style={styles.modalOptionText}>{item.label}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalCorrelativoVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
+      <Modal visible={modalCorrelativoVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Correlativo</Text><FlatList data={OPCIONES_CORRELATIVO} keyExtractor={(i) => i.value} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioCorrelativo(item)}><Text style={styles.modalOptionText}>{item.label}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalCorrelativoVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
       
-      {/* MODAL DEL VISOR JSON ACUMULADO */}
       <Modal visible={modalJsonVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxHeight: '80%', width: '95%' }]}>
@@ -578,7 +640,6 @@ export default function CalculadoraUnificada() {
         </View>
       </Modal>
 
-      {/* 🔄 OVERLAY DE CARGA - BLOQUEA TODA LA PANTALLA MIENTRAS LA IA PROCESA */}
       <Modal visible={loadingIA} transparent animationType="fade" statusBarTranslucent>
         <View style={styles.overlayContainer}>
           <View style={styles.overlayCard}>
@@ -613,15 +674,31 @@ const ResultItem = ({ label, value, color, onChangeText }: any) => (
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9F9F9' },
   flexible: { flex: 1 },
-  header: { backgroundColor: '#C5D800', borderBottomLeftRadius: 40, borderBottomRightRadius: 40, justifyContent: 'center' },
-  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 },
+
+  header: { 
+    backgroundColor: '#C5D800', 
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  userInfo: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   welcomeText: { color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' },
   userName: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
   backButton: { backgroundColor: '#FF0080', flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20 },
   backButtonText: { color: '#FFFFFF', fontWeight: 'bold', marginLeft: 5, fontSize: 12 },
+
+  titleBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 25,
+  },
+  headerTitle: { fontSize: 24, color: '#006080', fontWeight: '900' },
+
   scrollWrapper: { flex: 1 },
-  scrollContent: { padding: 20 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContentGrande: { maxWidth: 600, width: '100%', alignSelf: 'center' },
   pickerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   customPickerButton: { flex: 0.48, backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#C5BBE3', borderRadius: 12, height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
   pickerButtonDisabled: { backgroundColor: '#F0F0F0', borderColor: '#E2E8F0', opacity: 0.6 },
@@ -635,23 +712,64 @@ const styles = StyleSheet.create({
   resultInput: { width: '100%', height: '100%', textAlign: 'center', fontSize: 16, fontWeight: 'bold' },
   indicacionContainer: { backgroundColor: '#E2E8F0', padding: 20, borderRadius: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#CBD5E1' },
   indicacionText: { color: '#475569', textAlign: 'center', marginTop: 8, fontSize: 13, fontWeight: '500' },
-  continueButton: { backgroundColor: '#006080', paddingVertical: 18, borderRadius: 30, alignItems: 'center', marginBottom: 12, flexDirection: 'row', justifyContent: 'center' },
+  continueButton: { backgroundColor: '#006080', paddingVertical: 18, borderRadius: 30, alignItems: 'center', marginBottom: 8, flexDirection: 'row', justifyContent: 'center' },
   continueButtonDisabled: { backgroundColor: '#94A3B8' },
   continueButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
+  recalculoHint: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
   jsonButton: { backgroundColor: '#FF8000', paddingVertical: 14, borderRadius: 30, alignItems: 'center', marginBottom: 25, flexDirection: 'row', justifyContent: 'center' },
   iaButton: { backgroundColor: '#7F77DD', paddingVertical: 14, borderRadius: 30, alignItems: 'center', marginBottom: 25, flexDirection: 'row', justifyContent: 'center' },
   jsonButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
   jsonConsoleContainer: { flex: 1, backgroundColor: '#1E1E1E', borderRadius: 10, padding: 12, marginBottom: 15 },
   jsonText: { fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontSize: 12, color: '#A9FF1C' },
   resultadosInsumosContainer: { marginTop: 10, padding: 15, backgroundColor: '#FFF', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 35 },
-  necesitasTitle: { fontSize: 16, fontWeight: 'bold', color: '#006080', marginBottom: 12, textAlign: 'center' },
-  necesitasRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  necesitasCard: { flex: 0.31, backgroundColor: '#F1F5F9', paddingVertical: 15, borderRadius: 10, alignItems: 'center' },
+  alimentoNombre: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#1E293B',
+    textAlign: 'center',
+    marginBottom: 4,
+    textTransform: 'capitalize',
+  },
+  totalGramosText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  necesitasTitle: { fontSize: 16, fontWeight: 'bold', color: '#006080', marginBottom: 4, textAlign: 'center' },
+  necesitasSubtitle: { fontSize: 12, color: '#64748B', fontWeight: '600', textAlign: 'center', marginBottom: 16 },
+  necesitasRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  necesitasCard: { flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 15, borderRadius: 10, alignItems: 'center' },
   necesitasValue: { fontSize: 20, fontWeight: 'bold', color: '#4CAF50', marginBottom: 5 },
   necesitasLabel: { fontSize: 9, fontWeight: 'bold', color: '#64748B', textAlign: 'center' },
-  bottomBarContainer: { width: '100%', backgroundColor: '#F9F9F9', alignItems: 'center', paddingVertical: 15, paddingBottom: 30, borderTopWidth: 1, borderColor: '#E2E8F0' },
-  homeButtonCircle: { backgroundColor: '#FFFFFF', borderRadius: 25, borderWidth: 1, borderColor: '#E2E8F0', width: 130, height: 60, justifyContent: 'center', alignItems: 'center' },
-  homeButtonText: { color: '#00AEEF', fontWeight: '800', fontSize: 12 },
+  orDivider: { width: 26, alignItems: 'center', justifyContent: 'center' },
+  orCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#006080',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
+
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    width: '100%',
+  },
+  navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFFFFF', width: '90%', borderRadius: 20, padding: 20, maxHeight: '80%' },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#006080', marginBottom: 15, textAlign: 'center' },

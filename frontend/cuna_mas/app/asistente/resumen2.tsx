@@ -1,22 +1,25 @@
 import React, { useState, useEffect } from 'react'; 
 import { 
-  StyleSheet, View, Text, FlatList, TouchableOpacity,
-  useWindowDimensions, Modal, StatusBar, ScrollView, ActivityIndicator
+  StyleSheet, View, Text, TouchableOpacity,
+  useWindowDimensions, StatusBar, ScrollView, ActivityIndicator,
+  Platform, LayoutAnimation, UIManager
 } from 'react-native'; 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { useRouter, useLocalSearchParams } from 'expo-router'; 
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { Calculator, Home } from 'lucide-react-native';
 
 // Importamos tu servicio real de calculadora
 import { CalculadoraService } from '../../service/calculadoraService'; 
+import HeaderCocina from '../components/sociaCocina/HeaderCocina';
+import BottomNavCocina from '../components/sociaCocina/BottomNavCocina';
 
-// Ajustamos las opciones quitando "Vista General"
-const OPCIONES_CORRELATIVO = [
-  { label: 'Media Mañana', value: 1 },
-  { label: 'Media Tarde', value: 2 },
-];
+// Habilita LayoutAnimation en Android (en iOS ya viene activado por defecto)
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const MAPA_COLORES: Record<number, string> = {
   1: "#4CAF50", // 6-8 m
@@ -30,23 +33,31 @@ export default function Resumen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
-  const { user, logout } = useAuth(); 
+  const insets = useSafeAreaInsets();
+  const { user } = useAuth(); 
   
   const params = useLocalSearchParams();
   const idServicioAlimentario = params.idCentroAlimentario || params.idServicioAlimentario || params.idModulo;
+  const RUTA_ACTUAL = '/asistente/resumen2';
 
-  // Estados de Filtros
+  // Estados de Filtros (ya no hay selector de turno: se cargan ambos)
   const [fecha, setFecha] = useState(new Date());
   const [mostrarDatePicker, setMostrarDatePicker] = useState(false);
-  
-  // Iniciamos en null para obligar a que se elija un turno real primero
-  const [selectedCorrelativo, setSelectedCorrelativo] = useState<any>(null); 
-  const [modalCorrelativoVisible, setModalCorrelativoVisible] = useState(false);
 
-  // Estados de carga y datos de la API
+  // Estados de carga y datos de la API, separados por turno
   const [loading, setLoading] = useState<boolean>(false);
-  const [datosLocales, setDatosLocales] = useState<any[]>([]);
+  const [datosManana, setDatosManana] = useState<any[]>([]);
+  const [datosTarde, setDatosTarde] = useState<any[]>([]);
   const [nombreServicio, setNombreServicio] = useState<string>('');
+
+  // 🔽 Estados para expandir/contraer cada sección de turno (abiertas por defecto)
+  const [manianaExpandida, setManianaExpandida] = useState(true);
+  const [tardeExpandida, setTardeExpandida] = useState(true);
+
+  // 🔽 Estado para expandir/contraer cada TARJETA DE LOCAL individualmente.
+  // Usamos un Set con una clave única "turno-idLocal" ya que puede haber
+  // varios locales por turno y locales con el mismo idLocal en ambos turnos.
+  const [localesExpandidos, setLocalesExpandidos] = useState<Set<string>>(new Set());
 
   // Helper para formatear fecha
   const formatearFechaParaAPI = (date: Date) => {
@@ -56,135 +67,108 @@ export default function Resumen() {
     return `${año}-${mes}-${dia}`;
   };
 
-  // Efecto protegido
+  // Carga ambos turnos en paralelo apenas hay fecha + servicio, sin
+  // necesidad de que el usuario elija un turno primero.
   useEffect(() => {
     const cargarResumen = async () => {
-      // Si no hay ID de servicio o aún no se ha seleccionado un turno (1 o 2), NO llamamos a la API
-      if (!idServicioAlimentario || selectedCorrelativo === null) {
-        return; 
-      }
+      if (!idServicioAlimentario) return;
       
       try {
         setLoading(true);
         const fechaYmd = formatearFechaParaAPI(fecha);
-        const correlativoNum = selectedCorrelativo.value; // Será 1 o 2
 
-        const data = await CalculadoraService.getResumenServicio(
-          Number(idServicioAlimentario), 
-          fechaYmd, 
-          correlativoNum
-        );
+        const [dataManana, dataTarde] = await Promise.all([
+          CalculadoraService.getResumenServicio(Number(idServicioAlimentario), fechaYmd, 1),
+          CalculadoraService.getResumenServicio(Number(idServicioAlimentario), fechaYmd, 2),
+        ]);
 
-        if (data) {
-          setDatosLocales(data.locales || []);
-          setNombreServicio(data.servicioAlimentario || '');
-        } else {
-          setDatosLocales([]);
-          setNombreServicio('');
-        }
+        const localesManana = dataManana?.locales || [];
+        const localesTarde = dataTarde?.locales || [];
+
+        setDatosManana(localesManana);
+        setDatosTarde(localesTarde);
+        setNombreServicio(dataManana?.servicioAlimentario || dataTarde?.servicioAlimentario || '');
+
+        // Al cargar datos nuevos (nueva fecha), todos los locales arrancan expandidos
+        const clavesIniciales = new Set<string>([
+          ...localesManana.map((l: any) => `manana-${l.idLocal}`),
+          ...localesTarde.map((l: any) => `tarde-${l.idLocal}`),
+        ]);
+        setLocalesExpandidos(clavesIniciales);
 
       } catch (err) {
         console.error("Error al recuperar el resumen de dosificación:", err);
-        setDatosLocales([]);
+        setDatosManana([]);
+        setDatosTarde([]);
       } finally { 
         setLoading(false); 
       }
     };
     
     cargarResumen();
-  }, [selectedCorrelativo, fecha, idServicioAlimentario]);
+  }, [fecha, idServicioAlimentario]);
 
-  return ( 
-    <View style={styles.container}> 
-      <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
-      
-      {/* Header */}
-      <View style={styles.header}> 
-        <View style={styles.headerTop}> 
-          <View style={styles.adminInfo}> 
-            <View style={styles.adminAvatarCircle}>
-              <Ionicons name="person" size={22} color="#006080" />
-            </View>
-            <View> 
-              <Text style={styles.roleLabel}>Socia de Cocina</Text> 
-              <Text style={styles.adminWelcome}>Hola, {user?.nombre || 'SOCIA'}</Text> 
-            </View> 
-          </View> 
-          <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}> 
-            <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" /> 
-          </TouchableOpacity> 
-        </View> 
-        <Text style={styles.headerTitle}>{nombreServicio || 'Totales de Dosificación'}</Text> 
-      </View> 
+  // 🔽 Alterna la visibilidad de una sección de turno con animación suave
+  const alternarSeccion = (turno: 'manana' | 'tarde') => {
+    LayoutAnimation.configureNext(LayoutAnimation.create(
+      220,
+      LayoutAnimation.Types.easeInEaseOut,
+      LayoutAnimation.Properties.opacity
+    ));
+    if (turno === 'manana') {
+      setManianaExpandida(prev => !prev);
+    } else {
+      setTardeExpandida(prev => !prev);
+    }
+  };
 
-      {/* Selectores Superiores de Filtro */}
-      <View style={styles.pickerContainerOuter}>
-        <View style={[styles.pickerContainer, esPantallaGrande && styles.pickerContainerGrande]}>
-          <View style={styles.pickerRow}>
+  // 🔽 Alterna la visibilidad de una tarjeta de local individual
+  const alternarLocal = (clave: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.create(
+      200,
+      LayoutAnimation.Types.easeInEaseOut,
+      LayoutAnimation.Properties.opacity
+    ));
+    setLocalesExpandidos(prev => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(clave)) {
+        nuevo.delete(clave);
+      } else {
+        nuevo.add(clave);
+      }
+      return nuevo;
+    });
+  };
+
+  // Renderiza las tarjetas de locales/módulos de un turno (se reutiliza para mañana y tarde)
+  const renderLocales = (datosLocales: any[], turno: 'manana' | 'tarde') => (
+    <View>
+      {datosLocales.map((local) => {
+        const claveLocal = `${turno}-${local.idLocal}`;
+        const localExpandido = localesExpandidos.has(claveLocal);
+
+        return (
+          <View key={claveLocal} style={styles.localCard}>
             
-            {/* Selector de Fecha */}
-            <TouchableOpacity style={styles.customPickerButton} onPress={() => setMostrarDatePicker(true)}>
-              <Text style={styles.pickerSelectedText}>{fecha.toLocaleDateString()}</Text>
-              <Ionicons name="calendar-outline" size={18} color="#006080" />
-            </TouchableOpacity>
-            {mostrarDatePicker && (
-              <DateTimePicker 
-                value={fecha} 
-                mode="date" 
-                display="default" 
-                onChange={(e, d) => { setMostrarDatePicker(false); if(d) setFecha(d); }} 
-              />
-            )}
-
-            {/* Selector de Turno */}
-            <TouchableOpacity style={styles.customPickerButton} onPress={() => setModalCorrelativoVisible(true)}>
-              <Text 
-                style={[
-                  styles.pickerButtonText, 
-                  selectedCorrelativo ? styles.pickerSelectedText : styles.pickerPlaceholderText
-                ]} 
-                numberOfLines={1}
-              >
-                {selectedCorrelativo ? selectedCorrelativo.label : "Seleccionar Turno"}
-              </Text>
-              <Ionicons name="chevron-down" size={18} color="#006080" />
-            </TouchableOpacity>
-
-          </View>
-        </View>
-      </View>
-
-      {/* Contenido Dinámico */}
-      {selectedCorrelativo === null ? (
-        // Estado Inicial: Invitar a elegir turno
-        <View style={styles.centerContainer}>
-          <Ionicons name="options-outline" size={64} color="#006080" style={{ marginBottom: 10 }} />
-          <Text style={styles.instructionTitle}>¡Casi listo!</Text>
-          <Text style={styles.noDataText}>
-            Por favor, selecciona un turno arriba (Media Mañana o Media Tarde) para cargar los datos de dosificación.
-          </Text>
-        </View>
-      ) : loading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#006080" />
-          <Text style={styles.loadingText}>Cargando resumen de asistencia...</Text>
-        </View>
-      ) : datosLocales.length > 0 ? (
-        <ScrollView 
-          style={styles.content} 
-          contentContainerStyle={[styles.scrollContent, esPantallaGrande && styles.pickerContainerGrande]}
-          showsVerticalScrollIndicator={false}
-        >
-          {datosLocales.map((local) => (
-            <View key={local.idLocal} style={styles.localCard}>
-              
-              {/* Nombre del Local */}
-              <View style={styles.localHeader}>
+            {/* Nombre del Local (ahora desplegable) */}
+            <TouchableOpacity 
+              style={styles.localHeader} 
+              activeOpacity={0.75}
+              onPress={() => alternarLocal(claveLocal)}
+            >
+              <View style={styles.localHeaderIzquierda}>
                 <Ionicons name="business" size={20} color="#FFFFFF" />
-                <Text style={styles.localName}>{local.nombreLocal}</Text>
+                <Text style={styles.localName} numberOfLines={1}>{local.nombreLocal}</Text>
               </View>
+              <Ionicons 
+                name={localExpandido ? "chevron-up" : "chevron-down"} 
+                size={18} 
+                color="#FFFFFF" 
+              />
+            </TouchableOpacity>
 
-              {/* Módulos de este Local */}
+            {/* Módulos de este Local */}
+            {localExpandido && (
               <View style={styles.localBody}>
                 {local.modulos?.map((modulo: any) => (
                   <View key={modulo.idModulo} style={styles.moduloContainer}>
@@ -218,68 +202,140 @@ export default function Resumen() {
                   </View>
                 ))}
               </View>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
 
-            </View>
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={styles.centerContainer}>
-          <Ionicons name="information-circle-outline" size={48} color="#64748B" />
-          <Text style={styles.noDataText}>No se encontraron datos de asistencia para los filtros seleccionados.</Text>
-        </View>
-      )}
+  const tieneDatos = datosManana.length > 0 || datosTarde.length > 0;
 
-      {/* Barra de Navegación Inferior */} 
-      <View style={styles.bottomNav}> 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.replace('/')}> 
-          <Home color="#757575" size={24} strokeWidth={2} /> 
-          <Text style={styles.navLabel}>Inicio</Text> 
-        </TouchableOpacity> 
+  return ( 
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
+      <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
+      
+      {/* Header (mismo estilo que las otras pantallas) */}
+      <HeaderCocina
+        user={user}
+        titulo=""
+        modo="volver"
+        onPress={() => router.back()}
+      />   
 
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6}> 
-          <Calculator color="#006080" size={24} strokeWidth={2.5} /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Calculadora</Text> 
-        </TouchableOpacity> 
+      {/* Barra de título blanca */}
+      <View style={styles.titleBar}>
+        <Text style={styles.headerTitle}>{params.nombreCentro || 'Totales de Dosificación'}</Text> 
       </View>
 
-      {/* Modal de Correlativo */}
-      <Modal visible={modalCorrelativoVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Seleccione Turno</Text>
-            <FlatList 
-              data={OPCIONES_CORRELATIVO} 
-              keyExtractor={(i) => String(i.value)} 
-              renderItem={({item}) => (
-                <TouchableOpacity 
-                  style={styles.modalOption} 
-                  onPress={() => { setSelectedCorrelativo(item); setModalCorrelativoVisible(false); }}
-                >
-                  <Text style={styles.modalOptionText}>{item.label}</Text>
-                </TouchableOpacity>
-              )} 
+      {/* Selector de Fecha (el de turno ya no existe: se cargan ambos siempre) */}
+      <View style={styles.pickerContainerOuter}>
+        <View style={[styles.pickerContainer, esPantallaGrande && styles.pickerContainerGrande]}>
+          <TouchableOpacity style={styles.customPickerButtonFull} onPress={() => setMostrarDatePicker(true)}>
+            <Text style={styles.pickerSelectedText}>{fecha.toLocaleDateString()}</Text>
+            <Ionicons name="calendar-outline" size={18} color="#006080" />
+          </TouchableOpacity>
+          {mostrarDatePicker && (
+            <DateTimePicker 
+              value={fecha} 
+              mode="date" 
+              display="default" 
+              onChange={(e, d) => { setMostrarDatePicker(false); if(d) setFecha(d); }} 
             />
-            <TouchableOpacity style={styles.closeModalButton} onPress={() => setModalCorrelativoVisible(false)}>
-              <Text style={styles.closeModalButtonText}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
-      </Modal>
+      </View>
+
+      {/* Contenido Dinámico */}
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#006080" />
+          <Text style={styles.loadingText}>Cargando resumen de asistencia...</Text>
+        </View>
+      ) : !tieneDatos ? (
+        <View style={styles.centerContainer}>
+          <Ionicons name="information-circle-outline" size={48} color="#64748B" />
+          <Text style={styles.noDataText}>No se encontraron datos de asistencia para la fecha seleccionada.</Text>
+        </View>
+      ) : (
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={[
+            styles.scrollContent, 
+            esPantallaGrande && styles.pickerContainerGrande,
+            { paddingBottom: 100 + insets.bottom }
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Sección Turno Mañana (desplegable) */}
+          <View style={styles.seccionTurno}>
+            <TouchableOpacity 
+              style={styles.seccionHeader} 
+              activeOpacity={0.7}
+              onPress={() => alternarSeccion('manana')}
+            >
+              <View style={styles.seccionHeaderIzquierda}>
+                <Ionicons name="sunny-outline" size={20} color="#006080" style={{marginRight: 6}} />
+                <Text style={styles.seccionTitle}>Media Mañana</Text>
+              </View>
+              <Ionicons 
+                name={manianaExpandida ? "chevron-up" : "chevron-down"} 
+                size={20} 
+                color="#006080" 
+              />
+            </TouchableOpacity>
+            {manianaExpandida && (
+              datosManana.length > 0 ? (
+                renderLocales(datosManana, 'manana')
+              ) : (
+                <Text style={styles.seccionVaciaText}>Sin registros de asistencia para este turno.</Text>
+              )
+            )}
+          </View>
+
+          {/* Sección Turno Tarde (desplegable) */}
+          <View style={[styles.seccionTurno, { marginTop: 15 }]}>
+            <TouchableOpacity 
+              style={styles.seccionHeader} 
+              activeOpacity={0.7}
+              onPress={() => alternarSeccion('tarde')}
+            >
+              <View style={styles.seccionHeaderIzquierda}>
+                <Ionicons name="partly-sunny-outline" size={20} color="#006080" style={{marginRight: 6}} />
+                <Text style={styles.seccionTitle}>Media Tarde</Text>
+              </View>
+              <Ionicons 
+                name={tardeExpandida ? "chevron-up" : "chevron-down"} 
+                size={20} 
+                color="#006080" 
+              />
+            </TouchableOpacity>
+            {tardeExpandida && (
+              datosTarde.length > 0 ? (
+                renderLocales(datosTarde, 'tarde')
+              ) : (
+                <Text style={styles.seccionVaciaText}>Sin registros de asistencia para este turno.</Text>
+              )
+            )}
+          </View>
+        </ScrollView>
+      )}
+
+      <BottomNavCocina rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
 
     </View> 
   ); 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' }, 
+  container: { flex: 1, backgroundColor: '#F9F9F9' }, 
+
+  // Header (mismo estilo que las otras pantallas)
   header: { 
     backgroundColor: '#C5D800', 
-    paddingTop: 45, 
     paddingHorizontal: 20, 
-    paddingBottom: 35, 
-    borderBottomRightRadius: 50 
   }, 
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }, 
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, 
   adminInfo: { flexDirection: 'row', alignItems: 'center' }, 
   adminAvatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 10 }, 
   roleLabel: { fontSize: 10, color: '#006080', fontWeight: 'bold' }, 
@@ -289,14 +345,21 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: 19, 
     justifyContent: 'center', alignItems: 'center', elevation: 2 
   }, 
-  headerTitle: { fontSize: 20, color: '#006080', fontWeight: '900', marginTop: 5 }, 
+
+  // Barra de título blanca
+  titleBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 20,
+  },
+  headerTitle: { fontSize: 20, color: '#006080', fontWeight: '900' }, 
+
   content: { flex: 1 }, 
   pickerContainerOuter: { backgroundColor: '#FFFFFF', paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  pickerContainer: { paddingHorizontal: 20, paddingTop: 15 },
+  pickerContainer: { paddingHorizontal: 20 },
   pickerContainerGrande: { maxWidth: 800, alignSelf: 'center', width: '100%' },
-  pickerRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  customPickerButton: { 
-    flex: 0.48, 
+  customPickerButtonFull: { 
     backgroundColor: '#FFFFFF', 
     borderWidth: 2, 
     borderColor: '#E2E8F0', 
@@ -308,11 +371,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, 
     elevation: 1 
   },
-  pickerButtonText: { fontSize: 13, color: '#757575', fontWeight: '600', flex: 1 },
   pickerSelectedText: { color: '#333333', fontWeight: '800', fontSize: 13, flex: 1 },
-  pickerPlaceholderText: { color: '#FF007A', fontWeight: 'bold', fontSize: 13, flex: 1 }, 
   
-  scrollContent: { padding: 20, paddingBottom: 100 },
+  scrollContent: { padding: 20 },
+
+  seccionTurno: { backgroundColor: '#F8FAFC', borderRadius: 20, padding: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  seccionHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    marginBottom: 4, 
+    marginLeft: 4,
+    paddingVertical: 8,
+  },
+  seccionHeaderIzquierda: { flexDirection: 'row', alignItems: 'center' },
+  seccionTitle: { fontSize: 16, fontWeight: '800', color: '#006080' },
+  seccionVaciaText: { fontSize: 13, color: '#94A3B8', fontWeight: '500', paddingHorizontal: 8, paddingVertical: 10 },
+
   localCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -328,13 +403,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#006080',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
+  },
+  localHeaderIzquierda: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
+    flex: 1,
+    marginRight: 10,
   },
   localName: {
     fontSize: 16,
     fontWeight: '800',
     color: '#FFFFFF',
+    flexShrink: 1,
   },
   localBody: {
     padding: 16,
@@ -409,20 +492,16 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, color: '#006080', fontWeight: '600' },
   noDataText: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22 },
 
+  // Nav inferior (mismo estilo que las otras pantallas)
   bottomNav: { 
-    flexDirection: 'row', height: 72, backgroundColor: '#FFFFFF', 
-    borderTopWidth: 1, borderTopColor: '#E2E8F0', 
-    position: 'absolute', bottom: 0, width: '100%',
-    paddingBottom: 4, elevation: 8, shadowColor: '#000', 
-    shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.05, shadowRadius: 3,
+    flexDirection: 'row', 
+    backgroundColor: '#FFFFFF', 
+    borderTopWidth: 1, 
+    borderTopColor: '#E0E0E0', 
+    position: 'absolute', 
+    bottom: 0, 
+    width: '100%' 
   }, 
   navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
   navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFFFFF', width: '90%', borderRadius: 24, padding: 20, maxHeight: '50%' },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#006080', marginBottom: 15, textAlign: 'center' },
-  modalOption: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  modalOptionText: { fontSize: 16, color: '#333333', fontWeight: '600', textAlign: 'center' },
-  closeModalButton: { marginTop: 15, backgroundColor: '#FF007A', paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-  closeModalButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 }
 });

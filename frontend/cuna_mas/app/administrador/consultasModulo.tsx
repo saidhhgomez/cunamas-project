@@ -16,12 +16,14 @@ import {
   Platform
 } from 'react-native'; 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { useAuth } from '../../context/AuthContext';
-import { Calculator, Home } from 'lucide-react-native';
 import { ModuloService } from '../../service/moduloService'; 
+import BottomNavAdmin from '../components/admin/BottomNavAdmin';
+import AdminHeader from '../components/admin/HeaderAdmin';
+import ModalMensaje, { TipoModalMensaje } from '../components/ModalMensaje';
 
 interface ModuloItem {
   idModulo: number;
@@ -33,7 +35,7 @@ export default function ConsultaModulos() {
   const esPantallaGrande = width > 600;
   const router = useRouter();
   const insets = useSafeAreaInsets(); 
-  const { user } = useAuth(); // Se removió logout de aquí ya que no se usa
+  const { user } = useAuth();
   const { idLocal } = useLocalSearchParams();
 
   // Estados de la lista de módulos
@@ -42,12 +44,26 @@ export default function ConsultaModulos() {
   const [isMoreLoading, setIsMoreLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [isAllLoaded, setIsAllLoaded] = useState(false);
-  const TAMANO_PAGINA = 10; 
-  
+  const TAMANO_PAGINA = 10;
+  const RUTA_ACTUAL = '/administrador/consultasModulo';
+
   // Estados para el Modal de Agregar Módulo
   const [modalVisible, setModalVisible] = useState(false);
   const [nombreModuloNuevo, setNombreModuloNuevo] = useState('');
   const [isSavingModulo, setIsSavingModulo] = useState(false);
+
+  // Estados del modal de resultado (reemplaza a Alert.alert)
+  const [modalResultadoVisible, setModalResultadoVisible] = useState(false);
+  const [modalTipo, setModalTipo] = useState<TipoModalMensaje>('error');
+  const [modalTitulo, setModalTitulo] = useState('');
+  const [modalMensaje, setModalMensaje] = useState('');
+
+  const mostrarModalResultado = (tipo: TipoModalMensaje, titulo: string, mensaje: string) => {
+    setModalTipo(tipo);
+    setModalTitulo(titulo);
+    setModalMensaje(mensaje);
+    setModalResultadoVisible(true);
+  };
 
   const isFocused = useIsFocused();
 
@@ -78,7 +94,7 @@ export default function ConsultaModulos() {
       }
     } catch (error) {
       console.error("Error cargando módulos iniciales:", error);
-      Alert.alert("Error", "No se pudo obtener la lista de módulos.");
+      mostrarModalResultado('error', 'Error', 'No se pudo obtener la lista de módulos.');
     } finally {
       setIsLoading(false);
     }
@@ -118,7 +134,7 @@ export default function ConsultaModulos() {
   // Función para registrar el módulo en la API (Body: idLocal, nombreModulo)
   const handleGuardarModulo = async () => {
     if (!nombreModuloNuevo.trim()) {
-      Alert.alert("Campo Requerido", "Por favor, ingresa el nombre del módulo.");
+      mostrarModalResultado('error', 'Campo Requerido', 'Por favor, ingresa el nombre del módulo.');
       return;
     }
 
@@ -132,16 +148,16 @@ export default function ConsultaModulos() {
         idLocal: Number(idLocal)
       });
 
-      // Si todo sale bien, cerramos el modal, limpiamos y refrescamos de inmediato
+      // Si todo sale bien, cerramos el modal de creación, limpiamos y refrescamos de inmediato
       setModalVisible(false);
       setNombreModuloNuevo('');
-      Alert.alert("Módulo Registrado", "El módulo ha sido creado exitosamente.");
+      mostrarModalResultado('exito', 'Módulo Registrado', 'El módulo ha sido creado exitosamente.');
       reiniciarYObtenerModulos(); 
 
     } catch (error: any) {
       console.error("Error al registrar módulo:", error);
       const msg = error.response?.data?.mensaje || "No se pudo establecer conexión para guardar el módulo.";
-      Alert.alert("Error de guardado", msg);
+      mostrarModalResultado('error', 'Error de guardado', msg);
     } finally {
       setIsSavingModulo(false); // Detiene la animación de carga
     }
@@ -153,7 +169,9 @@ export default function ConsultaModulos() {
       activeOpacity={0.7}
       onPress={() => router.push({
         pathname: '/administrador/resumen', 
-        params: { idModulo: item.idModulo, nombreModulo: item.nombreModulo }
+        params: { 
+          idModulo: item.idModulo, 
+          nombreModulo: item.nombreModulo }
       })} 
     > 
       <View style={styles.avatarPlaceholder}>
@@ -162,10 +180,6 @@ export default function ConsultaModulos() {
 
       <View style={styles.userInfo}> 
         <Text style={styles.userName} numberOfLines={1}>{item.nombreModulo}</Text> 
-        <View style={styles.dniRow}> 
-          <Ionicons name="layers-outline" size={14} color="#777" /> 
-          <Text style={styles.userDni} numberOfLines={1}> ID Módulo: {item.idModulo}</Text> 
-        </View> 
       </View> 
 
       <Ionicons name="chevron-forward" size={20} color="#006080" /> 
@@ -182,30 +196,20 @@ export default function ConsultaModulos() {
   };
 
   return ( 
-    /* MODIFICADO: Se quitó paddingBottom de este contenedor principal */
     <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
-      {/* Header */} 
-      <View style={styles.header}> 
-        <View style={styles.headerTop}> 
-          <View style={styles.adminInfo}> 
-            <Image 
-              source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} 
-              style={styles.adminAvatar} 
-            /> 
-            <View> 
-              <Text style={styles.roleLabel}>Administrador</Text> 
-              <Text style={styles.adminWelcome}>{user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
-            </View> 
-          </View> 
-          {/* MODIFICADO: Cambiado el botón de salir por un botón de volver atrás */}
-          <TouchableOpacity style={styles.logoutButton} onPress={() => router.back()} activeOpacity={0.8}> 
-            <Ionicons name="arrow-back" size={20} color="#FFFFFF" /> 
-          </TouchableOpacity> 
-        </View> 
+
+      <AdminHeader
+        user={user}
+        titulo="Módulos"
+        modo="volver"
+        onPress={() =>  router.back()}
+      />     
+
+      <View style={styles.titleBar}>
         <Text style={styles.headerTitle}>Módulos</Text> 
-      </View> 
+      </View>
 
       {/* Cuerpo de la Lista */}
       <View style={styles.content}> 
@@ -234,13 +238,12 @@ export default function ConsultaModulos() {
       </View> 
 
       {/* Burbuja Flotante de Agregar (Abre el Modal nativo) */}
-      {/* MODIFICADO: Se calcula la posición sumando el insets.bottom directo en línea */}
       <TouchableOpacity 
         style={[styles.fabButton, { bottom: 88 + insets.bottom }]} 
         activeOpacity={0.85}
         onPress={() => setModalVisible(true)}
       >
-        <Ionicons name="add" size={28} color="#006080" />
+        <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
 
       {/* MODAL NATIVO INTERACTIVO DE AGREGAR MÓDULO */}
@@ -304,26 +307,16 @@ export default function ConsultaModulos() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Navegación Inferior (3 Botones) */} 
-      <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}> 
-        {/* Botón 1: Inicio */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
-          <Ionicons name="home-outline" size={22} color="#757575" /> 
-          <Text style={styles.navLabel}>Inicio</Text> 
-        </TouchableOpacity> 
+      {/* Modal de resultado (éxito / error), reemplaza los Alert.alert nativos */}
+      <ModalMensaje
+        visible={modalResultadoVisible}
+        tipo={modalTipo}
+        titulo={modalTitulo}
+        mensaje={modalMensaje}
+        onCerrar={() => setModalResultadoVisible(false)}
+      />
 
-        {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
-          <Ionicons name="people" size={22} color="#006080" /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
-        </TouchableOpacity> 
-
-        {/* Botón 3: Calculadora / Consultas */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
-          <Ionicons name="calculator-outline" size={22} color="#757575" /> 
-          <Text style={styles.navLabel}>Calculadora</Text> 
-        </TouchableOpacity> 
-      </View> 
+      <BottomNavAdmin rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
     </View> 
   ); 
 }
@@ -332,11 +325,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' }, 
   header: { 
     backgroundColor: '#C5D800', 
-    paddingTop: 20, 
     paddingHorizontal: 20, 
-    paddingBottom: 40, 
-    borderBottomRightRadius: 60 
   }, 
+
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, 
   adminInfo: { flexDirection: 'row', alignItems: 'center' }, 
   adminAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#FFFFFF', marginRight: 10 }, 
@@ -351,7 +342,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     elevation: 2 
   }, 
-  headerTitle: { fontSize: 26, color: '#006080', fontWeight: '900', marginTop: 10 }, 
+  headerTitle: { 
+    fontSize: 26, 
+    color: '#006080', 
+    fontWeight: '900' 
+  },  
   content: { flex: 1 }, 
   listContent: { paddingHorizontal: 20, paddingBottom: 120, paddingTop: 15 }, 
   listContentGrande: { maxWidth: 800, alignSelf: 'center', width: '100%' },
@@ -368,16 +363,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05, 
     shadowRadius: 4 
   }, 
+  titleBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 25,
+  },
   avatarPlaceholder: { 
     width: 52, height: 52, borderRadius: 26, 
     marginRight: 15, backgroundColor: '#006080', 
     justifyContent: 'center', alignItems: 'center' 
   },
   avatarText: { color: '#FFF', fontSize: 22, fontWeight: 'bold' },
-  userInfo: { flex: 1, paddingRight: 10 }, 
-  userName: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 4 }, 
-  dniRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 }, 
-  userDni: { fontSize: 13, color: '#64748B' }, 
+  userInfo: { flex: 1, paddingRight: 10, justifyContent: 'center' }, 
+  userName: { fontSize: 16, fontWeight: 'bold', color: '#333' }, 
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
   emptyText: { color: '#999', marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20 },
@@ -385,7 +384,7 @@ const styles = StyleSheet.create({
   fabButton: {
     position: 'absolute',
     right: 20,
-    backgroundColor: '#C5D800',
+    backgroundColor: '#006080',
     width: 56,
     height: 56,
     borderRadius: 28,

@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
@@ -19,6 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LocalService } from '../../service/centroAtencionService'; 
 import { DistritoService, DistritoResponse } from '../../service/direccion'; 
+import ModalMensaje, { TipoModalMensaje } from '../components/ModalMensaje';
 
 export default function AgregarLocal() {
   const router = useRouter();
@@ -45,6 +45,29 @@ export default function AgregarLocal() {
   const [scrollPrincipalHabilitado, setScrollPrincipalHabilitado] = useState(true);
   const [tecladoVisible, setTecladoVisible] = useState(false);
   const [buscadorY, setBuscadorY] = useState(0);
+
+  // Estados del modal de resultado (reemplaza a Alert.alert)
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTipo, setModalTipo] = useState<TipoModalMensaje>('error');
+  const [modalTitulo, setModalTitulo] = useState('');
+  const [modalMensaje, setModalMensaje] = useState('');
+  // Si es true, al cerrar el modal navegamos hacia atrás (caso de éxito)
+  const [cerrarYVolver, setCerrarYVolver] = useState(false);
+
+  const mostrarModal = (tipo: TipoModalMensaje, titulo: string, mensaje: string, volverAlCerrar = false) => {
+    setModalTipo(tipo);
+    setModalTitulo(titulo);
+    setModalMensaje(mensaje);
+    setCerrarYVolver(volverAlCerrar);
+    setModalVisible(true);
+  };
+
+  const cerrarModal = () => {
+    setModalVisible(false);
+    if (cerrarYVolver) {
+      router.back();
+    }
+  };
 
   // Listener para saber si el teclado está activo
   useEffect(() => {
@@ -96,17 +119,18 @@ export default function AgregarLocal() {
   const handleGuardarLocal = async () => {
     // Validaciones de formulario esenciales
     if (!idCentroAlimentarioConstante) {
-      Alert.alert("Error de Origen", "No se identificó el ID del Centro Alimentario asociado. Regrese e intente de nuevo.");
+      mostrarModal('error', 'Error de Origen', 'No se identificó el ID del Centro Alimentario asociado. Regrese e intente de nuevo.');
       return;
     }
 
     if (!distritoSeleccionado || !nombreDireccion.trim() || !localNombre.trim()) {
-      Alert.alert("Campos incompletos", "Por favor, complete todos los campos requeridos.");
+      mostrarModal('error', 'Campos incompletos', 'Por favor, complete todos los campos requeridos.');
       return;
     }
 
     try {
-      setIsSaving(true);
+      setIsSaving(true); // 🔒 Activa el bloqueo total de pantalla
+      Keyboard.dismiss();
       
       // Paso 1: Registrar la dirección física usando el distrito seleccionado
       console.log("Paso 1: Registrando dirección en la API...");
@@ -133,18 +157,19 @@ export default function AgregarLocal() {
 
       console.log("Paso 2 Completado con éxito.");
 
-      Alert.alert(
-        "¡Registro Exitoso!", 
-        `El local "${localNombre}" ha sido guardado correctamente.`, 
-        [{ text: "Entendido", onPress: () => router.back() }]
+      mostrarModal(
+        'exito',
+        '¡Registro Exitoso!',
+        `El local "${localNombre}" ha sido guardado correctamente.`,
+        true // al cerrar, volvemos a la pantalla anterior
       );
 
     } catch (error: any) {
       console.error("Error durante el flujo de registro del local:", error);
       const mensajeError = error.response?.data?.mensaje || error.message || "Fallo en la comunicación con el servidor.";
-      Alert.alert("Error al registrar", mensajeError);
+      mostrarModal('error', 'Error al registrar', mensajeError);
     } finally {
-      setIsSaving(false);
+      setIsSaving(false); // 🔓 Libera la pantalla pase lo que pase
     }
   };
 
@@ -162,8 +187,8 @@ export default function AgregarLocal() {
 
         {/* Barra superior de navegación */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#006080" />
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} disabled={isSaving}>
+            <Ionicons name="arrow-back" size={24} color={isSaving ? '#CBD5E1' : '#006080'} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Nuevo Local Infantil</Text>
           <View style={{ width: 40 }} />
@@ -180,12 +205,16 @@ export default function AgregarLocal() {
           >
             <Text style={styles.sectionTitle}>Detalles del Local</Text>
 
-            <Text style={styles.label}>Nombre del Local*</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Nombre del Local</Text>
+              <Text style={styles.requiredMark}>*</Text>
+            </View>
             <TextInput
               style={styles.input}
               placeholder="Ej. CIAI VES Primero"
               placeholderTextColor="#94A3B8"
               value={localNombre}
+              editable={!isSaving}
               onChangeText={(txt) => {
                 setLocalNombre(txt);
                 if (distritoSeleccionado) setMostrarSugerencias(false);
@@ -195,7 +224,10 @@ export default function AgregarLocal() {
             {/* SECCIÓN DE UBICACIÓN Y BÚSQUEDA ASÍNCRONA */}
             <Text style={styles.sectionTitle}>Ubicación y Geografía</Text>
 
-            <Text style={styles.label}>Buscar Distrito *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Buscar Distrito</Text>
+              <Text style={styles.requiredMark}>*</Text>
+            </View>
             <View 
               style={styles.searchContainer}
               onLayout={(event) => {
@@ -209,6 +241,7 @@ export default function AgregarLocal() {
                   placeholder="Escriba un distrito para buscar..."
                   placeholderTextColor="#94A3B8"
                   value={busquedaDistrito}
+                  editable={!isSaving}
                   onChangeText={(text) => {
                     setBusquedaDistrito(text);
                     if (distritoSeleccionado && text !== `${distritoSeleccionado.distrito} (${distritoSeleccionado.provincia})`) {
@@ -227,12 +260,16 @@ export default function AgregarLocal() {
               </View>
             </View>
 
-            <Text style={styles.label}>Dirección Exacta *</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Dirección Exacta</Text>
+              <Text style={styles.requiredMark}>*</Text>
+            </View>
             <TextInput
               style={styles.input}
               placeholder="Ej. Av. El Sol 1443"
               placeholderTextColor="#94A3B8"
               value={nombreDireccion}
+              editable={!isSaving}
               onChangeText={(txt) => {
                 setNombreDireccion(txt);
                 if (distritoSeleccionado) setMostrarSugerencias(false);
@@ -259,7 +296,7 @@ export default function AgregarLocal() {
           </ScrollView>
 
           {/* LISTA FLOTANTE INTELIGENTE DE DISTRITOS */}
-          {mostrarSugerencias && (
+          {mostrarSugerencias && !isSaving && (
             <View 
               style={[
                 styles.suggestionsContainer, 
@@ -293,7 +330,27 @@ export default function AgregarLocal() {
           )}
 
         </View>
+
+        {/* 🔒 CAPA DE BLOQUEO ABSOLUTO DE PANTALLA MIENTRAS SE GUARDA */}
+        {isSaving && (
+          <View style={styles.blockingOverlay}>
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="large" color="#006080" />
+              <Text style={styles.blockingText}>Registrando local...</Text>
+              <Text style={styles.blockingSubtext}>Por favor, no cierre la aplicación</Text>
+            </View>
+          </View>
+        )}
       </View>
+
+      {/* Modal de resultado (éxito / error) */}
+      <ModalMensaje
+        visible={modalVisible}
+        tipo={modalTipo}
+        titulo={modalTitulo}
+        mensaje={modalMensaje}
+        onCerrar={cerrarModal}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -334,11 +391,22 @@ const styles = StyleSheet.create({
     marginTop: 15, 
     marginBottom: 16 
   },
+  // Fila de label + asterisco, unificada para los 3 campos obligatorios
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
   label: { 
     fontSize: 13, 
     fontWeight: '700', 
     color: '#475569', 
-    marginBottom: 6 
+  },
+  requiredMark: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FF0080',
+    marginLeft: 3,
   },
   input: {
     backgroundColor: '#F8FAFC',
@@ -416,4 +484,39 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     fontWeight: 'bold' 
   },
+
+  // Estilos de la Capa de Bloqueo Total (mismo patrón usado en otras pantallas)
+  blockingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingBox: {
+    backgroundColor: '#FFFFFF',
+    padding: 25,
+    borderRadius: 20,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 320,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  blockingText: {
+    marginTop: 15,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+  },
+  blockingSubtext: {
+    marginTop: 5,
+    fontSize: 12,
+    color: '#777',
+    textAlign: 'center',
+  }
 });

@@ -25,7 +25,9 @@ if (!user || !(
         // ✅ Cambiado a false para usar tus cabeceras personalizadas y evitar doble barra superior
         headerShown: false, 
         headerTintColor: '#006080',
-        headerTitleStyle: { fontWeight: '700' }
+        headerTitleStyle: { fontWeight: '700' },
+        gestureEnabled: false, // 🔒 bloquea el swipe-back en iOS
+
       }}
     >
 

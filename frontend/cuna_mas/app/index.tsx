@@ -46,12 +46,7 @@ if (
     if (user.roles.includes('Socia de Cocina Tipo 2') || 
       user.roles.includes('Socia de Cocina Tipo 1')) {
     return <InicioSociaCocinas />;
-  }
-
-
-
-
-
+  } 
   // Si tiene un token válido pero el rol es desconocido
   return <LoginScreen />;
 }

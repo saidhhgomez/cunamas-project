@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react'; 
 import { 
   StyleSheet, 
   View, 
@@ -18,6 +18,11 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Calculator, Home } from 'lucide-react-native';
 import { LocalService } from '../../service/centroAtencionService'; 
+import BottomNavAdmin from '../components/admin/BottomNavAdmin';
+import AdminHeader from '../components/admin/HeaderAdmin';
+import IndicadorLateralScroll from '../components/admin/IndicadorLateralScroll';
+
+const RUTA_ACTUAL = '/administrador/consultaLocales';
 
 export default function ConsultaLocales() { 
   const { width } = useWindowDimensions();
@@ -29,35 +34,88 @@ export default function ConsultaLocales() {
 
   const [centros, setCentros] = useState([]); 
   const [isLoading, setIsLoading] = useState(true); 
-  
+
+  // --- ESTADOS PARA PAGINACIÓN (scroll infinito real) ---
+  const [pagina, setPagina] = useState(0);
+  const [esUltimaPagina, setEsUltimaPagina] = useState(false);
+  const [isCargandoMas, setIsCargandoMas] = useState(false);
+  const [totalRegistros, setTotalRegistros] = useState<number | null>(null);
+
+  // --- ESTADOS PARA EL INDICADOR LATERAL DE SCROLL ---
+  const [progresoScroll, setProgresoScroll] = useState(0);
+  const [indicadorVisible, setIndicadorVisible] = useState(false);
+  const timeoutOcultarRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const isFocused = useIsFocused();
 
-  // Recarga automática al volver a enfocar la pantalla
+  // Recarga automática al volver a enfocar la pantalla (reinicia a página 0)
   useEffect(() => {
     if (isFocused) {
-      cargarCentrosAlimentarios();
+      reiniciarYObtenerLocales();
     }
   }, [isFocused]);
 
-  const cargarCentrosAlimentarios = async () => {
+  const reiniciarYObtenerLocales = async () => {
+    setIsLoading(true);
+    setPagina(0);
+    setEsUltimaPagina(false);
+    await cargarCentrosAlimentarios(0, true);
+    setIsLoading(false);
+  };
+
+  const cargarCentrosAlimentarios = async (numPagina: number, reiniciar = false) => {
     try {
-      setIsLoading(true);
-      const response = await LocalService.getLocalesPorCentroPaginado(Number(idCentroAlimentario)); 
-      
-      // Validamos la estructura del JSON con la propiedad "content"
-      if (response && response.content) {
-        setCentros(response.content);
-      } else if (Array.isArray(response)) {
-        setCentros(response); 
+      const response = await LocalService.getLocalesPorCentroPaginado(Number(idCentroAlimentario), numPagina, 10);
+
+      // Spring Page<T> trae { content, last, totalElements, ... }.
+      // Mantenemos el fallback por si el backend cambia el shape.
+      const content = response?.content ?? (Array.isArray(response) ? response : []);
+      const esUltima = typeof response?.last === 'boolean' ? response.last : content.length < 10;
+      const total = response?.totalElements ?? content.length;
+
+      if (reiniciar) {
+        setCentros(content);
       } else {
-        setCentros([]);
+        // Concatena en vez de reemplazar, para no perder lo ya cargado
+        setCentros(prev => [...prev, ...content]);
       }
+      setEsUltimaPagina(esUltima);
+      setTotalRegistros(total);
     } catch (error) {
-      Alert.alert("Error", "No se pudo obtener la lista de centros alimentarios.");
-    } finally {
-      setIsLoading(false);
+      Alert.alert("Error", "No se pudo obtener la lista de locales.");
     }
   };
+
+  // Disparador cuando llegas al final de la lista
+  const cargarMasElementos = async () => {
+    if (isCargandoMas || esUltimaPagina) return;
+
+    setIsCargandoMas(true);
+    const siguientePagina = pagina + 1;
+    setPagina(siguientePagina);
+    await cargarCentrosAlimentarios(siguientePagina, false);
+    setIsCargandoMas(false);
+  };
+
+  // Calcula el progreso (0-1) del scroll y controla la visibilidad del
+  // indicador lateral; se oculta solo 800ms después de dejar de scrollear.
+  const manejarScroll = (event) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const maxScroll = Math.max(contentSize.height - layoutMeasurement.height, 1);
+    const progreso = contentOffset.y / maxScroll;
+
+    setProgresoScroll(progreso);
+    setIndicadorVisible(true);
+
+    if (timeoutOcultarRef.current) clearTimeout(timeoutOcultarRef.current);
+    timeoutOcultarRef.current = setTimeout(() => setIndicadorVisible(false), 800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutOcultarRef.current) clearTimeout(timeoutOcultarRef.current);
+    };
+  }, []);
 
   const renderCentroItem = ({ item }) => ( 
     <TouchableOpacity 
@@ -94,31 +152,31 @@ export default function ConsultaLocales() {
     </TouchableOpacity> 
   ); 
 
+  // Indicador de carga inferior (loading de paginación)
+  const renderFooter = () => {
+    if (!isCargandoMas) return null;
+    return (
+      <View style={{ paddingVertical: 20 }}>
+        <ActivityIndicator size="small" color="#006080" />
+      </View>
+    );
+  };
+
   return ( 
     /* MODIFICADO: Se quitó paddingBottom de este contenedor principal */
     <View style={[styles.container, { paddingTop: insets.top }]}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
-      {/* Header */} 
-      <View style={styles.header}> 
-        <View style={styles.headerTop}> 
-          <View style={styles.adminInfo}> 
-            <Image 
-              source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} 
-              style={styles.adminAvatar} 
-            /> 
-            <View> 
-              <Text style={styles.roleLabel}>Administrador</Text> 
-              <Text style={styles.adminWelcome}>{user?.nombre || 'ADMINISTRADOR SISTEMA'}</Text> 
-            </View> 
-          </View> 
-          {/* MODIFICADO: Cambiado el botón de salir por un botón de volver atrás */}
-          <TouchableOpacity style={styles.logoutButton} onPress={() => router.back()} activeOpacity={0.8}> 
-            <Ionicons name="arrow-back" size={20} color="#FFFFFF" /> 
-          </TouchableOpacity> 
-        </View> 
-        <Text style={styles.headerTitle}>Consulta Locales</Text> 
-      </View> 
+<AdminHeader
+  user={user}
+  titulo="Módulos"
+  modo="volver"
+  onPress={() => router.canGoBack() ? router.back() : null}
+/>
+
+<View style={styles.titleBar}>
+  <Text style={styles.headerTitle}>Consulta Locales</Text> 
+</View>
 
       {/* Cuerpo de la Lista */}
       <View style={styles.content}> 
@@ -133,8 +191,13 @@ export default function ConsultaLocales() {
             keyExtractor={item => item.idLocal.toString()} // Usamos idLocal como key única
             contentContainerStyle={[styles.listContent, esPantallaGrande && styles.listContentGrande]} 
             showsVerticalScrollIndicator={false} 
+            onScroll={manejarScroll}
+            scrollEventThrottle={16}
             refreshing={isLoading}
-            onRefresh={cargarCentrosAlimentarios}
+            onRefresh={reiniciarYObtenerLocales}
+            onEndReached={cargarMasElementos}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={renderFooter}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="fast-food-outline" size={54} color="#CCCCCC" />
@@ -143,6 +206,13 @@ export default function ConsultaLocales() {
             }
           /> 
         )}
+
+        {/* Índice rápido lateral: aparece al scrollear, muestra la página actual */}
+        <IndicadorLateralScroll
+          visible={indicadorVisible && centros.length > 0}
+          progreso={progresoScroll}
+          valor={pagina + 1}
+        />
       </View> 
 
       {/* Burbuja Flotante de Agregar */}
@@ -155,42 +225,20 @@ export default function ConsultaLocales() {
           params: { idCentroAlimentario: idCentroAlimentario }
         })}
       >
-        <Ionicons name="add" size={28} color="#006080" />
+<Ionicons name="add" size={28} color="#FFFFFF" />      
       </TouchableOpacity>
 
-      {/* Navegación Inferior (3 Botones) */} 
-      <View style={[styles.bottomNav, { height: 68 + insets.bottom, paddingBottom: insets.bottom }]}> 
-        {/* Botón 1: Inicio */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/inicio')}> 
-          <Ionicons name="home-outline" size={22} color="#757575" /> 
-          <Text style={styles.navLabel}>Inicio</Text> 
-        </TouchableOpacity> 
-
-        {/* Botón 2: Pendientes (Pantalla Actual Activa) */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/consultas')}> 
-          <Ionicons name="people" size={22} color="#006080" /> 
-          <Text style={[styles.navLabel, { color: '#006080', fontWeight: 'bold' }]}>Pendientes</Text> 
-        </TouchableOpacity> 
-
-        {/* Botón 3: Calculadora / Consultas */}
-        <TouchableOpacity style={styles.navItem} activeOpacity={0.6} onPress={() => router.push('/administrador/calculadora/categoriaCalculadora')}> 
-          <Ionicons name="calculator-outline" size={22} color="#757575" /> 
-          <Text style={styles.navLabel}>Calculadora</Text> 
-        </TouchableOpacity> 
-      </View> 
+<BottomNavAdmin rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
     </View> 
   ); 
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' }, 
-  header: { 
-    backgroundColor: '#C5D800', 
-    paddingTop: 20, 
-    paddingHorizontal: 20, 
-    paddingBottom: 40, 
-    borderBottomRightRadius: 60 
-  }, 
+header: { 
+  backgroundColor: '#C5D800', 
+  paddingHorizontal: 20, 
+},
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, 
   adminInfo: { flexDirection: 'row', alignItems: 'center' }, 
   adminAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#FFFFFF', marginRight: 10 }, 
@@ -205,7 +253,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     elevation: 2 
   }, 
-  headerTitle: { fontSize: 26, color: '#006080', fontWeight: '900', marginTop: 10 }, 
+  headerTitle: { fontSize: 26, color: '#006080', fontWeight: '900' }, 
   content: { flex: 1 }, 
   listContent: { paddingHorizontal: 20, paddingBottom: 120, paddingTop: 15 }, // padding aumentado para evitar que el FAB tape el contenido útil
   listContentGrande: { maxWidth: 800, alignSelf: 'center', width: '100%' },
@@ -222,6 +270,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05, 
     shadowRadius: 4 
   }, 
+  titleBar: {
+  backgroundColor: '#FFFFFF',
+  paddingHorizontal: 20,
+  paddingTop: 15,
+  paddingBottom: 25,
+},
   avatarPlaceholder: { 
     width: 52, 
     height: 52, 
@@ -242,24 +296,22 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
   emptyText: { color: '#999', marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20 },
   
-  // Burbuja flotante (FAB)
-  fabButton: {
-    position: 'absolute',
-    /* MODIFICADO: Se eliminó bottom estático de aquí para manejarlo dinámicamente en el JSX */
-    right: 20,
-    backgroundColor: '#C5D800',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.27,
-    shadowRadius: 4.65,
-    zIndex: 999
-  },
+fabButton: {
+  position: 'absolute',
+  right: 20,
+  backgroundColor: '#006080', // 👈 antes era '#C5D800'
+  width: 56,
+  height: 56,
+  borderRadius: 28,
+  justifyContent: 'center',
+  alignItems: 'center',
+  elevation: 6,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.27,
+  shadowRadius: 4.65,
+  zIndex: 999
+},
 
   bottomNav: { 
     flexDirection: 'row', 

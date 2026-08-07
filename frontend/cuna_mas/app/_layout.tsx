@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
 import { Slot, useRouter } from 'expo-router'; 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 
 function RootLayoutProtected() {
@@ -11,7 +12,6 @@ function RootLayoutProtected() {
   useEffect(() => {
     if (isLoading) return; // Evitamos acciones mientras valida el token
 
-    // Si el usuario da click en cerrar sesión o se vence el token, 
     if (!user) {
       router.replace('/auth/login');
     }
@@ -26,15 +26,16 @@ function RootLayoutProtected() {
     );
   }
 
-  // Renderiza el árbol de vistas (donde tu index.tsx tomará el control principal)
   return <Slot />;
 }
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutProtected />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootLayoutProtected />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 
