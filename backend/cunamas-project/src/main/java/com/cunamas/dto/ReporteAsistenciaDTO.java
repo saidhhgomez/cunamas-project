@@ -17,4 +17,8 @@ public class ReporteAsistenciaDTO {
     private Integer correlativo;
 
     private List<ReporteSedeDTO> sedes;
+
+    private String turno;
+
+    private ReporteTotalesDTO totales;
 }

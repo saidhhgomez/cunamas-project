@@ -23,4 +23,8 @@ public class ReporteAsistenciaFilaDTO {
     private Integer actoresComunales = 0;
 
     private String madreCuidadora;
+
+    private Integer totalNinos;
+
+
 }

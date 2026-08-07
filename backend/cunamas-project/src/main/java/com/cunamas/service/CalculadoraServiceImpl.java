@@ -501,10 +501,69 @@ public class CalculadoraServiceImpl implements CalculadoraService {
 
                 case 5 -> fila.setActoresComunales(r.getCantidad());
             }
+            fila.setTotalNinos(
+
+                    (fila.getSeisAOcho() == null ? 0 : fila.getSeisAOcho())
+
+                            + (fila.getNueveAOnce() == null ? 0 : fila.getNueveAOnce())
+
+                            + (fila.getDoceAVeintitres() == null ? 0 : fila.getDoceAVeintitres())
+
+                            + (fila.getVeinticuatroATreintaYSeis() == null ? 0 : fila.getVeinticuatroATreintaYSeis())
+
+            );
         }
 
         dto.setSedes(new ArrayList<>(sedes.values()));
+        ReporteTotalesDTO totales = new ReporteTotalesDTO();
 
+        int total68 = 0;
+        int total911 = 0;
+        int total1223 = 0;
+        int total2436 = 0;
+        int totalActores = 0;
+
+        for (ReporteSedeDTO sede : dto.getSedes()) {
+
+            for (ReporteAsistenciaFilaDTO fila : sede.getModulos()) {
+
+                total68 += fila.getSeisAOcho() == null ? 0 : fila.getSeisAOcho();
+
+                total911 += fila.getNueveAOnce() == null ? 0 : fila.getNueveAOnce();
+
+                total1223 += fila.getDoceAVeintitres() == null ? 0 : fila.getDoceAVeintitres();
+
+                total2436 += fila.getVeinticuatroATreintaYSeis() == null ? 0 : fila.getVeinticuatroATreintaYSeis();
+
+                totalActores += fila.getActoresComunales() == null ? 0 : fila.getActoresComunales();
+
+            }
+
+        }
+        totales.setSeisAOcho(total68);
+
+        totales.setNueveAOnce(total911);
+
+        totales.setDoceAVeintitres(total1223);
+
+        totales.setVeinticuatroATreintaYSeis(total2436);
+
+        totales.setActoresComunales(totalActores);
+
+        totales.setTotalNinos(
+                total68
+                        + total911
+                        + total1223
+                        + total2436
+        );
+
+        dto.setTotales(totales);
+
+        dto.setTurno(
+                correlativo == 1
+                        ? "Media Mañana"
+                        : "Media Tarde"
+        );
         return dto;
     }
 
