@@ -26,6 +26,7 @@ public class CalculadoraServiceImpl implements CalculadoraService {
 
     private final ServicioAlimentarioRepository servicioRepository;
 
+    private final CuentaAccesoRepository cuentaAccesoRepository;
 
     @Override
     public List<CategoriaAlimentoDTO> listarCategorias() {
@@ -393,6 +394,177 @@ public class CalculadoraServiceImpl implements CalculadoraService {
         );
 
         return response;
+    }
+    @Override
+    public ReporteAsistenciaDTO obtenerReporteAsistencia(
+            Integer idServicio,
+            LocalDate fecha,
+            Integer correlativo
+    ) {
+
+        List<RegistroAsistenciaCIAIEntity> registros =
+                registroRepository.obtenerResumenServicio(
+                        idServicio,
+                        fecha,
+                        correlativo
+                );
+
+        ReporteAsistenciaDTO dto = new ReporteAsistenciaDTO();
+
+        dto.setFecha(fecha);
+        dto.setCorrelativo(correlativo);
+
+        if (!registros.isEmpty()) {
+
+            ServicioAlimentarioEntity servicio =
+                    registros.get(0)
+                            .getModulo()
+                            .getLocal()
+                            .getServicioAlimentario();
+
+            dto.setServicioAlimentario(servicio.getNombreCentro());
+
+            dto.setComite(servicio.getNombreComite());
+        }
+
+        Map<String, ReporteSedeDTO> sedes = new LinkedHashMap<>();
+
+        for (RegistroAsistenciaCIAIEntity r : registros) {
+
+            String nombreSede =
+                    r.getModulo()
+                            .getLocal()
+                            .getLocalNombre();
+
+            ReporteSedeDTO sede =
+                    sedes.computeIfAbsent(nombreSede, s -> {
+
+                        ReporteSedeDTO nueva = new ReporteSedeDTO();
+
+                        nueva.setNombreSede(s);
+
+                        nueva.setModulos(new ArrayList<>());
+
+                        return nueva;
+                    });
+
+            ReporteAsistenciaFilaDTO fila = null;
+
+            for (ReporteAsistenciaFilaDTO f : sede.getModulos()) {
+
+                if (f.getModulo().equals(r.getModulo().getNombreModulo())) {
+
+                    fila = f;
+
+                    break;
+                }
+            }
+
+            if (fila == null) {
+
+                fila = new ReporteAsistenciaFilaDTO();
+
+                fila.setModulo(
+                        r.getModulo().getNombreModulo()
+                );
+
+                CuentaAccesoEntity cuenta =
+                        cuentaAccesoRepository
+                                .findByPersona_IdPersona(
+                                        r.getIdUsuarioCreacion()
+                                )
+                                .orElse(null);
+
+                if (cuenta != null) {
+
+                    PersonaEntity persona = cuenta.getPersona();
+
+                    fila.setMadreCuidadora(
+                            persona.getNombres()
+                                    + " "
+                                    + persona.getApPaterno()
+                    );
+                }
+
+                sede.getModulos().add(fila);
+            }
+
+            switch (r.getCategoria().getIdCategoriaGrupo()) {
+
+                case 1 -> fila.setSeisAOcho(r.getCantidad());
+
+                case 2 -> fila.setNueveAOnce(r.getCantidad());
+
+                case 3 -> fila.setDoceAVeintitres(r.getCantidad());
+
+                case 4 -> fila.setVeinticuatroATreintaYSeis(r.getCantidad());
+
+                case 5 -> fila.setActoresComunales(r.getCantidad());
+            }
+            fila.setTotalNinos(
+
+                    (fila.getSeisAOcho() == null ? 0 : fila.getSeisAOcho())
+
+                            + (fila.getNueveAOnce() == null ? 0 : fila.getNueveAOnce())
+
+                            + (fila.getDoceAVeintitres() == null ? 0 : fila.getDoceAVeintitres())
+
+                            + (fila.getVeinticuatroATreintaYSeis() == null ? 0 : fila.getVeinticuatroATreintaYSeis())
+
+            );
+        }
+
+        dto.setSedes(new ArrayList<>(sedes.values()));
+        ReporteTotalesDTO totales = new ReporteTotalesDTO();
+
+        int total68 = 0;
+        int total911 = 0;
+        int total1223 = 0;
+        int total2436 = 0;
+        int totalActores = 0;
+
+        for (ReporteSedeDTO sede : dto.getSedes()) {
+
+            for (ReporteAsistenciaFilaDTO fila : sede.getModulos()) {
+
+                total68 += fila.getSeisAOcho() == null ? 0 : fila.getSeisAOcho();
+
+                total911 += fila.getNueveAOnce() == null ? 0 : fila.getNueveAOnce();
+
+                total1223 += fila.getDoceAVeintitres() == null ? 0 : fila.getDoceAVeintitres();
+
+                total2436 += fila.getVeinticuatroATreintaYSeis() == null ? 0 : fila.getVeinticuatroATreintaYSeis();
+
+                totalActores += fila.getActoresComunales() == null ? 0 : fila.getActoresComunales();
+
+            }
+
+        }
+        totales.setSeisAOcho(total68);
+
+        totales.setNueveAOnce(total911);
+
+        totales.setDoceAVeintitres(total1223);
+
+        totales.setVeinticuatroATreintaYSeis(total2436);
+
+        totales.setActoresComunales(totalActores);
+
+        totales.setTotalNinos(
+                total68
+                        + total911
+                        + total1223
+                        + total2436
+        );
+
+        dto.setTotales(totales);
+
+        dto.setTurno(
+                correlativo == 1
+                        ? "Media Mañana"
+                        : "Media Tarde"
+        );
+        return dto;
     }
 
 }
