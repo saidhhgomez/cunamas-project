@@ -51,7 +51,7 @@ public class ReportePdfServiceImpl implements ReportePdfService {
             );
 
             Paragraph pTitulo = new Paragraph(
-                    "Panel de Servicio Alimentario",
+                    "PANEL SERVICIO ALIMENTARIO",
                     titulo
             );
 
