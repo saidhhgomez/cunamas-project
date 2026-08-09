@@ -161,7 +161,7 @@ export default function Resumen() {
         user={user}
         titulo=""
         modo="volver"
-        onPress={() => router.back}
+        onPress={() => router.back()}
       />      
 
 <View style={styles.titleBar}>

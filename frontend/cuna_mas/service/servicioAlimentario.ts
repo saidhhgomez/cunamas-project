@@ -1,6 +1,6 @@
-import { api } from './api'; // Asegúrate de apuntar a tu archivo de configuración de Axios
+import { api } from './api';
 
-// Estructura que espera tu backend para el POST de S.A.
+// Estructura que espera tu backend para registrar un Servicio Alimentario
 export interface ServicioAlimentarioRequest {
   idDireccion: number;
   nombreCentro: string;
@@ -9,36 +9,25 @@ export interface ServicioAlimentarioRequest {
 
 export const CentroAlimentarioService = {
   /**
-   * Obtiene la lista de centros alimentarios paginados, con filtro
-   * opcional por distrito.
-   *
-   * Cubre los 4 casos del endpoint:
-   *  - GET /servicios-alimentarios
-   *  - GET /servicios-alimentarios?page=0&size=10
-   *  - GET /servicios-alimentarios?distrito=CHACHAPOYAS
-   *  - GET /servicios-alimentarios?distrito=CHACHAPOYAS&page=0&size=5
+   * Obtiene la lista de centros alimentarios paginados (ej. de 10 en 10),
+   * con filtro opcional por distrito.
+   * 
+   * Endpoint generado:
+   * GET /servicios-alimentarios?page=0&size=10&distrito=SANTIAGO DE SURCO
    */
-  getCentrosPorDistrito: async (page: number, size: number = 10, distrito?: string) => {
+  getCentrosPorDistrito: async (page: number = 0, size: number = 10, distrito?: string) => {
     try {
-      // Arma los params dinámicamente: si no hay distrito, no se envía
-      // esa clave (evita mandar distrito='' al backend).
       const params: Record<string, string | number> = { page, size };
+
       if (distrito && distrito.trim().length > 0) {
         params.distrito = distrito.trim();
       }
 
       const response = await api.get('/servicios-alimentarios', { params });
 
-      // Mapeamos los datos de acuerdo con tu JSON de Spring Boot
-      const content = response.data.content || [];
-
-      // Si Spring Boot no devuelve totalPages de forma directa en el objeto, 
-      // asumimos que terminó si el contenido devuelto es menor al tamaño de la página (size)
+      // Extrae la lista desde el PageImpl de Spring Boot ('content')
+      const content = response.data.content || response.data || [];
       const esUltimaPagina = content.length < size;
-
-      // Si tu backend sí manda el total de elementos (típico en Page<T> de
-      // Spring: totalElements), lo propagamos para poder mostrarlo en el
-      // resumen / barra lateral sin tener que adivinarlo en el frontend.
       const totalRegistros = response.data.totalElements ?? content.length;
 
       return {
@@ -47,31 +36,39 @@ export const CentroAlimentarioService = {
         totalRegistros
       };
     } catch (error) {
-      console.error("Error consultando el API de servicios alimentarios:", error);
-      // 🔧 Antes el error se quedaba solo logueado acá y la función devolvía
-      // undefined, así que el try/catch de la pantalla nunca se enteraba y
-      // el usuario nunca veía el mensaje de error. Relanzamos para que
-      // Consulta.tsx (o quien llame) pueda mostrarlo.
-      throw error;
-    } 
-  },
-  
-  getCentrosTodos: async () => {
-    try {
-      // Un GET limpio, sin el objeto 'params'
-      const response = await api.get('/servicios-alimentarios');
-      // Si el endpoint sin paginar te devuelve el array directo, usas: response.data
-      // Si te sigue devolviendo el objeto con 'content', dejamos el fallback listo:
-      return response.data.content || response.data || [];
-    } catch (error) {
-      console.error("Error consultando todos los centros (sin paginación):", error);
+      console.error("Error consultando el API de servicios alimentarios por distrito:", error);
       throw error;
     }
   },
 
   /**
-   * Registra un nuevo servicio alimentario asociado a un idDireccion
-   * Endpoint de Postman: POST /api/servicios-alimentarios
+   * Obtiene TODOS los centros alimentarios (o filtrados por distrito) 
+   * enviando 'size: 100' para traerlos de un solo golpe sin paginar en la UI.
+   * 
+   * Endpoint generado:
+   * GET /servicios-alimentarios?page=0&size=100
+   */
+  getCentrosTodos: async (distrito?: string) => {
+    try {
+      const params: Record<string, string | number> = { page: 0, size: 100 };
+
+      if (distrito && distrito.trim().length > 0) {
+        params.distrito = distrito.trim();
+      }
+
+      const response = await api.get('/servicios-alimentarios', { params });
+
+      // Retorna el arreglo extraído directamente del objeto 'content'
+      return response.data.content || response.data || [];
+    } catch (error) {
+      console.error("Error consultando todos los centros alimentarios:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Registra un nuevo centro/servicio alimentario en el backend.
+   * Endpoint: POST /servicios-alimentarios
    */
   registrar: async (datos: ServicioAlimentarioRequest) => {
     try {

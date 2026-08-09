@@ -21,7 +21,9 @@ export default function InicioSociaCocinas() {
   const router = useRouter();
   const insets = useSafeAreaInsets(); 
   const { user, logout } = useAuth();
-const RUTA_ACTUAL = '/asistente/';
+  const RUTA_ACTUAL = '/asistente/';
+
+
 
   return ( 
     <View style={[styles.container, { paddingTop: insets.top }]}> 
@@ -41,7 +43,7 @@ const RUTA_ACTUAL = '/asistente/';
         <Text style={styles.headerTitle}>Resumen Detallado</Text> 
       </View>
 
-      {/* Cuerpo del Menú - Dos Botones en el Medio */}
+      {/* Cuerpo del Menú - Botones en el Medio */}
       <View style={styles.content}>
         <View style={styles.menuContainer}>
           
@@ -66,7 +68,8 @@ const RUTA_ACTUAL = '/asistente/';
             style={styles.menuButton} 
             activeOpacity={0.8}
             onPress={() => {
-router.push('/asistente/servicioAlimentario2')            }}
+              router.push('/asistente/servicioAlimentario2')
+            }}
           >
             <View style={[styles.iconContainer, { backgroundColor: '#F0FDF4' }]}>
               <Ionicons name="restaurant" size={26} color="#16A34A" />
@@ -74,6 +77,23 @@ router.push('/asistente/servicioAlimentario2')            }}
             <View style={styles.buttonTextContainer}>
               <Text style={styles.buttonTitle}>Resumen Asistencia</Text>
               <Text style={styles.buttonDescription}>Controla e ingresa el consumo diario de los módulos.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#006080" />
+          </TouchableOpacity>
+
+          {/* BOTÓN 3: Exportar PDF */}
+          <TouchableOpacity 
+            style={styles.menuButton} 
+            activeOpacity={0.8}
+            onPress={ ()=>router.push('/asistente/reportePdf') }
+
+          >
+            <View style={[styles.iconContainer, { backgroundColor: '#FEF2F2' }]}>
+              <Ionicons name="document-text" size={26} color="#DC2626" />
+            </View>
+            <View style={styles.buttonTextContainer}>
+              <Text style={styles.buttonTitle}>Exportar PDF</Text>
+              <Text style={styles.buttonDescription}>Descarga el resumen detallado en formato PDF.</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#006080" />
           </TouchableOpacity>
@@ -90,7 +110,6 @@ router.push('/asistente/servicioAlimentario2')            }}
 const styles = StyleSheet.create({ 
   container: { flex: 1, backgroundColor: '#F9F9F9' }, 
 
-  // Header (mismo estilo que UsuariosPendientes / Activar Cuenta)
   header: { 
     backgroundColor: '#C5D800', 
     paddingHorizontal: 20, 
@@ -133,7 +152,6 @@ const styles = StyleSheet.create({
     elevation: 2 
   }, 
 
-  // Barra de título blanca
   titleBar: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
@@ -148,13 +166,13 @@ const styles = StyleSheet.create({
 
   content: { 
     flex: 1, 
-    backgroundColor: '#F8FAFC', // Un gris muy claro de fondo para que resalten los botones blancos
+    backgroundColor: '#F8FAFC',
   }, 
   menuContainer: {
     padding: 20,
     paddingTop: 30,
     paddingBottom: 100,
-    gap: 16, // Espaciado nativo entre tarjetas
+    gap: 16,
   },
   menuButton: {
     backgroundColor: '#FFFFFF',
@@ -192,7 +210,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
-  // Nav inferior (mismo estilo que las otras pantallas)
   bottomNav: { 
     flexDirection: 'row', 
     backgroundColor: '#FFFFFF', 

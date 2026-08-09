@@ -3,19 +3,18 @@ import {
   StyleSheet, View, Text, FlatList, TouchableOpacity,
   useWindowDimensions, Modal, TextInput, Keyboard, Platform,
   KeyboardAvoidingView, ActivityIndicator, StatusBar,
-  LayoutAnimation, UIManager
+  LayoutAnimation, UIManager, SafeAreaView
 } from 'react-native'; 
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; 
+import { Ionicons } from '@expo/vector-icons'; 
 import { useRouter, useLocalSearchParams, usePathname } from 'expo-router'; 
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AsistenciaService } from '../../service/asistenciaService'; 
 import { useAuth } from '../../context/AuthContext';
-import { Calculator, Home } from 'lucide-react-native';
 import AdminHeader from '../components/admin/HeaderAdmin';
 import BottomNavAdmin from '../components/admin/BottomNavAdmin';
 
-// Habilita LayoutAnimation en Android (en iOS ya viene activado por defecto)
+// Habilita LayoutAnimation en Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -27,8 +26,8 @@ const OPCIONES_CORRELATIVO = [
 ];
 
 const MAPA_COLORES: Record<number, string> = {
-  1: "#4CAF50", // Color asignado a Niños
-  2: "#FF4081", // Color asignado a Actor Comunal
+  1: "#4CAF50",
+  2: "#FF4081",
   3: "#FFB300",
   4: "#00BCD4",
   5: "#9C27B0"
@@ -39,8 +38,8 @@ export default function Resumen() {
   const { width } = useWindowDimensions();
   const esPantallaGrande = width > 600;
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth(); 
-  const pathname = usePathname(); // 👈 nuevo
+  const { user } = useAuth(); 
+  const pathname = usePathname();
   const params = useLocalSearchParams();
   const idModulo = params.idCentroAlimentario || params.idModulo;
 
@@ -58,7 +57,7 @@ export default function Resumen() {
   const [registroManana, setRegistroManana] = useState<any[]>([]);
   const [registroTarde, setRegistroTarde] = useState<any[]>([]);
 
-  // 🔽 Estados para expandir/contraer cada sección (abiertas por defecto)
+  // Estados para expandir/contraer cada sección
   const [manianaExpandida, setManianaExpandida] = useState(true);
   const [tardeExpandida, setTardeExpandida] = useState(true);
 
@@ -111,7 +110,6 @@ export default function Resumen() {
     return () => { tecladoMuestra.remove(); tecladoOculta.remove(); };
   }, []);
 
-  // 🔽 Alterna la visibilidad de una sección con animación suave
   const alternarSeccion = (turno: 'manana' | 'tarde') => {
     LayoutAnimation.configureNext(LayoutAnimation.create(
       220,
@@ -125,13 +123,9 @@ export default function Resumen() {
     }
   };
 
-  // Renderizador de cada tarjeta de categoría
   const renderItemCategoria = (item: any, turno: 'manana' | 'tarde') => {
     const color = MAPA_COLORES[item.idCategoriaGrupo] || "#757575";
     
-    // 🏷️ Lógica de nombres sugerida:
-    // Si el ID es 1 (o el texto contiene "niño"), forzamos "Niños". 
-    // Si es el ID 2 (Actor Comunal), respetamos el nombre tal cual viene del servicio.
     let nombreAMostrar = item.categoria || `Categoría ${item.idCategoriaGrupo}`;
     if (item.idCategoriaGrupo === 1 || String(item.categoria).toLowerCase().includes('niño')) {
       nombreAMostrar = "Niños";
@@ -144,7 +138,7 @@ export default function Resumen() {
           <TextInput
             style={[styles.resultInput, { color: color }]}
             value={item.cantidad === 0 ? "0" : String(item.cantidad)} 
-            editable={false} // 🔒 Campo de solo lectura, no editable
+            editable={false}
           />
         </View> 
       </View>
@@ -154,34 +148,39 @@ export default function Resumen() {
   const tieneDatos = registroManana.length > 0 || registroTarde.length > 0;
 
   return ( 
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}> 
+    <SafeAreaView style={styles.container}> 
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" /> 
       
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flexible}>
-        
-      <AdminHeader
-        user={user}
-        titulo=""
-        modo="volver"
-        onPress={() => router.canGoBack() ? router.back() : null}
-      />    
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+        style={styles.flexible}
+      >
+        <AdminHeader
+          user={user}
+          titulo=""
+          modo="volver"
+          onPress={() => router.canGoBack() ? router.back() : null}
+        />    
 
-<View style={styles.titleBar}>
-  <Text style={styles.headerTitle}>Asistencia del {params?.nombreModulo}</Text> 
-</View>
+        <View style={styles.titleBar}>
+          <Text style={styles.headerTitle}>Asistencia del {params?.nombreModulo}</Text> 
+        </View>
 
         {/* Contenido principal */}
         <View style={styles.content}>
           <FlatList
             data={loading || !tieneDatos ? [] : [1]} 
             keyExtractor={(_, index) => String(index)}
-            contentContainerStyle={[styles.listContent, esPantallaGrande && styles.listContentGrande]}
+            contentContainerStyle={[
+              styles.listContent, 
+              { paddingBottom: 120 + insets.bottom }, // Compensación dinámica para el BottomNavAdmin
+              esPantallaGrande && styles.listContentGrande
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             
             ListHeaderComponent={
               <View style={styles.pickerRow}>
-                {/* Selector de Fecha */}
                 <TouchableOpacity style={styles.customPickerButton} onPress={() => setMostrarDatePicker(true)}>
                   <Text style={styles.pickerSelectedText}>{fecha.toLocaleDateString()}</Text>
                   <Ionicons name="calendar-outline" size={18} color="#006080" />
@@ -190,7 +189,6 @@ export default function Resumen() {
                   <DateTimePicker value={fecha} mode="date" display="default" onChange={(e, d) => { setMostrarDatePicker(false); if(d) setFecha(d); }} />
                 )}
 
-                {/* Selector de Correlativo */}
                 <TouchableOpacity style={styles.customPickerButton} onPress={() => setModalCorrelativoVisible(true)}>
                   <Text style={[styles.pickerButtonText, styles.pickerSelectedText]}>
                     {selectedCorrelativo ? selectedCorrelativo.label : "Vista General"}
@@ -202,7 +200,6 @@ export default function Resumen() {
 
             renderItem={() => (
               <View>
-                {/* Sección Turno Mañana (desplegable) */}
                 {registroManana.length > 0 && (
                   <View style={styles.seccionTurno}>
                     <TouchableOpacity 
@@ -224,7 +221,6 @@ export default function Resumen() {
                   </View>
                 )}
 
-                {/* Sección Turno Tarde (desplegable) */}
                 {registroTarde.length > 0 && (
                   <View style={[styles.seccionTurno, { marginTop: 15 }]}>
                     <TouchableOpacity 
@@ -261,7 +257,8 @@ export default function Resumen() {
           />
         </View>
 
-      <BottomNavAdmin rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
+        {/* Componente BottomNavAdmin fijo al final */}
+        <BottomNavAdmin rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
 
       </KeyboardAvoidingView>
 
@@ -286,17 +283,17 @@ export default function Resumen() {
         </View>
       </Modal>
 
-    </View> 
+    </SafeAreaView> 
   ); 
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' }, 
   flexible: { flex: 1 },
-header: { 
-  backgroundColor: '#C5D800', 
-  paddingHorizontal: 20, 
-},
+  header: { 
+    backgroundColor: '#C5D800', 
+    paddingHorizontal: 20, 
+  },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }, 
   adminInfo: { flexDirection: 'row', alignItems: 'center' }, 
   adminAvatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 10 }, 
@@ -308,14 +305,14 @@ header: {
     justifyContent: 'center', alignItems: 'center', elevation: 2 
   }, 
   titleBar: {
-  backgroundColor: '#FFFFFF',
-  paddingHorizontal: 20,
-  paddingTop: 15,
-  paddingBottom: 25,
-},
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 15,
+  },
   headerTitle: { fontSize: 24, color: '#006080', fontWeight: '900' }, 
   content: { flex: 1 }, 
-  listContent: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 15 }, 
+  listContent: { paddingHorizontal: 20, paddingTop: 15 }, 
   listContentGrande: { maxWidth: 800, alignSelf: 'center', width: '100%' },
   pickerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15, marginTop: 5 },
   customPickerButton: { flex: 0.48, backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#E2E8F0', borderRadius: 16, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, elevation: 1 },
@@ -355,15 +352,7 @@ header: {
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 80 },
   indicacionContainer: { alignItems: 'center', marginTop: 80, paddingHorizontal: 40 },
   indicacionText: { color: '#64748B', marginTop: 12, fontSize: 14, textAlign: 'center', lineHeight: 20, fontWeight: '500' },
-  bottomNav: { 
-    flexDirection: 'row', height: 72, backgroundColor: '#FFFFFF', 
-    borderTopWidth: 1, borderTopColor: '#E2E8F0', 
-    position: 'absolute', bottom: 0, width: '100%',
-    paddingBottom: 4, elevation: 8, shadowColor: '#000', 
-    shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.05, shadowRadius: 3,
-  }, 
-  navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' }, 
-  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFFFFF', width: '90%', borderRadius: 24, padding: 20, maxHeight: '50%' },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#006080', marginBottom: 15, textAlign: 'center' },

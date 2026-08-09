@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -7,21 +7,23 @@ import {
   FlatList,
   TextInput,
   ActivityIndicator,
-  Alert,
   Modal,
   TouchableWithoutFeedback,
   useWindowDimensions,
-  StatusBar
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
-import { ArrowLeft, Plus, ChevronDown, Home } from 'lucide-react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Plus, ChevronDown } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Importación de tus servicios
+// Importación de servicios y componentes
 import { CategoriaService } from '../../service/categoriaService';
 import { AsistenciaService } from '../../service/asistenciaService';
 import BottomNavMadre from '../components/cuidadora/BottomNavMadre';
+import ModalMensaje, { TipoModalMensaje } from '../components/ModalMensaje';
 
 const COLORES_INDICADORES = ['#C5D800', '#FF7A00', '#00D12E', '#006080'];
 
@@ -30,7 +32,6 @@ const OPCIONES_TURNO = [
   { id: 2, nombre: 'Media Tarde' }
 ];
 
-// Cantidad máxima de dígitos permitidos por categoría (ej. 999 raciones máx.)
 const MAX_DIGITOS_CANTIDAD = 3;
 
 export default function AsistenciaStatsScreen() {
@@ -53,37 +54,83 @@ export default function AsistenciaStatsScreen() {
   const [turnoSeleccionado, setTurnoSeleccionado] = useState(OPCIONES_TURNO[0]);
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
 
+  // Estado para controlar el ModalMensaje
+  const [modalConfig, setModalConfig] = useState<{
+    visible: boolean;
+    tipo: TipoModalMensaje;
+    titulo: string;
+    mensaje: string;
+    onCerrar: () => void;
+  }>({
+    visible: false,
+    tipo: 'exito',
+    titulo: '',
+    mensaje: '',
+    onCerrar: () => {},
+  });
+
+  const mostrarMensajeModal = (
+    tipo: TipoModalMensaje, 
+    titulo: string, 
+    mensaje: string, 
+    onCerrarCallback?: () => void
+  ) => {
+    setModalConfig({
+      visible: true,
+      tipo,
+      titulo,
+      mensaje,
+      onCerrar: () => {
+        setModalConfig(prev => ({ ...prev, visible: false }));
+        if (onCerrarCallback) onCerrarCallback();
+      }
+    });
+  };
+
+  // Función utilitaria para reiniciar los campos a "0"
+  const limpiarFormulario = useCallback((listaCategorias: any[]) => {
+    const mapaInicial: { [key: number]: string } = {};
+    listaCategorias.forEach((cat: any) => {
+      mapaInicial[cat.idCategoriaGrupo] = "0";
+    });
+    setValoresAsistencia(mapaInicial);
+  }, []);
+
   useEffect(() => {
     const cargarCategorias = async () => {
       try {
         const datosCategorias = await CategoriaService.getListaCategorias();
         setCategorias(datosCategorias);
-
-        const mapaInicial: { [key: number]: string } = {};
-        datosCategorias.forEach((cat: any) => {
-          mapaInicial[cat.idCategoriaGrupo] = "0";
-        });
-        setValoresAsistencia(mapaInicial);
+        limpiarFormulario(datosCategorias);
       } catch (error) {
         console.error("Error al cargar categorías de asistencia:", error);
-        Alert.alert("Error", "No se pudo sincronizar el catálogo de rangos de edad.");
+        mostrarMensajeModal(
+          "error", 
+          "Error de Sincronización", 
+          "No se pudo sincronizar el catálogo de rangos de edad."
+        );
       } finally {
         setLoading(false);
       }
     };
 
     cargarCategorias();
-  }, [idModuloReal]);
+  }, [idModuloReal, limpiarFormulario]);
 
-  // El usuario pidió que el botón de volver sea solo hacia atrás (sin
-  // fallback a otra pantalla), tanto al tocar VOLVER como al cerrar el
-  // mensaje de éxito tras guardar.
+  // Limpia el formulario automáticamente cada vez que la pantalla toma foco
+  useFocusEffect(
+    useCallback(() => {
+      if (categorias.length > 0) {
+        limpiarFormulario(categorias);
+      }
+    }, [categorias, limpiarFormulario])
+  );
+
   const manejarRetornoSeguro = () => {
     router.back();
   };
 
   const manejarCambioCantidad = (idCategoriaGrupo: number, texto: string) => {
-    // Solo dígitos, y como máximo MAX_DIGITOS_CANTIDAD cifras
     const textoLimpio = texto.replace(/[^0-9]/g, '').slice(0, MAX_DIGITOS_CANTIDAD);
     setValoresAsistencia(prev => ({
       ...prev,
@@ -91,7 +138,7 @@ export default function AsistenciaStatsScreen() {
     }));
   };
 
-  const manejarGuardarAsistencia = async () => {
+const manejarGuardarAsistencia = async () => {
     setEnviando(true); 
     try {
       const categoriasPayload = categorias.map((cat) => ({
@@ -106,14 +153,32 @@ export default function AsistenciaStatsScreen() {
         categorias: categoriasPayload
       };
 
+      // Si el servidor responde con 403 o 500, el throw del service hará saltar al CATCH de aquí
       await AsistenciaService.registrarAsistenciaCiai(payload);
       
-      Alert.alert("¡Éxito!", "Asistencia de raciones agregada correctamente.", [
-        { text: "OK", onPress: manejarRetornoSeguro }
-      ]);
-    } catch (error) {
-      console.error("Error al registrar asistencia:", error);
-      Alert.alert("Error", "Hubo un problema al guardar el registro en el servidor.");
+      // Limpiar formulario tras éxito
+      limpiarFormulario(categorias);
+
+      mostrarMensajeModal(
+        "exito", 
+        "¡Éxito!", 
+        "Asistencia de raciones agregada correctamente.",
+        manejarRetornoSeguro
+      );
+    } catch (error: any) {
+      // Extraer un mensaje 100% seguro y amigable para el usuario
+      let mensajeAmigable = "Hubo un problema al guardar el registro en el servidor.";
+      let tituloModal = "Error al guardar";
+
+      if (error?.response?.status === 403) {
+        tituloModal = "Acceso Denegado";
+        mensajeAmigable = "No tienes permisos para realizar esta acción o tu sesión ha expirado.";
+      } else if (error?.response?.data?.message && typeof error.response.data.message === 'string') {
+        mensajeAmigable = error.response.data.message;
+      }
+
+      // Pasar SOLO texto limpio al modal
+      mostrarMensajeModal("error", tituloModal, mensajeAmigable);
     } finally {
       setEnviando(false); 
     }
@@ -131,7 +196,7 @@ export default function AsistenciaStatsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" />
       
-      {/* Header (mismo estilo, con botón VOLVER en lugar de logout) */}
+      {/* Header Fijo */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity 
@@ -154,75 +219,82 @@ export default function AsistenciaStatsScreen() {
         </Text>
       </View>
 
-      <FlatList
-        data={categorias}
-        keyExtractor={(item) => item.idCategoriaGrupo.toString()}
-        contentContainerStyle={[
-          styles.scrollContent, 
-          esPantallaGrande && styles.tabletContent,
-          { paddingBottom: 100 + insets.bottom }
-        ]}
-        showsVerticalScrollIndicator={false}
-        
-        ListHeaderComponent={
-          <View style={styles.headerComponentContainer}>
-            {/* Selector de Turno */}
-            <View style={styles.comboWrapper}>
-              <TouchableOpacity 
-                style={styles.comboSelector} 
-                activeOpacity={0.9}
-                onPress={() => setMostrarDropdown(true)}
-              >
-                <Text style={styles.comboSelectorText}>{turnoSeleccionado.nombre}</Text>
-                <ChevronDown color="#64748B" size={20} strokeWidth={2.5} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        }
-        
-        renderItem={({ item, index }) => {
-          const colorNumero = COLORES_INDICADORES[index % COLORES_INDICADORES.length];
+      {/* Contenedor adaptativo para el teclado */}
+      <KeyboardAvoidingView
+        style={styles.flexible}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 110 : 0}
+      >
+        <FlatList
+          data={categorias}
+          keyExtractor={(item) => item.idCategoriaGrupo.toString()}
+          contentContainerStyle={[
+            styles.scrollContent, 
+            esPantallaGrande && styles.tabletContent,
+            { paddingBottom: 140 + insets.bottom }
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           
-          const nombreLimpio = item.nombreCategoria?.toLowerCase().trim();
-          const esActorComunal = nombreLimpio === 'actor comunal';
-
-          return (
-            <View style={styles.cardItem}>
-              <Text style={[styles.statLabel, { fontSize: esPantallaGrande ? 16 : 15 }]}>
-                {esActorComunal ? item.nombreCategoria : `Niños de ${item.nombreCategoria}`}
-              </Text>
-              
-              <View style={[styles.inputContainer, { borderColor: colorNumero }]}>
-                <TextInput
-                  style={[styles.statInput, { color: colorNumero, fontSize: esPantallaGrande ? 24 : 20 }]}
-                  keyboardType="numeric"
-                  value={valoresAsistencia[item.idCategoriaGrupo]}
-                  onChangeText={(texto) => manejarCambioCantidad(item.idCategoriaGrupo, texto)}
-                  selectTextOnFocus
-                  editable={!enviando}
-                  maxLength={MAX_DIGITOS_CANTIDAD}
-                />
+          ListHeaderComponent={
+            <View style={styles.headerComponentContainer}>
+              {/* Selector de Turno */}
+              <View style={styles.comboWrapper}>
+                <TouchableOpacity 
+                  style={styles.comboSelector} 
+                  activeOpacity={0.9}
+                  onPress={() => setMostrarDropdown(true)}
+                >
+                  <Text style={styles.comboSelectorText}>{turnoSeleccionado.nombre}</Text>
+                  <ChevronDown color="#64748B" size={20} strokeWidth={2.5} />
+                </TouchableOpacity>
               </View>
             </View>
-          );
-        }}
+          }
+          
+          renderItem={({ item, index }) => {
+            const colorNumero = COLORES_INDICADORES[index % COLORES_INDICADORES.length];
+            const nombreLimpio = item.nombreCategoria?.toLowerCase().trim();
+            const esActorComunal = nombreLimpio === 'actor comunal';
 
-        ListFooterComponent={
-          <TouchableOpacity 
-            style={styles.submitButton}
-            onPress={manejarGuardarAsistencia}
-            activeOpacity={0.85}
-          >
-            <View style={styles.submitContent}>
-              <Plus color="#FFF" size={20} strokeWidth={3} />
-              <Text style={styles.submitText}>AGREGAR</Text>
-            </View>
-          </TouchableOpacity>
-        }
-      />
+            return (
+              <View style={styles.cardItem}>
+                <Text style={[styles.statLabel, { fontSize: esPantallaGrande ? 16 : 15 }]}>
+                  {esActorComunal ? item.nombreCategoria : `Niños de ${item.nombreCategoria}`}
+                </Text>
+                
+                <View style={[styles.inputContainer, { borderColor: colorNumero }]}>
+                  <TextInput
+                    style={[styles.statInput, { color: colorNumero, fontSize: esPantallaGrande ? 24 : 20 }]}
+                    keyboardType="numeric"
+                    value={valoresAsistencia[item.idCategoriaGrupo] || "0"}
+                    onChangeText={(texto) => manejarCambioCantidad(item.idCategoriaGrupo, texto)}
+                    selectTextOnFocus
+                    editable={!enviando}
+                    maxLength={MAX_DIGITOS_CANTIDAD}
+                  />
+                </View>
+              </View>
+            );
+          }}
 
-      {/* Navegación Inferior (mismo diseño que las demás pantallas) */}
-        <BottomNavMadre rutaActual="/cuidadora/control_lista" insetsBottom={insets.bottom} />
+          ListFooterComponent={
+            <TouchableOpacity 
+              style={styles.submitButton}
+              onPress={manejarGuardarAsistencia}
+              activeOpacity={0.85}
+            >
+              <View style={styles.submitContent}>
+                <Plus color="#FFF" size={20} strokeWidth={3} />
+                <Text style={styles.submitText}>AGREGAR</Text>
+              </View>
+            </TouchableOpacity>
+          }
+        />
+      </KeyboardAvoidingView>
+
+      {/* Navegación Inferior */}
+      <BottomNavMadre rutaActual="/cuidadora/control_lista" insetsBottom={insets.bottom} />
 
       {/* MODAL DEL COMBOBOX */}
       <Modal
@@ -274,6 +346,15 @@ export default function AsistenciaStatsScreen() {
         </View>
       </Modal>
 
+      {/* MODAL DE MENSAJE (ÉXITO / ERROR / ADVERTENCIA) */}
+      <ModalMensaje
+        visible={modalConfig.visible}
+        tipo={modalConfig.tipo}
+        titulo={modalConfig.titulo}
+        mensaje={modalConfig.mensaje}
+        onCerrar={modalConfig.onCerrar}
+      />
+
     </View>
   );
 }
@@ -281,7 +362,11 @@ export default function AsistenciaStatsScreen() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#F9F9F9' 
+    backgroundColor: '#C5D800' 
+  },
+  flexible: {
+    flex: 1,
+    backgroundColor: '#F9F9F9'
   },
   centerContainer: { 
     flex: 1, 
@@ -289,8 +374,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     backgroundColor: '#F9F9F9' 
   },
-
-  // Header (mismo estilo, con botón VOLVER)
   header: { 
     backgroundColor: '#C5D800', 
     paddingHorizontal: 20,
@@ -319,8 +402,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 13,
   },
-
-  // Barra de título blanca
   titleBar: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
@@ -333,7 +414,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
   },
-
   scrollContent: { 
     paddingHorizontal: 20, 
     paddingTop: 20,
@@ -498,24 +578,5 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     marginLeft: 6, 
     letterSpacing: 0.5 
-  },
-
-  // Nav inferior (mismo diseño recto que las demás pantallas)
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    width: '100%',
-  },
-  navItem: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  navLabel: { 
-    fontSize: 11, 
-    marginTop: 4, 
-    color: '#757575' 
   },
 });

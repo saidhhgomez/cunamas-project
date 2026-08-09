@@ -33,8 +33,6 @@ const MAPA_CATEGORIA_ETARIA: Record<string, string> = {
 
 const ESTRUCTURA_VACIA = { alimentos: [] as any[] };
 
-// Convierte el total en gramos/ml crudo a una unidad más legible (kg o L),
-// redondeando a máximo 2 decimales y sin decimales innecesarios (ej. 15.0 -> 15).
 const formatearTotalLegible = (valor: number, unidadOriginal?: string) => {
   const unidadDestino = unidadOriginal === 'g/ml' 
     ? (valor >= 1000 ? 'kg' : 'g') 
@@ -42,7 +40,6 @@ const formatearTotalLegible = (valor: number, unidadOriginal?: string) => {
 
   const valorConvertido = valor >= 1000 ? valor / 1000 : valor;
 
-  // Quita decimales sobrantes: 15.00 -> "15", 14.8 -> "14.8"
   const valorFormateado = Number(valorConvertido.toFixed(2))
     .toLocaleString('es-PE', { maximumFractionDigits: 2 });
 
@@ -95,12 +92,7 @@ export default function CalculadoraUnificada() {
     JSON.stringify(ESTRUCTURA_VACIA, null, 2)
   );
 
-  // 🚦 Evita recalcular en el servidor con los mismos valores: se habilita
-  // solo cuando algo relevante cambia (categoría, preparación, S.A.,
-  // correlativo, fecha o cualquier cantidad ingresada).
   const [necesitaRecalcular, setNecesitaRecalcular] = useState(true);
-
-  // 🎬 Animación de aparición del bloque "NECESITAS"
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const formatearFechaParaAPI = (date: Date) => {
@@ -149,8 +141,6 @@ export default function CalculadoraUnificada() {
       const listaSerializada = JSON.stringify(objetoFinal, null, 2);
       await AsyncStorage.setItem(STORAGE_KEY, listaSerializada);
       setJsonActualFormateado(listaSerializada);
-
-      imprimirJsonConsola(objetoFinal);
 
     } catch (e) {
       console.error("Error al acumular alimento en el JSON:", e);
@@ -275,14 +265,14 @@ export default function CalculadoraUnificada() {
     setSelectedPreparacion(null); 
     setDatosInsumos(null);
     setModalCategoriaVisible(false);
-    setNecesitaRecalcular(true); // 🚦 cambió la categoría
+    setNecesitaRecalcular(true);
   };
 
   const manejarCambioPreparacion = (item: any) => {
     setSelectedPreparacion(item);
     setModalPreparacionVisible(false);
     setDatosInsumos(null);
-    setNecesitaRecalcular(true); // 🚦 cambió la preparación
+    setNecesitaRecalcular(true);
   };
 
   const manejarCambioSA = async (item: any) => {
@@ -292,14 +282,14 @@ export default function CalculadoraUnificada() {
     setResultados(resetResultados);
     setDatosInsumos(null);
     setModalSAVisible(false);
-    setNecesitaRecalcular(true); // 🚦 cambió el S.A.
+    setNecesitaRecalcular(true);
   };
 
   const manejarCambioCorrelativo = async (item: any) => {
     setSelectedCorrelativo(item);
     setModalCorrelativoVisible(false);
     setDatosInsumos(null);
-    setNecesitaRecalcular(true); // 🚦 cambió el correlativo
+    setNecesitaRecalcular(true);
   };
 
   const manejarCambioFecha = (event: any, d?: Date) => {
@@ -307,7 +297,7 @@ export default function CalculadoraUnificada() {
     if (d) {
       setFecha(d);
       setDatosInsumos(null);
-      setNecesitaRecalcular(true); // 🚦 cambió la fecha
+      setNecesitaRecalcular(true);
     }
   };
 
@@ -327,7 +317,7 @@ export default function CalculadoraUnificada() {
       return item;
     });
     setResultados(nuevosResultados);
-    setNecesitaRecalcular(true); // 🚦 el usuario tocó una cantidad manualmente
+    setNecesitaRecalcular(true);
   };
 
   const manejarCalcular = async () => {
@@ -345,10 +335,9 @@ export default function CalculadoraUnificada() {
       const data = await CalculadoraService.calcularDosificacionInsumos(payload, selectedPreparacion.idTipoPreparacion);
       if (data) {
         setDatosInsumos(data);
-        setNecesitaRecalcular(false); // 🚦 ya calculamos con estos valores, bloqueamos el botón
+        setNecesitaRecalcular(false);
         await acumularYGuardarAlimento(data);
         
-        // 🎬 Animación de aparición del resultado
         fadeAnim.setValue(0);
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -367,20 +356,6 @@ export default function CalculadoraUnificada() {
     }
   };
 
-  const imprimirJsonConsola = (objetoJson: any) => {
-    console.log("==================================================");
-    console.log("🔥 LISTA JSON COMPLETA (alimentos) 🔥");
-    console.log("==================================================");
-    console.log(JSON.stringify(objetoJson, null, 2));
-    console.log("==================================================");
-  };
-
-  const manejarMostrarJSON = async () => {
-    const guardado = await AsyncStorage.getItem(STORAGE_KEY);
-    setJsonActualFormateado(guardado || JSON.stringify(ESTRUCTURA_VACIA, null, 2));
-    setModalJsonVisible(true);
-  };
-
   const manejarEnviarAIA = async () => {
     try {
       const guardado = await AsyncStorage.getItem(STORAGE_KEY);
@@ -392,11 +367,7 @@ export default function CalculadoraUnificada() {
       }
 
       setLoadingIA(true);
-
-      console.log("Enviando a IA:", JSON.stringify(payload, null, 2));
       const respuestaIA = await analizarAlimentosService(payload);
-      console.log("Respuesta de IA:", respuestaIA);
-
       await vaciarHistorialSilencioso();
 
       router.push({
@@ -412,16 +383,6 @@ export default function CalculadoraUnificada() {
     }
   };
 
-  const manejarVolver = async () => {
-    await vaciarHistorialSilencioso();
-    router.back();
-  };
-
-  const manejarIrAInicio = async () => {
-    await vaciarHistorialSilencioso();
-    router.replace('/');
-  };
-
   const listoParaCalcular = selectedSA && selectedCorrelativo && selectedPreparacion;
   const botonCalcularDeshabilitado = !listoParaCalcular || loadingCalcular || !necesitaRecalcular;
 
@@ -430,17 +391,13 @@ export default function CalculadoraUnificada() {
       <StatusBar barStyle="light-content" backgroundColor="#C5D800" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flexible}>
         
-        {/* HEADER (componente compartido del rol Socia de Cocina, con botón VOLVER) */}
         <HeaderCocina
           user={user}
           titulo=""
-          modo="volver"
-          onPress={() => {
-            router.back();
-          }}
+          modo=""
+          onPress={() => router.replace('/asistente')}
         />
 
-        {/* Barra de título blanca */}
         <View style={styles.titleBar}>
           <Text style={styles.headerTitle}>Calculadora Unificada</Text>
         </View>
@@ -448,7 +405,11 @@ export default function CalculadoraUnificada() {
         <View style={styles.scrollWrapper}>
           <ScrollView 
             ref={scrollViewRef}
-            contentContainerStyle={[styles.scrollContent, esPantallaGrande && styles.scrollContentGrande]} 
+            contentContainerStyle={[
+              styles.scrollContent, 
+              { paddingBottom: 110 + insets.bottom },
+              esPantallaGrande && styles.scrollContentGrande
+            ]} 
             showsVerticalScrollIndicator={false} 
             keyboardShouldPersistTaps="handled"
           > 
@@ -562,13 +523,10 @@ export default function CalculadoraUnificada() {
 
             {datosInsumos && (
               <Animated.View style={[styles.resultadosInsumosContainer, { opacity: fadeAnim }]}>
-
-                {/* Nombre del alimento calculado */}
                 {datosInsumos.alimento && (
                   <Text style={styles.alimentoNombre}>{datosInsumos.alimento}</Text>
                 )}
 
-                {/* Total, convertido a kg o L para que sea más legible que gramos/ml crudos */}
                 {typeof datosInsumos.totalGramosO_Ml === 'number' && (
                   <Text style={styles.totalGramosText}>
                     Total: {formatearTotalLegible(datosInsumos.totalGramosO_Ml, datosInsumos.unidad)}
@@ -609,16 +567,55 @@ export default function CalculadoraUnificada() {
           </ScrollView> 
         </View>
 
-                <BottomNavCocina rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
+        <BottomNavCocina rutaActual={RUTA_ACTUAL} insetsBottom={insets.bottom} />
             
       </KeyboardAvoidingView>
 
       {/* --- MODALES --- */}
-      <Modal visible={modalCategoriaVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Categoría</Text><FlatList data={listaCategorias} keyExtractor={(i) => String(i.idCategoriaAlimento)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioCategoria(item)}><Text style={styles.modalOptionText}>{item.nombreCategoriaAlimento}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalCategoriaVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
-      <Modal visible={modalPreparacionVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Preparación</Text><FlatList data={listaPreparaciones} keyExtractor={(i) => String(i.idTipoPreparacion)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioPreparacion(item)}><Text style={styles.modalOptionText}>{item.nombrePreparacion}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalPreparacionVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
-      <Modal visible={modalSAVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Centro</Text><FlatList data={listaCentros} keyExtractor={(i) => String(i.value)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioSA(item)}><Text style={styles.modalOptionText}>{item.label}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalSAVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
-      <Modal visible={modalCorrelativoVisible} transparent animationType="fade"><View style={styles.modalOverlay}><View style={styles.modalContent}><Text style={styles.modalTitle}>Seleccione Correlativo</Text><FlatList data={OPCIONES_CORRELATIVO} keyExtractor={(i) => i.value} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioCorrelativo(item)}><Text style={styles.modalOptionText}>{item.label}</Text></TouchableOpacity>} /><TouchableOpacity style={styles.closeModalButton} onPress={() => setModalCorrelativoVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity></View></View></Modal>
-      
+      <Modal visible={modalCategoriaVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Seleccione Categoría</Text>
+            <FlatList data={listaCategorias} keyExtractor={(i) => String(i.idCategoriaAlimento)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioCategoria(item)}><Text style={styles.modalOptionText}>{item.nombreCategoriaAlimento}</Text></TouchableOpacity>} />
+            <TouchableOpacity style={styles.closeModalButton} onPress={() => setModalCategoriaVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={modalPreparacionVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Seleccione Preparación</Text>
+            <FlatList data={listaPreparaciones} keyExtractor={(i) => String(i.idTipoPreparacion)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioPreparacion(item)}><Text style={styles.modalOptionText}>{item.nombrePreparacion}</Text></TouchableOpacity>} />
+            <TouchableOpacity style={styles.closeModalButton} onPress={() => setModalPreparacionVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={modalSAVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Seleccione Centro</Text>
+            {cargandoCentros ? (
+              <ActivityIndicator size="large" color="#006080" style={{ marginVertical: 20 }} />
+            ) : (
+              <FlatList data={listaCentros} keyExtractor={(i) => String(i.value)} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioSA(item)}><Text style={styles.modalOptionText}>{item.label}</Text></TouchableOpacity>} />
+            )}
+            <TouchableOpacity style={styles.closeModalButton} onPress={() => setModalSAVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={modalCorrelativoVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Seleccione Correlativo</Text>
+            <FlatList data={OPCIONES_CORRELATIVO} keyExtractor={(i) => i.value} renderItem={({item}) => <TouchableOpacity style={styles.modalOption} onPress={() => manejarCambioCorrelativo(item)}><Text style={styles.modalOptionText}>{item.label}</Text></TouchableOpacity>} />
+            <TouchableOpacity style={styles.closeModalButton} onPress={() => setModalCorrelativoVisible(false)}><Text style={styles.closeModalButtonText}>Cancelar</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={modalJsonVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxHeight: '80%', width: '95%' }]}>
@@ -675,19 +672,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9F9F9' },
   flexible: { flex: 1 },
 
-  header: { 
-    backgroundColor: '#C5D800', 
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  userInfo: { flexDirection: 'row', alignItems: 'center' },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  welcomeText: { color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' },
-  userName: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
-  backButton: { backgroundColor: '#FF0080', flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20 },
-  backButtonText: { color: '#FFFFFF', fontWeight: 'bold', marginLeft: 5, fontSize: 12 },
-
   titleBar: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
@@ -697,7 +681,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, color: '#006080', fontWeight: '900' },
 
   scrollWrapper: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { padding: 20 },
   scrollContentGrande: { maxWidth: 600, width: '100%', alignSelf: 'center' },
   pickerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   customPickerButton: { flex: 0.48, backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#C5BBE3', borderRadius: 12, height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
@@ -708,103 +692,47 @@ const styles = StyleSheet.create({
   resultsList: { marginBottom: 20 },
   resultItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#EEEEEE', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 10, marginBottom: 10 },
   resultLabel: { fontSize: 14, color: '#333333', fontWeight: '500', flex: 1 },
-  valueContainer: { backgroundColor: '#FFFFFF', borderRadius: 5, borderWidth: 1, borderColor: '#CCCCCC', width: 65, height: 38, justifyContent: 'center', alignItems: 'center' },
-  resultInput: { width: '100%', height: '100%', textAlign: 'center', fontSize: 16, fontWeight: 'bold' },
-  indicacionContainer: { backgroundColor: '#E2E8F0', padding: 20, borderRadius: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#CBD5E1' },
-  indicacionText: { color: '#475569', textAlign: 'center', marginTop: 8, fontSize: 13, fontWeight: '500' },
-  continueButton: { backgroundColor: '#006080', paddingVertical: 18, borderRadius: 30, alignItems: 'center', marginBottom: 8, flexDirection: 'row', justifyContent: 'center' },
-  continueButtonDisabled: { backgroundColor: '#94A3B8' },
+  valueContainer: { width: 70, height: 40, backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#DDD', justifyContent: 'center', alignItems: 'center' },
+  resultInput: { fontSize: 16, fontWeight: 'bold', textAlign: 'center', width: '100%', padding: 0 },
+
+  indicacionContainer: { padding: 20, backgroundColor: '#EBF8FF', borderRadius: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#BEE3F8' },
+  indicacionText: { color: '#2B6CB0', textAlign: 'center', marginTop: 8, fontSize: 13, fontWeight: '500' },
+  loaderContainer: { padding: 30, alignItems: 'center' },
+
+  continueButton: { backgroundColor: '#006080', borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  continueButtonDisabled: { backgroundColor: '#A0AEC0', opacity: 0.7 },
   continueButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
-  recalculoHint: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  jsonButton: { backgroundColor: '#FF8000', paddingVertical: 14, borderRadius: 30, alignItems: 'center', marginBottom: 25, flexDirection: 'row', justifyContent: 'center' },
-  iaButton: { backgroundColor: '#7F77DD', paddingVertical: 14, borderRadius: 30, alignItems: 'center', marginBottom: 25, flexDirection: 'row', justifyContent: 'center' },
-  jsonButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
-  jsonConsoleContainer: { flex: 1, backgroundColor: '#1E1E1E', borderRadius: 10, padding: 12, marginBottom: 15 },
-  jsonText: { fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontSize: 12, color: '#A9FF1C' },
-  resultadosInsumosContainer: { marginTop: 10, padding: 15, backgroundColor: '#FFF', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 35 },
-  alimentoNombre: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#1E293B',
-    textAlign: 'center',
-    marginBottom: 4,
-    textTransform: 'capitalize',
-  },
-  totalGramosText: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 14,
-  },
-  necesitasTitle: { fontSize: 16, fontWeight: 'bold', color: '#006080', marginBottom: 4, textAlign: 'center' },
-  necesitasSubtitle: { fontSize: 12, color: '#64748B', fontWeight: '600', textAlign: 'center', marginBottom: 16 },
+  recalculoHint: { textAlign: 'center', color: '#718096', fontSize: 12, marginTop: 8 },
+
+  iaButton: { backgroundColor: '#7F77DD', borderRadius: 12, height: 50, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12 },
+  jsonButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 },
+
+  resultadosInsumosContainer: { marginTop: 25, padding: 18, backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+  alimentoNombre: { fontSize: 18, fontWeight: 'bold', color: '#006080', textAlign: 'center', marginBottom: 4 },
+  totalGramosText: { fontSize: 15, fontWeight: '600', color: '#4A5568', textAlign: 'center', marginBottom: 15 },
+  necesitasTitle: { fontSize: 13, fontWeight: 'bold', color: '#2D3748', textAlign: 'center' },
+  necesitasSubtitle: { fontSize: 11, color: '#718096', textAlign: 'center', marginBottom: 15 },
   necesitasRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  necesitasCard: { flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 15, borderRadius: 10, alignItems: 'center' },
-  necesitasValue: { fontSize: 20, fontWeight: 'bold', color: '#4CAF50', marginBottom: 5 },
-  necesitasLabel: { fontSize: 9, fontWeight: 'bold', color: '#64748B', textAlign: 'center' },
-  orDivider: { width: 26, alignItems: 'center', justifyContent: 'center' },
-  orCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#006080',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
+  necesitasCard: { flex: 1, backgroundColor: '#F7FAFC', paddingVertical: 12, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#EDF2F7' },
+  necesitasValue: { fontSize: 20, fontWeight: '900', color: '#2B6CB0' },
+  necesitasLabel: { fontSize: 10, fontWeight: 'bold', color: '#4A5568', textAlign: 'center', marginTop: 4 },
+  orDivider: { paddingHorizontal: 4 },
+  orCircle: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
+  orText: { fontSize: 10, fontWeight: 'bold', color: '#718096' },
 
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    width: '100%',
-  },
-  navItem: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  navLabel: { fontSize: 11, marginTop: 4, color: '#757575' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '90%', maxHeight: '70%' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#006080', marginBottom: 15, textAlign: 'center' },
+  modalOption: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EDF2F7' },
+  modalOptionText: { fontSize: 15, color: '#2D3748', textAlign: 'center', fontWeight: '500' },
+  closeModalButton: { marginTop: 15, backgroundColor: '#EDF2F7', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  closeModalButtonText: { color: '#4A5568', fontWeight: 'bold' },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFFFFF', width: '90%', borderRadius: 20, padding: 20, maxHeight: '80%' },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#006080', marginBottom: 15, textAlign: 'center' },
-  modalOption: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  modalOptionText: { fontSize: 16, color: '#333333', fontWeight: '600' },
-  closeModalButton: { paddingVertical: 12, borderRadius: 15, alignItems: 'center' },
-  closeModalButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
-  loaderContainer: { marginVertical: 30, alignItems: 'center' },
-  overlayContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  overlayCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 30,
-    paddingHorizontal: 35,
-    alignItems: 'center',
-    width: '80%',
-    maxWidth: 320,
-  },
-  overlayTitle: {
-    color: '#333333',
-    fontSize: 16,
-    fontWeight: '800',
-    marginTop: 15,
-    textAlign: 'center',
-  },
-  overlaySubtitle: {
-    color: '#888888',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 6,
-    textAlign: 'center',
-  },
+  jsonConsoleContainer: { backgroundColor: '#1A202C', padding: 12, borderRadius: 8, marginTop: 10 },
+  jsonText: { color: '#68D391', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 12 },
+
+  overlayContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  overlayCard: { backgroundColor: '#FFFFFF', padding: 25, borderRadius: 16, alignItems: 'center', width: '80%' },
+  overlayTitle: { fontSize: 16, fontWeight: 'bold', color: '#2D3748', marginTop: 15, textAlign: 'center' },
+  overlaySubtitle: { fontSize: 12, color: '#718096', textAlign: 'center', marginTop: 5 }
 });

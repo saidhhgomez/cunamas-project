@@ -2,6 +2,10 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { Platform, DeviceEventEmitter } from 'react-native'; 
 import * as SecureStore from 'expo-secure-store';
 
+// 📌 URL ÚNICA Y FIJA
+// Cambia esta URL por la IP o dominio fijo de tu backend
+const API_BASE_URL = 'http://192.168.18.233:8080/api';
+
 interface RefreshResponse {
   token: string;          
   refreshToken: string;
@@ -14,8 +18,7 @@ interface RefreshResponse {
   tieneDireccion: boolean;
 }
 
-const getBaseUrl = () => 
-  Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://10.0.2.2:8080/api';
+const getBaseUrl = () => API_BASE_URL;
 
 export const api = axios.create({
   baseURL: getBaseUrl(),
@@ -112,7 +115,6 @@ const ejecutarRefrescoInterno = async (): Promise<string | null> => {
 // =========================================================================
 api.interceptors.request.use(
   async (config: any) => {
-    // Si la petición es un reintento del interceptor de errores, no modificamos nada
     if (config._isRetry) {
       return config;
     }
@@ -158,7 +160,6 @@ api.interceptors.response.use(
           originalRequest._retry = true;
           originalRequest._isRetry = true; 
 
-          // Seteo robusto de cabeceras para solicitudes en cola
           originalRequest.headers = {
             ...originalRequest.headers,
             'Authorization': `Bearer ${token}`
@@ -189,14 +190,12 @@ api.interceptors.response.use(
 
       processQueue(null, nuevoToken);
       
-      // Construimos una configuración de cabeceras completamente limpia para evitar errores con AxiosHeaders
       originalRequest._isRetry = true;
       const headersLimpios = {
         ...originalRequest.headers,
         'Authorization': `Bearer ${nuevoToken}`
       };
       
-      // Si Axios empaquetó headers en formato interno, los aplanamos
       if (originalRequest.headers && typeof originalRequest.headers.toJSON === 'function') {
         originalRequest.headers = {
           ...originalRequest.headers.toJSON(),
@@ -206,10 +205,9 @@ api.interceptors.response.use(
         originalRequest.headers = headersLimpios;
       }
       
-         console.log('====== 🚀 REINTENDANDO PETICIÓN ORIGINAL CON CABECERA FORZADA ======');
+      console.log('====== 🚀 REINTENTANDO PETICIÓN ORIGINAL CON CABECERA FORZADA ======');
       console.log('Authorization enviada:', originalRequest.headers['Authorization'] || originalRequest.headers['authorization']);
       
-      // 👇 AGREGA ESTO AQUÍ, justo antes del return api(originalRequest);
       console.log('====== 🔍 DEBUG PETICIÓN COMPLETA ======');
       console.log('URL:', originalRequest.url);
       console.log('BaseURL:', originalRequest.baseURL);
