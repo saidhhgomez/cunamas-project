@@ -14,5 +14,7 @@ public class RegistroAsistenciaCIAIRequestDTO {
     @NotNull(message = "El registroCorrelativo es obligatorio")
     private Integer registroCorrelativo;
 
+    private String observacion;
+
     private List<DetalleAsistenciaDTO> categorias;
 }

@@ -118,7 +118,7 @@ public class ReportePdfServiceImpl implements ReportePdfService {
             agregarCabecera(tabla,"24-36");
             agregarCabecera(tabla,"Total");
             agregarCabecera(tabla,"Actores");
-            agregarCabecera(tabla,"Madre");
+            agregarCabecera(tabla,"Observaciones");
 
             for (ReporteSedeDTO sede : reporte.getSedes()) {
 
@@ -156,7 +156,7 @@ public class ReportePdfServiceImpl implements ReportePdfService {
 
                     agregarCelda(tabla, valor(fila.getActoresComunales()));
 
-                    agregarCelda(tabla, fila.getMadreCuidadora());
+                    agregarCelda(tabla, fila.getObservacion());
 
                 }
 

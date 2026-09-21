@@ -160,7 +160,6 @@ public class CalculadoraServiceImpl implements CalculadoraService {
                         );
 
 
-
         double total = 0;
 
         for (RacionDosificacionEntity racion : raciones) {
@@ -212,6 +211,7 @@ public class CalculadoraServiceImpl implements CalculadoraService {
 
         return dto;
     }
+
     @Override
     public ResumenServicioDTO obtenerResumenServicio(
             Integer idServicio,
@@ -395,6 +395,7 @@ public class CalculadoraServiceImpl implements CalculadoraService {
 
         return response;
     }
+
     @Override
     public ReporteAsistenciaDTO obtenerReporteAsistencia(
             Integer idServicio,
@@ -422,12 +423,17 @@ public class CalculadoraServiceImpl implements CalculadoraService {
                             .getLocal()
                             .getServicioAlimentario();
 
-            dto.setServicioAlimentario(servicio.getNombreCentro());
+            dto.setServicioAlimentario(
+                    servicio.getNombreCentro()
+            );
 
-            dto.setComite(servicio.getNombreComite());
+            dto.setComite(
+                    servicio.getNombreComite()
+            );
         }
 
-        Map<String, ReporteSedeDTO> sedes = new LinkedHashMap<>();
+        Map<String, ReporteSedeDTO> sedes =
+                new LinkedHashMap<>();
 
         for (RegistroAsistenciaCIAIEntity r : registros) {
 
@@ -439,20 +445,26 @@ public class CalculadoraServiceImpl implements CalculadoraService {
             ReporteSedeDTO sede =
                     sedes.computeIfAbsent(nombreSede, s -> {
 
-                        ReporteSedeDTO nueva = new ReporteSedeDTO();
+                        ReporteSedeDTO nueva =
+                                new ReporteSedeDTO();
 
                         nueva.setNombreSede(s);
 
-                        nueva.setModulos(new ArrayList<>());
+                        nueva.setModulos(
+                                new ArrayList<>()
+                        );
 
                         return nueva;
                     });
 
             ReporteAsistenciaFilaDTO fila = null;
 
-            for (ReporteAsistenciaFilaDTO f : sede.getModulos()) {
+            for (ReporteAsistenciaFilaDTO f :
+                    sede.getModulos()) {
 
-                if (f.getModulo().equals(r.getModulo().getNombreModulo())) {
+                if (f.getModulo().equals(
+                        r.getModulo().getNombreModulo()
+                )) {
 
                     fila = f;
 
@@ -468,54 +480,69 @@ public class CalculadoraServiceImpl implements CalculadoraService {
                         r.getModulo().getNombreModulo()
                 );
 
-                CuentaAccesoEntity cuenta =
-                        cuentaAccesoRepository
-                                .findByPersona_IdPersona(
-                                        r.getIdUsuarioCreacion()
-                                )
-                                .orElse(null);
+                if (r.getObservacion() != null
+                        && !r.getObservacion().isBlank()) {
 
-                if (cuenta != null) {
-
-                    PersonaEntity persona = cuenta.getPersona();
-
-                    fila.setMadreCuidadora(
-                            persona.getNombres()
-                                    + " "
-                                    + persona.getApPaterno()
+                    fila.setObservacion(
+                            r.getObservacion()
                     );
                 }
 
                 sede.getModulos().add(fila);
             }
 
-            switch (r.getCategoria().getIdCategoriaGrupo()) {
+            switch (
+                    r.getCategoria()
+                            .getIdCategoriaGrupo()
+            ) {
 
-                case 1 -> fila.setSeisAOcho(r.getCantidad());
+                case 1 -> fila.setSeisAOcho(
+                        r.getCantidad()
+                );
 
-                case 2 -> fila.setNueveAOnce(r.getCantidad());
+                case 2 -> fila.setNueveAOnce(
+                        r.getCantidad()
+                );
 
-                case 3 -> fila.setDoceAVeintitres(r.getCantidad());
+                case 3 -> fila.setDoceAVeintitres(
+                        r.getCantidad()
+                );
 
-                case 4 -> fila.setVeinticuatroATreintaYSeis(r.getCantidad());
+                case 4 -> fila.setVeinticuatroATreintaYSeis(
+                        r.getCantidad()
+                );
 
-                case 5 -> fila.setActoresComunales(r.getCantidad());
+                case 5 -> fila.setActoresComunales(
+                        r.getCantidad()
+                );
             }
+
             fila.setTotalNinos(
 
-                    (fila.getSeisAOcho() == null ? 0 : fila.getSeisAOcho())
+                    (fila.getSeisAOcho() == null
+                            ? 0
+                            : fila.getSeisAOcho())
 
-                            + (fila.getNueveAOnce() == null ? 0 : fila.getNueveAOnce())
+                            + (fila.getNueveAOnce() == null
+                            ? 0
+                            : fila.getNueveAOnce())
 
-                            + (fila.getDoceAVeintitres() == null ? 0 : fila.getDoceAVeintitres())
+                            + (fila.getDoceAVeintitres() == null
+                            ? 0
+                            : fila.getDoceAVeintitres())
 
-                            + (fila.getVeinticuatroATreintaYSeis() == null ? 0 : fila.getVeinticuatroATreintaYSeis())
-
+                            + (fila.getVeinticuatroATreintaYSeis() == null
+                            ? 0
+                            : fila.getVeinticuatroATreintaYSeis())
             );
         }
 
-        dto.setSedes(new ArrayList<>(sedes.values()));
-        ReporteTotalesDTO totales = new ReporteTotalesDTO();
+        dto.setSedes(
+                new ArrayList<>(sedes.values())
+        );
+
+        ReporteTotalesDTO totales =
+                new ReporteTotalesDTO();
 
         int total68 = 0;
         int total911 = 0;
@@ -523,23 +550,39 @@ public class CalculadoraServiceImpl implements CalculadoraService {
         int total2436 = 0;
         int totalActores = 0;
 
-        for (ReporteSedeDTO sede : dto.getSedes()) {
+        for (ReporteSedeDTO sede :
+                dto.getSedes()) {
 
-            for (ReporteAsistenciaFilaDTO fila : sede.getModulos()) {
+            for (ReporteAsistenciaFilaDTO fila :
+                    sede.getModulos()) {
 
-                total68 += fila.getSeisAOcho() == null ? 0 : fila.getSeisAOcho();
+                total68 +=
+                        fila.getSeisAOcho() == null
+                                ? 0
+                                : fila.getSeisAOcho();
 
-                total911 += fila.getNueveAOnce() == null ? 0 : fila.getNueveAOnce();
+                total911 +=
+                        fila.getNueveAOnce() == null
+                                ? 0
+                                : fila.getNueveAOnce();
 
-                total1223 += fila.getDoceAVeintitres() == null ? 0 : fila.getDoceAVeintitres();
+                total1223 +=
+                        fila.getDoceAVeintitres() == null
+                                ? 0
+                                : fila.getDoceAVeintitres();
 
-                total2436 += fila.getVeinticuatroATreintaYSeis() == null ? 0 : fila.getVeinticuatroATreintaYSeis();
+                total2436 +=
+                        fila.getVeinticuatroATreintaYSeis() == null
+                                ? 0
+                                : fila.getVeinticuatroATreintaYSeis();
 
-                totalActores += fila.getActoresComunales() == null ? 0 : fila.getActoresComunales();
-
+                totalActores +=
+                        fila.getActoresComunales() == null
+                                ? 0
+                                : fila.getActoresComunales();
             }
-
         }
+
         totales.setSeisAOcho(total68);
 
         totales.setNueveAOnce(total911);
@@ -564,7 +607,7 @@ public class CalculadoraServiceImpl implements CalculadoraService {
                         ? "Media Mañana"
                         : "Media Tarde"
         );
+
         return dto;
     }
-
 }
