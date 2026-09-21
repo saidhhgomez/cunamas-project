@@ -16,6 +16,7 @@ target/
 ### IntelliJ IDEA ###
 .idea
 *.iws
+temp_auto_push.bat
 *.iml
 *.ipr
 
@@ -31,7 +32,8 @@ build/
 
 
 ### VS Code ###
-.vscode/
 
 
 #### Backend ###
+.gitignore
+branch_structure.json

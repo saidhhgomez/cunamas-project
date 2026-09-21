@@ -50,6 +50,9 @@ public class RegistroAsistenciaCIAIEntity {
     @Column(name = "cantidad")
     private Integer cantidad;
 
+    @Column(name = "observacion", length = 255)
+    private String observacion;
+
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
