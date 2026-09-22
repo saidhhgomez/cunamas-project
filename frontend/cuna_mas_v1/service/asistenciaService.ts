@@ -9,6 +9,7 @@ export interface RegistrarAsistenciaPayload {
   idModulo: number;
   idUsuarioCreacion: number; 
   registroCorrelativo: number;
+  observacion: string;
   categorias: CategoriaAsistenciaPayload[];
 }
 

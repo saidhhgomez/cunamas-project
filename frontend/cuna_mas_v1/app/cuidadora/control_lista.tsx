@@ -38,6 +38,7 @@ const OPCIONES_TURNO = [
 ];
 
 const MAX_DIGITOS_CANTIDAD = 3;
+const MAX_CARACTERES_OBSERVACION = 200;
 
 export default function AsistenciaStatsScreen() {
   const router = useRouter();
@@ -53,6 +54,7 @@ export default function AsistenciaStatsScreen() {
 
   const [categorias, setCategorias] = useState<any[]>([]);
   const [valoresAsistencia, setValoresAsistencia] = useState<{ [key: number]: string }>({});
+  const [observacion, setObservacion] = useState('');
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
 
@@ -99,6 +101,7 @@ export default function AsistenciaStatsScreen() {
       mapaInicial[cat.idCategoriaGrupo] = "0";
     });
     setValoresAsistencia(mapaInicial);
+    setObservacion('');
   }, []);
 
   useEffect(() => {
@@ -143,7 +146,28 @@ export default function AsistenciaStatsScreen() {
     }));
   };
 
+  const manejarCambioObservacion = (texto: string) => {
+    const textoLimpio = texto
+      .replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trimStart()
+      .slice(0, MAX_CARACTERES_OBSERVACION);
+
+    setObservacion(textoLimpio);
+  };
+
 const manejarGuardarAsistencia = async () => {
+    const observacionLimpia = observacion.trim();
+
+    if (!observacionLimpia) {
+      mostrarMensajeModal(
+        'atencion',
+        'Observación requerida',
+        'Ingresa una observación usando solo palabras.'
+      );
+      return;
+    }
+
     setEnviando(true); 
     try {
       const categoriasPayload = categorias.map((cat) => ({
@@ -155,11 +179,12 @@ const manejarGuardarAsistencia = async () => {
         idModulo: idModuloReal,
         idUsuarioCreacion: user?.idPersona || 1, 
         registroCorrelativo: turnoSeleccionado.id, 
+        observacion: observacionLimpia,
         categorias: categoriasPayload
       };
 
       // Si el servidor responde con 403 o 500, el throw del service hará saltar al CATCH de aquí
-      await AsistenciaService.registrarAsistenciaCiai(payload);
+      const respuesta = await AsistenciaService.registrarAsistenciaCiai(payload);
       
       // Limpiar formulario tras éxito
       limpiarFormulario(categorias);
@@ -167,7 +192,11 @@ const manejarGuardarAsistencia = async () => {
       mostrarMensajeModal(
         "exito", 
         "¡Éxito!", 
-        "Asistencia de raciones agregada correctamente.",
+        `${respuesta?.mensaje || 'Asistencia registrada correctamente.'}${
+          typeof respuesta?.totalRegistros === 'number'
+            ? `\nTotal de registros: ${respuesta.totalRegistros}`
+            : ''
+        }`,
         manejarRetornoSeguro
       );
     } catch (error: any) {
@@ -253,6 +282,29 @@ const manejarGuardarAsistencia = async () => {
                   <Text style={styles.comboSelectorText}>{turnoSeleccionado.nombre}</Text>
                   <ChevronDown color="#64748B" size={20} strokeWidth={2.5} />
                 </TouchableOpacity>
+              </View>
+
+              <View style={styles.observacionContainer}>
+                <Text style={styles.observacionLabel} allowFontScaling={false}>
+                  Observación
+                </Text>
+                <TextInput
+                  style={styles.observacionInput}
+                  value={observacion}
+                  onChangeText={manejarCambioObservacion}
+                  placeholder="Escribe una observación"
+                  placeholderTextColor="#94A3B8"
+                  editable={!enviando}
+                  maxLength={MAX_CARACTERES_OBSERVACION}
+                  autoCapitalize="sentences"
+                  returnKeyType="done"
+                  allowFontScaling={false}
+                  maxFontSizeMultiplier={1.15}
+                  textAlignVertical="center"
+                />
+                <Text style={styles.observacionAyuda} allowFontScaling={false}>
+                  Solo letras y espacios entre palabras.
+                </Text>
               </View>
             </View>
           }
@@ -460,6 +512,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#334155',
+  },
+  observacionContainer: {
+    marginTop: 4,
+  },
+  observacionLabel: {
+    color: '#334155',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  observacionInput: {
+    backgroundColor: '#FFF',
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    color: '#334155',
+    fontSize: 21,
+    height: 70,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    lineHeight: 26,
+  },
+  observacionAyuda: {
+    color: '#64748B',
+    fontSize: 12,
+    marginTop: 6,
   },
   modalOverlay: {
     flex: 1,
