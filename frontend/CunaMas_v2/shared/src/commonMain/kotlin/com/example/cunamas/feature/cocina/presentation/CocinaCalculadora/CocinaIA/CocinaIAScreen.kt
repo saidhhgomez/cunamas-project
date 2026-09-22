@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
@@ -15,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.cunamas.core.auth.domain.Role
+import com.example.cunamas.core.ui.components.BotonVolver
 import com.example.cunamas.core.ui.components.RoleScaffold
 import com.example.cunamas.core.ui.components.WelcomeHeader
 import org.koin.compose.viewmodel.koinViewModel
@@ -45,9 +45,7 @@ fun CocinaIAScreen(
                 .padding(paddingValues)
         ) {
             WelcomeHeader(nombreUsuario = usuario?.nombre ?: "") {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                }
+                BotonVolver(onClick = { navController.popBackStack() })
             }
 
             Spacer(Modifier.height(16.dp))

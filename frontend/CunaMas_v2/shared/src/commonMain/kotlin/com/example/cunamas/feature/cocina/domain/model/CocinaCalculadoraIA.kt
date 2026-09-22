@@ -8,6 +8,12 @@ data class ResumenIA(
 )
 
 @Serializable
+data class RespuestaIA(
+    val analisis: String,
+    val recomendaciones: List<String> = emptyList()
+)
+
+@Serializable
 data class AlimentoIA(
     val nombre: String,
     val categoriaEtaria: CategoriaEtariaIA,

@@ -7,7 +7,11 @@ import kotlinx.browser.localStorage
 actual object DeviceInfoProvider {
     actual fun getDeviceInfo(): DispositivoDto {
         val userAgent = window.navigator.userAgent
-        val browserName = "Web (Wasm)"
+        val browserName = when {
+            userAgent.contains("Chrome") -> "Chrome (Wasm)"
+            userAgent.contains("Firefox") -> "Firefox (Wasm)"
+            else -> "Web Browser (Wasm)"
+        }
 
         val storageKey = "device_uuid_wasm"
         var uuid = localStorage.getItem(storageKey)

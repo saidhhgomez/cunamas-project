@@ -23,11 +23,11 @@ class CocinaReporteViewModel(
     val sessionManager: SessionManager
 ) : ViewModel() {
 
-    private val _fecha = MutableStateFlow(obtenerFechaActualPlataforma())
+    private val _fecha = MutableStateFlow("") // Empieza vacío para obligar a seleccionar
     val fecha: StateFlow<String> = _fecha.asStateFlow()
 
-    private val _correlativo = MutableStateFlow(1)
-    val correlativo: StateFlow<Int> = _correlativo.asStateFlow()
+    private val _correlativo = MutableStateFlow<Int?>(null) // Empieza en null para obligar a seleccionar
+    val correlativo: StateFlow<Int?> = _correlativo.asStateFlow()
 
     private val _centroAlimentarioSeleccionado = MutableStateFlow<CentroAlimentario?>(null)
     val centroAlimentarioSeleccionado: StateFlow<CentroAlimentario?> = _centroAlimentarioSeleccionado.asStateFlow()
@@ -104,8 +104,11 @@ class CocinaReporteViewModel(
 
     fun generarReporte() {
         val centro = _centroAlimentarioSeleccionado.value
-        if (centro == null) {
-            _error.value = "Debe seleccionar un centro alimentario"
+        val corr = _correlativo.value
+        val fec = _fecha.value
+        
+        if (centro == null || corr == null || fec.isEmpty()) {
+            _error.value = "Debe seleccionar todos los filtros obligatorios"
             return
         }
 
@@ -113,10 +116,10 @@ class CocinaReporteViewModel(
             _isDownloading.value = true
             _error.value = null
             try {
-                val result = getReportePdf(centro.id, _fecha.value, _correlativo.value)
+                val result = getReportePdf(centro.id, fec, corr)
                 result.fold(
                     onSuccess = { bytes ->
-                        PlatformFileHandler.openPdf(bytes, "Reporte_${centro.nombreCentro}_${_fecha.value}.pdf")
+                        PlatformFileHandler.openPdf(bytes, "Reporte_${centro.nombreCentro}_${fec}.pdf")
                     },
                     onFailure = {
                         _error.value = "Error al descargar el PDF: ${it.message}"

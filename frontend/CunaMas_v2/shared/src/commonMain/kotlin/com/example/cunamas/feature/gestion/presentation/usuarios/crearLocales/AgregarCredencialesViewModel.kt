@@ -1,4 +1,4 @@
-package com.example.cunamas.feature.gestion.presentation.usuarios
+package com.example.cunamas.feature.gestion.presentation.usuarios.crearLocales
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

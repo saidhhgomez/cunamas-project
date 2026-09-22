@@ -1,5 +1,6 @@
 package com.example.cunamas.core.ui.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -17,25 +18,35 @@ fun RoleScaffold(
     rutaActual: String,
     navController: NavController,
     mostrarBottomBar: Boolean = true,
+    isLoading: Boolean = false,
     topBar: @Composable () -> Unit = {},
+    bottomBar: @Composable () -> Unit = {}, // 👈 Nuevo parámetro
     floatingActionButton: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding(),   // 👈 protección arriba, UNA sola vez para toda pantalla que use esto
-        topBar = topBar,
-        bottomBar = {
-            if (mostrarBottomBar) {
-                RoleBottomNavBar(
-                    navController = navController,
-                    role = role,
-                    rutaActual = rutaActual
-                )
-            }
-        },
-        floatingActionButton = floatingActionButton,
-        content = content
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            topBar = topBar,
+            bottomBar = {
+                if (mostrarBottomBar) {
+                    RoleBottomNavBar(
+                        navController = navController,
+                        role = role,
+                        rutaActual = rutaActual
+                    )
+                } else {
+                    bottomBar() // 👈 Usa el bottomBar personalizado si existe
+                }
+            },
+            floatingActionButton = floatingActionButton,
+            content = content
+        )
+
+        if (isLoading) {
+            LoadingOverlay()
+        }
+    }
 }

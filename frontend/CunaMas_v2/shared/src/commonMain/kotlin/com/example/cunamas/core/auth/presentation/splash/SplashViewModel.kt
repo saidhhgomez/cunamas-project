@@ -4,11 +4,9 @@
         import androidx.lifecycle.viewModelScope
         import com.example.cunamas.core.auth.domain.AuthRepository
         import com.example.cunamas.core.auth.domain.User
-        import dagger.hilt.android.lifecycle.HiltViewModel
         import kotlinx.coroutines.flow.MutableStateFlow
         import kotlinx.coroutines.flow.StateFlow
         import kotlinx.coroutines.launch
-        import javax.inject.Inject
 
         sealed class SplashState {
             object Loading : SplashState()
@@ -16,8 +14,7 @@
             object SinSesion : SplashState()
         }
 
-        @HiltViewModel
-        class SplashViewModel @Inject constructor(
+        class SplashViewModel(
             private val repository: AuthRepository
         ) : ViewModel() {
 

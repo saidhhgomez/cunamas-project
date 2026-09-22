@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.cunamas.core.session.SessionManager
 import com.example.cunamas.feature.gestion.domain.model.Distrito
 import com.example.cunamas.feature.gestion.usecase.distrito.BuscarDistritosUseCase
+import com.example.cunamas.feature.madre.domain.model.CentroAtencion
+import com.example.cunamas.feature.madre.domain.usecase.GetCentrosAtencionUseCase
 import com.example.cunamas.feature.madre.domain.usecase.GuardarDireccionUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +20,8 @@ import kotlinx.coroutines.launch
 class MadreHomeViewModel(
     val sessionManager: SessionManager,
     private val buscarDistritos: BuscarDistritosUseCase,
-    private val guardarDireccion: GuardarDireccionUseCase
+    private val guardarDireccion: GuardarDireccionUseCase,
+    private val getCentrosAtencion: GetCentrosAtencionUseCase
 ) : ViewModel() {
 
     private val _distritosSugeridos = MutableStateFlow<List<Distrito>>(emptyList())
@@ -27,8 +30,14 @@ class MadreHomeViewModel(
     private val _queryDistrito = MutableStateFlow("")
     val queryDistrito: StateFlow<String> = _queryDistrito.asStateFlow()
 
+    private val _centros = MutableStateFlow<List<CentroAtencion>>(emptyList())
+    val centros: StateFlow<List<CentroAtencion>> = _centros.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isLoadingCentros = MutableStateFlow(false)
+    val isLoadingCentros: StateFlow<Boolean> = _isLoadingCentros.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -37,6 +46,9 @@ class MadreHomeViewModel(
     val exitoRegistro: StateFlow<Boolean> = _exitoRegistro.asStateFlow()
 
     init {
+        // Cargar centros iniciales si ya tiene distrito
+        cargarCentros()
+
         viewModelScope.launch {
             _queryDistrito
                 .filter { it.length >= 3 }
@@ -46,6 +58,31 @@ class MadreHomeViewModel(
                     _distritosSugeridos.value = buscarDistritos(query)
                 }
         }
+
+        // Observar cambios en el usuario para recargar centros si cambia el distrito
+        viewModelScope.launch {
+            sessionManager.currentUser.collect { user ->
+                if (user?.distrito != null) {
+                    cargarCentros()
+                }
+            }
+        }
+    }
+
+    fun cargarCentros() {
+        val distrito = sessionManager.currentUser.value?.distrito
+        if (distrito.isNullOrBlank()) return
+
+        viewModelScope.launch {
+            _isLoadingCentros.value = true
+            try {
+                _centros.value = getCentrosAtencion(distrito)
+            } catch (e: Exception) {
+                _centros.value = emptyList()
+            } finally {
+                _isLoadingCentros.value = false
+            }
+        }
     }
 
     fun onQueryDistritoChange(nuevo: String) {
@@ -53,17 +90,24 @@ class MadreHomeViewModel(
         if (nuevo.isEmpty()) _distritosSugeridos.value = emptyList()
     }
 
-    fun registrarDireccion(idDistrito: Int, nombreDireccion: String) {
+    fun cerrarSesion() {
+        sessionManager.clearUser()
+    }
+
+    fun registrarDireccion(idDistrito: Int, nombreDistrito: String, nombreDireccion: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             val result = guardarDireccion(idDistrito, nombreDireccion)
             result.fold(
                 onSuccess = {
-                    // Actualizamos localmente el flag para que el Dialog desaparezca
+                    // Actualizamos localmente el flag y el distrito para que el Dialog desaparezca y carguen los centros
                     val userActual = sessionManager.currentUser.value
                     if (userActual != null) {
-                        sessionManager.setUser(userActual.copy(tieneDireccion = true))
+                        sessionManager.setUser(userActual.copy(
+                            tieneDireccion = true,
+                            distrito = nombreDistrito
+                        ))
                     }
                     _exitoRegistro.value = true
                 },

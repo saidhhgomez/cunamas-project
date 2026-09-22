@@ -43,8 +43,8 @@ class MadreAsistenciaViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _exito = MutableStateFlow(false)
-    val exito: StateFlow<Boolean> = _exito.asStateFlow()
+    private val _exito = MutableStateFlow<String?>(null)
+    val exito: StateFlow<String?> = _exito.asStateFlow()
 
     fun onCorrelativoChange(nuevo: Int) {
         _correlativo.value = nuevo
@@ -52,8 +52,10 @@ class MadreAsistenciaViewModel(
 
     fun onCantidadChange(id: Int, nuevaCantidad: String) {
         _categorias.value = _categorias.value.map {
-            if (it.id == id) it.copy(cantidad = nuevaCantidad.filter { char -> char.isDigit() })
-            else it
+            if (it.id == id) {
+                val filtrado = nuevaCantidad.filter { char -> char.isDigit() }.take(3)
+                it.copy(cantidad = filtrado)
+            } else it
         }
     }
 
@@ -76,8 +78,12 @@ class MadreAsistenciaViewModel(
             
             val result = registrarAsistenciaUseCase(request)
             result.fold(
-                onSuccess = { _exito.value = true },
-                onFailure = { _error.value = it.message ?: "Error al registrar asistencia" }
+                onSuccess = { 
+                    _exito.value = it.mensaje 
+                },
+                onFailure = { 
+                    _error.value = "No se pudo registrar la asistencia. Intente nuevamente."
+                }
             )
             _isLoading.value = false
         }

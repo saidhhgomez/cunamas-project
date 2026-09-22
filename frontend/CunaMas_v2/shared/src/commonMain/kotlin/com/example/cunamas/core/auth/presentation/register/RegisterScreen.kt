@@ -14,16 +14,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.cunamas.core.auth.domain.TipoDocumento
 import com.example.cunamas.core.ui.components.AuthScaffold
-import com.example.cunamas.core.ui.components.LoadingOverlay
+import org.koin.compose.viewmodel.koinViewModel
+import com.example.cunamas.core.common.TipoDocumento
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
-    viewModel: RegisterViewModel = hiltViewModel(),
+    viewModel: RegisterViewModel = koinViewModel(),
     onVolverALogin: () -> Unit
 ) {
     var tipoDocumento by remember { mutableStateOf<TipoDocumento?>(null) }
@@ -56,9 +56,10 @@ fun RegisterScreen(
     val formularioValido = !errorTipoDocumento && !errorNumeroDocumento && !errorNombres &&
             !errorApPaterno && !errorApMaterno && !errorCorreo && !errorPassword && !errorConfirmPassword
 
-    AuthScaffold { paddingValues ->
+    AuthScaffold(
+        isLoading = state is RegisterState.Loading
+    ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -94,7 +95,7 @@ fun RegisterScreen(
                         expanded = menuTipoDocExpandido,
                         onDismissRequest = { menuTipoDocExpandido = false }
                     ) {
-                        TipoDocumento.values().forEach { tipo ->
+                        TipoDocumento.entries.forEach { tipo ->
                             DropdownMenuItem(
                                 text = { Text(tipo.label) },
                                 onClick = {
@@ -133,7 +134,7 @@ fun RegisterScreen(
                 CampoTexto(
                     valor = apPaterno,
                     onValorChange = { apPaterno = viewModel.filtrarTextoSinEspaciosDobles(it) },
-                    etiqueta = "Apellido paterno *",
+                    etiqueta = "Apellido patero *",
                     esError = intentoEnviar && errorApPaterno,
                     mensajeError = "El apellido paterno es obligatorio"
                 )
@@ -170,7 +171,7 @@ fun RegisterScreen(
                 )
                 Spacer(Modifier.height(6.dp))
 
-                // Checklist visual de requisitos, solo si el usuario ya empezó a escribir
+                // Checklist visual de requisitos
                 if (password.isNotEmpty()) {
                     Column(modifier = Modifier.padding(start = 4.dp)) {
                         requisitosPassword.forEach { requisito ->
@@ -249,14 +250,9 @@ fun RegisterScreen(
 
                 Spacer(Modifier.height(32.dp))
             }
-
-            // 👇 Bloquea toda la pantalla mientras se registra
-            if (state is RegisterState.Loading) {
-                LoadingOverlay(mensaje = "Creando tu cuenta...")
-            }
         }
 
-        // 👇 MODAL de éxito — genérico, extensible más adelante
+        // 👇 MODAL de éxito
         if (state is RegisterState.Success) {
             AlertDialog(
                 onDismissRequest = { },
@@ -266,7 +262,6 @@ fun RegisterScreen(
                 title = { Text("¡Registro exitoso!") },
                 text = {
                     Text((state as RegisterState.Success).mensaje)
-                    // 🔜 espacio reservado para más adelante (ej. mostrar info adicional si el backend la agrega)
                 },
                 confirmButton = {
                     TextButton(onClick = {
@@ -279,7 +274,7 @@ fun RegisterScreen(
             )
         }
 
-        // 👇 MODAL de error — genérico
+        // 👇 MODAL de error
         if (state is RegisterState.Error) {
             AlertDialog(
                 onDismissRequest = { viewModel.limpiarEstado() },
@@ -314,7 +309,7 @@ private fun CampoTexto(
         label = { Text(etiqueta) },
         isError = esError,
         keyboardOptions = KeyboardOptions(keyboardType = teclado),
-        visualTransformation = if (esPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        visualTransformation = if (esPassword) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = Modifier.fillMaxWidth()
     )
     if (esError) {

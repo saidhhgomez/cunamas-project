@@ -13,18 +13,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 
 @Composable
 fun WelcomeHeader(
     nombreUsuario: String,
-    fotoUrl: String? = null,   // 👈 nuevo, opcional
+    fotoUrl: String? = null,
     accion: @Composable () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFA2E835)) // o Color(0xFFF5F5F5)
+            .background(Color(0xFFD4E157)) // Verde más claro
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -59,7 +59,6 @@ private fun AvatarUsuario(
     tamano: androidx.compose.ui.unit.Dp = 48.dp
 ) {
     if (fotoUrl != null) {
-        // 👇 hay foto real, la cargamos desde la URL
         AsyncImage(
             model = fotoUrl,
             contentDescription = "Foto de perfil",
@@ -68,7 +67,6 @@ private fun AvatarUsuario(
                 .clip(CircleShape)
         )
     } else {
-        // 👇 sin foto, mostramos un círculo con la inicial del nombre
         Box(
             modifier = Modifier
                 .size(tamano)

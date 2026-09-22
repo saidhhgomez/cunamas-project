@@ -85,7 +85,7 @@ public class DataInitializer
         );
 
         persona.setNombres(
-                "ADMINISTRADOR"
+                ""
         );
 
         persona.setApPaterno(

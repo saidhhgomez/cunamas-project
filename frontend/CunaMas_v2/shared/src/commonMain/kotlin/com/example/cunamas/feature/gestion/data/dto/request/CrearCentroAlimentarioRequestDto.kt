@@ -1,4 +1,10 @@
 package com.example.cunamas.feature.gestion.data.dto.request
 
-class CrearCentroAlimentarioRequestDto {
-}
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class CrearCentroAlimentarioRequestDto(
+    val idDireccion: Int,
+    val nombreCentro: String,
+    val nombreComite: String
+)

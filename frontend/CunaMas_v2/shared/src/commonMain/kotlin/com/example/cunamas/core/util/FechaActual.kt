@@ -1,4 +1,5 @@
 package com.example.cunamas.core.util
 
-class FechaActual {
-}
+expect fun obtenerFechaActualPlataforma(): String
+expect fun millisAFechaString(millis: Long): String
+expect fun obtenerMillisDelMesActual(): Long

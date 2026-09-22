@@ -1,4 +1,5 @@
-package com.example.cunamas.feature.gestion.presentation.usuarios
+package com.example.cunamas.feature.gestion.presentation.usuarios.crearLocales
+
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -20,9 +22,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.cunamas.core.auth.domain.Role
-import com.example.cunamas.core.ui.components.LoadingOverlay
 import com.example.cunamas.core.ui.components.RoleScaffold
-import com.example.cunamas.feature.gestion.domain.TipoDocumento
+import com.example.cunamas.core.common.TipoDocumento
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +63,7 @@ fun AgregarCredencialesScreen(
         rutaActual = "agregar_credenciales",
         navController = navController,
         mostrarBottomBar = false,
+        isLoading = state is CrearUsuarioState.Enviando, // 👈 Bloqueo global
         topBar = {
             TopAppBar(
                 title = { Text("Agregar acceso") },
@@ -70,6 +72,11 @@ fun AgregarCredencialesScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFFD4E157),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                ),
                 windowInsets = WindowInsets(0, 0, 0, 0)
             )
         }
@@ -161,8 +168,10 @@ fun AgregarCredencialesScreen(
                     valor = apMaterno,
                     onValorChange = { apMaterno = viewModel.filtrarTextoSinEspaciosDobles(it) },
                     etiqueta = "Apellido materno *",
-                    esError = intentoEnviar && errorErrorApMaternoAux(intentoEnviar, errorApMaterno) // Corregido el nombre de variable local si aplica
+                    esError = intentoEnviar && errorApMaterno, // 👈 Corregido aquí
+                    mensajeError = "El apellido materno es obligatorio"
                 )
+
                 Spacer(Modifier.height(12.dp))
 
                 CampoTexto(
@@ -252,10 +261,6 @@ fun AgregarCredencialesScreen(
                 ) {
                     Text("Crear acceso")
                 }
-            }
-
-            if (state is CrearUsuarioState.Enviando) {
-                LoadingOverlay(mensaje = "Creando acceso...")
             }
         }
 

@@ -1,4 +1,9 @@
 package com.example.cunamas.core.common.dto.response
 
-class DireccionResponseDto {
-}
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class DireccionResponseDto(
+    val idGenerado: Int,
+    val mensaje: String
+)

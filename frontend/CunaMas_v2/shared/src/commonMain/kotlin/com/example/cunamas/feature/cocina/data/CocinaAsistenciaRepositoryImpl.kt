@@ -42,14 +42,7 @@ class CocinaAsistenciaRepositoryImpl(
                         )
                     }
                 )
-            },
-            totales = dto.totales?.map { totalDto ->
-                CocinaTotal(
-                    idCategoriaGrupo = totalDto.idCategoriaGrupo,
-                    categoria = totalDto.categoria,
-                    cantidad = totalDto.cantidad
-                )
-            } ?: emptyList()
+            }
         )
     }
 }

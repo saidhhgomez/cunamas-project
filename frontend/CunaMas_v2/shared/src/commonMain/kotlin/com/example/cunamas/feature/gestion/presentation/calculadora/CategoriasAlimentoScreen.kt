@@ -1,11 +1,9 @@
 package com.example.cunamas.feature.gestion.presentation.calculadora
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,22 +11,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.cunamas.core.auth.domain.Role
+import com.example.cunamas.core.ui.components.BotonVolver
 import com.example.cunamas.core.ui.components.RoleScaffold
 import com.example.cunamas.core.ui.components.WelcomeHeader
-import com.example.cunamas.feature.gestion.presentation.home.GestionHomeViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoriasAlimentoScreen(
     navController: NavController,
-    viewModel: GestionHomeViewModel = koinViewModel()
+    viewModel: CategoriasAlimentoViewModel = koinViewModel()
 ) {
     val usuario by viewModel.sessionManager.currentUser.collectAsState()
     val rolActivo = usuario?.rolPrincipal ?: Role.DESCONOCIDO
 
-    // TODO: Implementar ViewModel específico para categorías
-    val categorias = listOf("Cereales", "Tubérculos", "Menestras", "Carnes y Pescados")
+    val categorias by viewModel.categorias.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     RoleScaffold(
         role = rolActivo,
@@ -41,27 +39,60 @@ fun CategoriasAlimentoScreen(
                 .padding(paddingValues)
         ) {
             WelcomeHeader(nombreUsuario = usuario?.nombre ?: "") {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                }
+                BotonVolver(onClick = { navController.popBackStack() })
             }
 
             Spacer(Modifier.height(16.dp))
-            Text("Categorías de Alimento", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 16.dp))
+            Text(
+                "Categorías de Alimento",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
             Spacer(Modifier.height(16.dp))
 
-            LazyColumn {
-                items(categorias) { categoria ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
-                            .clickable {
-                                // Por ahora navegamos a preparaciones con un ID ficticio
-                                navController.navigate("preparacion/1")
-                            }
-                    ) {
-                        Text(categoria, modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge)
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (categorias.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No hay categorías disponibles",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(categorias, key = { it.id }) { categoria ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    navController.navigate("preparacion/${categoria.id}")
+                                }
+                        ) {
+                            Text(
+                                text = categoria.nombre,
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
                     }
                 }
             }

@@ -3,8 +3,7 @@ package com.example.cunamas.feature.cocina.domain.model
 data class ResumenCocinaAsistencia(
     val idServicioAlimentario: Int,
     val servicioAlimentario: String,
-    val locales: List<CocinaLocal>,
-    val totales: List<CocinaTotal>
+    val locales: List<CocinaLocal>
 )
 
 data class CocinaLocal(
@@ -25,8 +24,3 @@ data class CocinaItemAsistencia(
     val cantidad: Int
 )
 
-data class CocinaTotal(
-    val idCategoriaGrupo: Int,
-    val categoria: String,
-    val cantidad: Int
-)

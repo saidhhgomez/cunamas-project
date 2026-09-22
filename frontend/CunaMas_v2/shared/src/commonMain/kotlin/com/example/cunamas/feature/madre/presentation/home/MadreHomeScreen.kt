@@ -5,19 +5,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.cunamas.core.auth.domain.Role
+import com.example.cunamas.core.navigation.AuthRoutes
 import com.example.cunamas.core.ui.components.RoleScaffold
 import com.example.cunamas.core.ui.components.WelcomeHeader
-import com.example.cunamas.feature.gestion.domain.model.Distrito
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -28,6 +30,8 @@ fun MadreHomeScreen(
     val user by viewModel.sessionManager.currentUser.collectAsState()
     val rolActivo = user?.rolPrincipal ?: Role.DESCONOCIDO
     val tieneDireccion = user?.tieneDireccion ?: true
+    val centros by viewModel.centros.collectAsState()
+    val isLoadingCentros by viewModel.isLoadingCentros.collectAsState()
 
     RoleScaffold(
         role = rolActivo,
@@ -37,31 +41,112 @@ fun MadreHomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
+                .padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            WelcomeHeader(nombreUsuario = user?.nombre ?: "")
+            WelcomeHeader(nombreUsuario = user?.nombre ?: "") {
+                IconButton(onClick = {
+                    viewModel.cerrarSesion()
+                    navController.navigate(AuthRoutes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                        contentDescription = "Cerrar sesión",
+                        tint = Color.Red
+                    )
+                }
+            }
 
-            Spacer(Modifier.height(32.dp))
-            
-            Text(
-                text = "Bienvenida a CunaMás (Módulo Madre)",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(Modifier.height(16.dp))
-            
-            Text(
-                text = "Desde aquí podrás ver el progreso de tu niño y gestionar tus datos.",
-                style = MaterialTheme.typography.bodyLarge
-            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Bienvenida a CunaMás (Módulo Madre)",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Centros de Atención Infantil en ${user?.distrito ?: "tu distrito"}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                if (isLoadingCentros) {
+                    item {
+                        CircularProgressIndicator(modifier = Modifier.padding(32.dp))
+                    }
+                } else if (centros.isEmpty() && tieneDireccion) {
+                    item {
+                        Text(
+                            "No se encontraron locales en tu distrito.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(32.dp)
+                        )
+                    }
+                } else {
+                    items(centros) { centro ->
+                        CentroAtencionItem(
+                            centro = centro,
+                            onClick = {
+                                navController.navigate("madre_modulos/${centro.idLocal}")
+                            }
+                        )
+                    }
+                }
+
+                item {
+                    Spacer(Modifier.height(32.dp))
+                }
+            }
         }
 
         // 🏠 DIALOG MANDATORIO DE DIRECCIÓN
         if (!tieneDireccion) {
             DialogRegistroDireccion(viewModel)
+        }
+    }
+}
+
+@Composable
+private fun CentroAtencionItem(
+    centro: com.example.cunamas.feature.madre.domain.model.CentroAtencion,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = centro.localNombre,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Dirección: ${centro.direccion}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "Servicio: ${centro.servicioAlimentario}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -141,10 +226,10 @@ private fun DialogRegistroDireccion(viewModel: MadreHomeViewModel) {
                         LazyColumn {
                             items(distritosSugeridos) { distrito ->
                                 ListItem(
-                                    headlineContent = { Text(distrito.nombre) },
+                                    headlineContent = { Text(distrito.distrito) },
                                     modifier = Modifier.clickable {
                                         idDistritoSeleccionado = distrito.id
-                                        nombreDistritoSeleccionado = distrito.nombre
+                                        nombreDistritoSeleccionado = distrito.distrito
                                         viewModel.onQueryDistritoChange("")
                                     }
                                 )
@@ -178,7 +263,7 @@ private fun DialogRegistroDireccion(viewModel: MadreHomeViewModel) {
                 Button(
                     onClick = { 
                         if (idDistritoSeleccionado != null && nombreDireccion.isNotBlank()) {
-                            viewModel.registrarDireccion(idDistritoSeleccionado!!, nombreDireccion)
+                            viewModel.registrarDireccion(idDistritoSeleccionado!!, nombreDistritoSeleccionado, nombreDireccion)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),

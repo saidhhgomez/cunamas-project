@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,8 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.cunamas.core.auth.domain.Role
+import com.example.cunamas.core.ui.components.BotonVolver
 import com.example.cunamas.core.ui.components.RoleScaffold
 import com.example.cunamas.core.ui.components.WelcomeHeader
+import com.example.cunamas.core.util.encodeURLParam
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -33,17 +34,7 @@ fun MadreModulosScreen(
     RoleScaffold(
         role = rolActivo,
         rutaActual = "madre_modulos",
-        navController = navController,
-        topBar = {
-            TopAppBar(
-                title = { Text("Módulos del Local") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar")
-                    }
-                }
-            )
-        }
+        navController = navController
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -51,8 +42,14 @@ fun MadreModulosScreen(
                 .padding(paddingValues)
         ) {
             WelcomeHeader(nombreUsuario = user?.nombre ?: "") {
-                // IconButton opcional
+                BotonVolver(onClick = { navController.popBackStack() })
             }
+
+            Text(
+                text = "Módulos del Local",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp)
+            )
 
             if (isLoading && items.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -70,7 +67,8 @@ fun MadreModulosScreen(
                 ) {
                     items(items) { modulo ->
                         ModuloItemMadre(modulo.nombre) {
-                            // Por ahora solo clic, luego definiremos a donde va la madre
+                            val encodedNombre = modulo.nombre.encodeURLParam()
+                            navController.navigate("madre_asistencia/${modulo.id}/$encodedNombre")
                         }
                     }
                     if (isLoading) {

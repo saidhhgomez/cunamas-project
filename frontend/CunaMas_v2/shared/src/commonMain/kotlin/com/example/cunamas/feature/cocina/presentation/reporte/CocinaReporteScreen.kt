@@ -3,7 +3,6 @@ package com.example.cunamas.feature.cocina.presentation.reporte
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -16,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.cunamas.core.auth.domain.Role
+import com.example.cunamas.core.ui.components.BotonVolver
 import com.example.cunamas.core.ui.components.RoleScaffold
 import com.example.cunamas.core.ui.components.WelcomeHeader
 import com.example.cunamas.core.util.CalendarioDialog
@@ -52,9 +52,7 @@ fun CocinaReporteScreen(
                 .padding(paddingValues)
         ) {
             WelcomeHeader(nombreUsuario = usuario?.nombre ?: "") {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                }
+                BotonVolver(onClick = { navController.popBackStack() })
             }
 
             LazyColumn(
@@ -133,7 +131,7 @@ fun CocinaReporteScreen(
                     ) {
                         Icon(Icons.Filled.DateRange, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text(fecha)
+                        Text(fecha.ifEmpty { "Seleccionar Fecha" })
                     }
                 }
 
@@ -166,7 +164,7 @@ fun CocinaReporteScreen(
                     Button(
                         onClick = { viewModel.generarReporte() },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        enabled = centroSeleccionado != null && !isDownloading,
+                        enabled = centroSeleccionado != null && fecha.isNotEmpty() && correlativo != null && !isDownloading,
                         shape = MaterialTheme.shapes.medium
                     ) {
                         if (isDownloading) {
@@ -193,7 +191,7 @@ fun CocinaReporteScreen(
     }
 
     if (mostrarDatePicker) {
-        val partes = fecha.split("-")
+        val partes = if (fecha.isNotEmpty()) fecha.split("-") else emptyList()
         val anioInicial = partes.getOrNull(0)?.toIntOrNull() ?: 2026
         val mesInicial = partes.getOrNull(1)?.toIntOrNull() ?: 1
         val diaInicial = partes.getOrNull(2)?.toIntOrNull() ?: 1

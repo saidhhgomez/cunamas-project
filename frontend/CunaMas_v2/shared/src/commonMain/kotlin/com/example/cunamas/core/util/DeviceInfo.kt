@@ -1,4 +1,8 @@
 package com.example.cunamas.core.util
 
-class DeviceInfo {
+import com.example.cunamas.core.auth.data.dto.DispositivoDto
+
+
+expect object DeviceInfoProvider {
+    fun getDeviceInfo(): DispositivoDto
 }

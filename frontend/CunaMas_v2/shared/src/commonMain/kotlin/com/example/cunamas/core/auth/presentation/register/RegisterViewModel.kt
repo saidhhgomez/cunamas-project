@@ -3,12 +3,11 @@ package com.example.cunamas.core.auth.presentation.register
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cunamas.core.auth.domain.RegisterUseCase
-import com.example.cunamas.core.auth.domain.TipoDocumento
-import dagger.hilt.android.lifecycle.HiltViewModel
+import com.example.cunamas.core.common.TipoDocumento
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed class RegisterState {
     object Idle : RegisterState()
@@ -19,13 +18,13 @@ sealed class RegisterState {
 
 data class RequisitoPassword(val descripcion: String, val cumplido: Boolean)
 
-@HiltViewModel
-class RegisterViewModel @Inject constructor(
+// Sin @HiltViewModel ni @Inject. Koin lo inyectará directamente desde commonMain.
+class RegisterViewModel(
     private val registerUseCase: RegisterUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<RegisterState>(RegisterState.Idle)
-    val state: StateFlow<RegisterState> = _state
+    val state: StateFlow<RegisterState> = _state.asStateFlow()
 
     fun registrar(
         idDocumento: Int,
@@ -67,7 +66,7 @@ class RegisterViewModel @Inject constructor(
         _state.value = RegisterState.Idle
     }
 
-    // 👇 Filtros en tiempo real
+    // 👇 Filtros en tiempo real (idénticos y perfectamente multiplataforma)
 
     fun filtrarNumeroDocumento(texto: String, tipo: TipoDocumento?): String {
         var limpio = texto.filter { !it.isWhitespace() }
@@ -92,7 +91,7 @@ class RegisterViewModel @Inject constructor(
     }
 
     fun filtrarPassword(texto: String): String {
-        return texto.filter { !it.isWhitespace() }   // contraseñas nunca deben llevar espacios
+        return texto.filter { !it.isWhitespace() }
     }
 
     fun mensajeErrorNumeroDocumento(tipo: TipoDocumento?): String {
@@ -103,8 +102,6 @@ class RegisterViewModel @Inject constructor(
             null -> "El número de documento es obligatorio"
         }
     }
-
-    // 👇 Validación de contraseña segura
 
     fun requisitosPassword(password: String): List<RequisitoPassword> {
         return listOf(

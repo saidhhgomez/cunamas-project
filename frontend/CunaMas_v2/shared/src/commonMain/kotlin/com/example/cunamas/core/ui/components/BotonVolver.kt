@@ -20,30 +20,18 @@ fun BotonVolver(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.height(36.dp),
+        modifier = modifier.size(36.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFFE91E63), // Color fucsia de la imagen
+            containerColor = Color(0xFFE91E63), // Color fucsia
             contentColor = Color.White
         ),
         shape = RoundedCornerShape(18.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+        contentPadding = PaddingValues(0.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Volver",
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "VOLVER",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp
-            )
-        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Volver",
+            modifier = Modifier.size(20.dp)
+        )
     }
 }

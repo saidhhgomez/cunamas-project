@@ -1,4 +1,4 @@
-package com.example.cunamas.core.auth.data
+package com.example.cunamas.core.auth.data.dto
 
 import kotlinx.serialization.Serializable
 

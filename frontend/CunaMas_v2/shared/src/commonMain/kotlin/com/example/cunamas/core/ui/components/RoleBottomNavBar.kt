@@ -28,17 +28,13 @@ fun obtenerMenuParaRol(role: Role): List<ItemMenu> {
             ItemMenu("Calculadora", "categorias_alimento", Icons.Default.Person)
         )
         Role.SOCIA_COCINA_TIPO1, Role.SOCIA_COCINA_TIPO2 -> listOf(
-            ItemMenu("Inicio", "cocina_home", Icons.Default.Home),
-            ItemMenu("Perfil", "perfil", Icons.Default.Person)
+            ItemMenu("Inicio", "socia_cocina_home", Icons.Default.Home),
+            ItemMenu("Calculadora", "cocina_calculadora_categorias", Icons.Default.Person)
         )
-        Role.MADRE_CUIDADORA, Role.MADRE_GUIA -> listOf(   // 👈 nuevo
-            ItemMenu("Inicio", "madres_home", Icons.Default.Home),
-            ItemMenu("Perfil", "perfil", Icons.Default.Person)
+        Role.MADRE_CUIDADORA, Role.MADRE_GUIA -> listOf(
+            ItemMenu("Inicio", "madre_home", Icons.Default.Home),
         )
-        else -> listOf(
-            ItemMenu("Inicio", "home", Icons.Default.Home),
-            ItemMenu("Perfil", "perfil", Icons.Default.Person)
-        )
+        else -> listOf()
     }
 }
 
@@ -57,10 +53,10 @@ fun RoleBottomNavBar(
             NavigationBarItem(
                 selected = rutaActual == item.ruta,
                 onClick = {
-                    if (rutaActual != item.ruta) {   // 👈 solo navega si NO estás ya ahí
+                    if (rutaActual != item.ruta) {
                         navController.navigate(item.ruta) {
                             launchSingleTop = true
-                            popUpTo(item.ruta) { inclusive = true } // opcional: limpia el stack hasta ahí
+                            popUpTo(item.ruta) { inclusive = true }
                         }
                     }
                 },

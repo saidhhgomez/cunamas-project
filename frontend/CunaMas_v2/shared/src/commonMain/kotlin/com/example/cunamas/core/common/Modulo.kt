@@ -1,4 +1,9 @@
 package com.example.cunamas.core.common
 
-class Modulo {
-}
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class Modulo(
+    val id: Int,
+    val nombre: String
+)

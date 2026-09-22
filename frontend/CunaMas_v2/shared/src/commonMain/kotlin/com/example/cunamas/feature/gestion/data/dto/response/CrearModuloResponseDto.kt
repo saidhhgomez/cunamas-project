@@ -1,4 +1,9 @@
 package com.example.cunamas.feature.gestion.data.dto.response
 
-class CrearModuloResponseDto {
-}
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class CrearModuloResponseDto(
+    val mensaje: String,
+    val idModulo: Int
+)

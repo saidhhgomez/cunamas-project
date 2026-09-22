@@ -1,4 +1,10 @@
 package com.example.cunamas.core.common
 
-class TipoPreparacion {
-}
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class TipoPreparacion(
+    val id: Int,
+    val nombre: String,
+    val porcionComestible: Int
+)
