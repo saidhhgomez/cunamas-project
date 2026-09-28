@@ -3,6 +3,7 @@ package com.cunamas.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import java.math.BigDecimal;
 
 
 @Entity
@@ -27,7 +28,7 @@ public class RacionDosificacionEntity {
     private CategoriaDosificacionEntity categoriaGrupo;
 
 
-    @Column(name = "gr_ml")
-    private Integer grMl;
+    @Column(name = "gr_ml", precision = 10, scale = 2)
+    private BigDecimal grMl;
 
 }

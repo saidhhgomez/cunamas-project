@@ -32,4 +32,10 @@ public class TipoPreparacionEntity {
     @Column(name = "porcion_comestible")
     private Integer porcionComestible;
 
+    @Column(name = "unidad_medida", length = 10)
+    private String unidadMedida;
+
+    @Column(name = "tipo_medida", length = 10)
+    private String tipoMedida;
+
 }
