@@ -116,11 +116,29 @@ public class CalculadoraServiceImpl implements CalculadoraService {
         String unidadMedida = preparacion.getUnidadMedida() != null ? preparacion.getUnidadMedida() : "g";
         dto.setUnidad(unidadMedida);
 
-        // Determinación del empaque dinámico según el tipo de medida ("LIQUIDO" vs "SOLIDO")
-        boolean esLiquido = "LIQUIDO".equalsIgnoreCase(preparacion.getTipoMedida());
-        String etiqueta1k = esLiquido ? "Opción en empaques de 1 L" : "Opción en empaques de 1 Kg";
-        String etiqueta500 = esLiquido ? "Opción en empaques de 500 ml" : "Opción en empaques de 500 g";
-        String etiqueta250 = esLiquido ? "Opción en empaques de 250 ml" : "Opción en empaques de 250 g";
+        // Evaluamos el tipo de presentación dinámicamente mediante la entidad relacional
+        TipoPresentacionEntity presentacion = preparacion.getTipoPresentacion();
+        String nombrePresentacion = (presentacion != null && presentacion.getNombre() != null)
+                ? presentacion.getNombre().toUpperCase()
+                : "SOLIDO";
+
+        String etiqueta1k;
+        String etiqueta500;
+        String etiqueta250;
+
+        if ("LIQUIDO".equals(nombrePresentacion)) {
+            etiqueta1k = "Opción en cajas de 1 L";
+            etiqueta500 = "Opción en cajas de 500 ml";
+            etiqueta250 = "Opción en cajas de 250 ml";
+        } else if ("LATA".equals(nombrePresentacion)) {
+            etiqueta1k = "Opción en latas grandes";
+            etiqueta500 = "Opción en latas medianas";
+            etiqueta250 = "Opción en latas pequeñas";
+        } else { // SOLIDO por defecto
+            etiqueta1k = "Opción en empaques de 1 Kg";
+            etiqueta500 = "Opción en empaques de 500 g";
+            etiqueta250 = "Opción en empaques de 250 g";
+        }
 
         double totalDouble = total.doubleValue();
 

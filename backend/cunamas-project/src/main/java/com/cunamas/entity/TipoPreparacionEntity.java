@@ -35,7 +35,10 @@ public class TipoPreparacionEntity {
     @Column(name = "unidad_medida", length = 10)
     private String unidadMedida;
 
-    @Column(name = "tipo_medida", length = 10)
-    private String tipoMedida;
+   //@Column(name = "tipo_medida", length = 10)
+    //private String tipoMedida;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tipo_presentacion_id")
+    private TipoPresentacionEntity tipoPresentacion;
 }
