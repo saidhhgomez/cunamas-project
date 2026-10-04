@@ -38,7 +38,7 @@ public class TipoPreparacionEntity {
    //@Column(name = "tipo_medida", length = 10)
     //private String tipoMedida;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tipo_presentacion_id")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_tipo_presentacion")
     private TipoPresentacionEntity tipoPresentacion;
 }

@@ -122,30 +122,49 @@ public class CalculadoraServiceImpl implements CalculadoraService {
                 ? presentacion.getNombre().toUpperCase()
                 : "SOLIDO";
 
-        String etiqueta1k;
-        String etiqueta500;
-        String etiqueta250;
-
-        if ("LIQUIDO".equals(nombrePresentacion)) {
-            etiqueta1k = "Opción en cajas de 1 L";
-            etiqueta500 = "Opción en cajas de 500 ml";
-            etiqueta250 = "Opción en cajas de 250 ml";
-        } else if ("LATA".equals(nombrePresentacion)) {
-            etiqueta1k = "Opción en latas grandes";
-            etiqueta500 = "Opción en latas medianas";
-            etiqueta250 = "Opción en latas pequeñas";
-        } else { // SOLIDO por defecto
-            etiqueta1k = "Opción en empaques de 1 Kg";
-            etiqueta500 = "Opción en empaques de 500 g";
-            etiqueta250 = "Opción en empaques de 250 g";
-        }
-
-        double totalDouble = total.doubleValue();
+        String nombreAlimento = preparacion.getNombrePreparacion().toUpperCase();
 
         LinkedHashMap<String, Integer> empaques = new LinkedHashMap<>();
-        empaques.put(etiqueta1k, (int) Math.ceil(totalDouble / 1000.0));
-        empaques.put(etiqueta500, (int) Math.ceil(totalDouble / 500.0));
-        empaques.put(etiqueta250, (int) Math.ceil(totalDouble / 250.0));
+        double totalDouble = total.doubleValue();
+
+        if ("LIQUIDO".equals(nombrePresentacion)) {
+            // Si el alimento es contiene el nombre "Leche"
+            if (nombreAlimento.contains("LECHE")) {
+                String etiqueta946 = "Opción en cajas de 946 ml";
+                String etiqueta500 = "Opción en cajas de 500 ml";
+                String etiqueta250 = "Opción en cajas de 250 ml";
+
+                empaques.put(etiqueta946, (int) Math.ceil(totalDouble / 946.0));
+                empaques.put(etiqueta500, (int) Math.ceil(totalDouble / 500.0));
+                empaques.put(etiqueta250, (int) Math.ceil(totalDouble / 250.0));
+            } else {
+                // Líquidos estándar (Aceite, Agua, Jugos)
+                String etiqueta1k = "Opción en botellas/cajas de 1 L";
+                String etiqueta500 = "Opción en botellas/cajas de 500 ml";
+                String etiqueta250 = "Opción en botellas/cajas de 250 ml";
+
+                empaques.put(etiqueta1k, (int) Math.ceil(totalDouble / 1000.0));
+                empaques.put(etiqueta500, (int) Math.ceil(totalDouble / 500.0));
+                empaques.put(etiqueta250, (int) Math.ceil(totalDouble / 250.0));
+            }
+        } else if ("LATA".equals(nombrePresentacion)) {
+            String etiquetaLataGrande = "Opción en latas de 425 g";
+            String etiquetaLataMediana = "Opción en latas de 170 g";
+            String etiquetaLataPequena = "Opción en latas de 100 g";
+
+            empaques.put(etiquetaLataGrande, (int) Math.ceil(totalDouble / 425.0));
+            empaques.put(etiquetaLataMediana, (int) Math.ceil(totalDouble / 170.0));
+            empaques.put(etiquetaLataPequena, (int) Math.ceil(totalDouble / 100.0));
+        } else {
+            // SOLIDO por defecto
+            String etiqueta1k = "Opción en empaques de 1 Kg";
+            String etiqueta500 = "Opción en empaques de 500 g";
+            String etiqueta250 = "Opción en empaques de 250 g";
+
+            empaques.put(etiqueta1k, (int) Math.ceil(totalDouble / 1000.0));
+            empaques.put(etiqueta500, (int) Math.ceil(totalDouble / 500.0));
+            empaques.put(etiqueta250, (int) Math.ceil(totalDouble / 250.0));
+        }
 
         dto.setEmpaquesSugeridos(empaques);
 
