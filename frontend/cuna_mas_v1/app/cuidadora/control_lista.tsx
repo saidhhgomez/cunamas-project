@@ -40,6 +40,15 @@ const OPCIONES_TURNO = [
 const MAX_DIGITOS_CANTIDAD = 3;
 const MAX_CARACTERES_OBSERVACION = 200;
 
+const obtenerFechaLocalYmd = () => {
+  const fecha = new Date();
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+
+  return `${anio}-${mes}-${dia}`;
+};
+
 export default function AsistenciaStatsScreen() {
   const router = useRouter();
   const { user } = useAuth(); 
@@ -57,6 +66,8 @@ export default function AsistenciaStatsScreen() {
   const [observacion, setObservacion] = useState('');
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [verificandoAsistencia, setVerificandoAsistencia] = useState(true);
+  const [asistenciaTomada, setAsistenciaTomada] = useState(false);
 
   const [turnoSeleccionado, setTurnoSeleccionado] = useState(OPCIONES_TURNO[0]);
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
@@ -104,6 +115,29 @@ export default function AsistenciaStatsScreen() {
     setObservacion('');
   }, []);
 
+  const manejarRetornoSeguro = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const verificarAsistenciaDelDia = useCallback(async () => {
+    const fechaActual = obtenerFechaLocalYmd();
+    console.log('[Asistencia] Verificando registro de la mañana:', {
+      idModulo: idModuloReal,
+      fecha: fechaActual,
+      correlativo: 1,
+    });
+
+    const respuesta = await AsistenciaService.obtenerAsistenciaConCorrelativo(
+      idModuloReal,
+      fechaActual,
+      1
+    );
+
+    console.log('[Asistencia] Respuesta de verificación:', respuesta);
+
+    return Array.isArray(respuesta?.registroManana) && respuesta.registroManana.length > 0;
+  }, [idModuloReal]);
+
   useEffect(() => {
     const cargarCategorias = async () => {
       try {
@@ -125,18 +159,50 @@ export default function AsistenciaStatsScreen() {
     cargarCategorias();
   }, [idModuloReal, limpiarFormulario]);
 
-  // Limpia el formulario automáticamente cada vez que la pantalla toma foco
   useFocusEffect(
     useCallback(() => {
-      if (categorias.length > 0) {
-        limpiarFormulario(categorias);
-      }
-    }, [categorias, limpiarFormulario])
-  );
+      let pantallaActiva = true;
 
-  const manejarRetornoSeguro = () => {
-    router.back();
-  };
+      const validarAsistencia = async () => {
+        setVerificandoAsistencia(true);
+        try {
+          const yaFueTomada = await verificarAsistenciaDelDia();
+          if (!pantallaActiva) return;
+
+          setAsistenciaTomada(yaFueTomada);
+          if (yaFueTomada) {
+            mostrarMensajeModal(
+              'atencion',
+              'Asistencia ya registrada',
+              'Ya se tomó la asistencia de la mañana para este día.',
+              manejarRetornoSeguro
+            );
+          } else if (categorias.length > 0) {
+            limpiarFormulario(categorias);
+          }
+        } catch (error) {
+          console.error('Error al verificar la asistencia del día:', error);
+          if (!pantallaActiva) return;
+
+          setAsistenciaTomada(true);
+          mostrarMensajeModal(
+            'error',
+            'No se pudo verificar la asistencia',
+            'Por seguridad no se puede registrar asistencia hasta verificar el registro del día.',
+            manejarRetornoSeguro
+          );
+        } finally {
+          if (pantallaActiva) setVerificandoAsistencia(false);
+        }
+      };
+
+      validarAsistencia();
+
+      return () => {
+        pantallaActiva = false;
+      };
+    }, [categorias, limpiarFormulario, manejarRetornoSeguro, verificarAsistenciaDelDia])
+  );
 
   const manejarCambioCantidad = (idCategoriaGrupo: number, texto: string) => {
     const textoLimpio = texto.replace(/[^0-9]/g, '').slice(0, MAX_DIGITOS_CANTIDAD);
@@ -157,6 +223,10 @@ export default function AsistenciaStatsScreen() {
   };
 
 const manejarGuardarAsistencia = async () => {
+    if (asistenciaTomada || verificandoAsistencia) {
+      return;
+    }
+
     const observacionLimpia = observacion.trim();
 
     if (!observacionLimpia) {
@@ -170,6 +240,19 @@ const manejarGuardarAsistencia = async () => {
 
     setEnviando(true); 
     try {
+      // Se consulta otra vez antes del POST por si se registró mientras la pantalla estaba abierta.
+      const yaFueTomada = await verificarAsistenciaDelDia();
+      if (yaFueTomada) {
+        setAsistenciaTomada(true);
+        mostrarMensajeModal(
+          'atencion',
+          'Asistencia ya registrada',
+          'Ya se tomó la asistencia de la mañana para este día.',
+          manejarRetornoSeguro
+        );
+        return;
+      }
+
       const categoriasPayload = categorias.map((cat) => ({
         idCategoriaGrupo: cat.idCategoriaGrupo,
         cantidad: Number(valoresAsistencia[cat.idCategoriaGrupo] || 0)
@@ -218,7 +301,7 @@ const manejarGuardarAsistencia = async () => {
     }
   };
 
-  if (loading) {
+  if (loading || verificandoAsistencia) {
     return (
       <View style={styles.centerContainer} accessible={false}>
         <ActivityIndicator size="large" color="#006080" />
@@ -294,7 +377,7 @@ const manejarGuardarAsistencia = async () => {
                   onChangeText={manejarCambioObservacion}
                   placeholder="Escribe una observación"
                   placeholderTextColor="#94A3B8"
-                  editable={!enviando}
+                  editable={!enviando && !asistenciaTomada}
                   maxLength={MAX_CARACTERES_OBSERVACION}
                   autoCapitalize="sentences"
                   returnKeyType="done"
@@ -327,7 +410,7 @@ const manejarGuardarAsistencia = async () => {
                     value={valoresAsistencia[item.idCategoriaGrupo] ?? ""}
                     onChangeText={(texto) => manejarCambioCantidad(item.idCategoriaGrupo, texto)}
                     selectTextOnFocus
-                    editable={!enviando}
+                    editable={!enviando && !asistenciaTomada}
                     maxLength={MAX_DIGITOS_CANTIDAD}
                     scrollEnabled={false}
                     maxFontSizeMultiplier={1.15}
@@ -342,6 +425,7 @@ const manejarGuardarAsistencia = async () => {
               style={styles.submitButton}
               onPress={manejarGuardarAsistencia}
               activeOpacity={0.85}
+              disabled={enviando || asistenciaTomada || verificandoAsistencia}
             >
               <View style={styles.submitContent}>
                 <Plus color="#FFF" size={20} strokeWidth={3} />
