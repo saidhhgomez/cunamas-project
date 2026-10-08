@@ -71,17 +71,18 @@ const formatearTotalLegible = (valor: number, unidadOriginal?: string) => {
   return `${valorFormateado} ${unidadDestino}`;
 };
 
-const obtenerCantidadEmpaque = (empaquesSugeridos: any, presentacion: '1 Kg/L' | '500 g/ml' | '250 g/ml') => {
-  if (!empaquesSugeridos || typeof empaquesSugeridos !== 'object') return 0;
+const obtenerPresentaciones = (empaquesSugeridos: any) => {
+  if (!empaquesSugeridos || typeof empaquesSugeridos !== 'object') return {};
 
-  const claveEsperada = `Opción en empaques de ${presentacion}`;
-  const claveEncontrada = Object.keys(empaquesSugeridos).find(
-    (clave) => clave.trim().toLowerCase() === claveEsperada.toLowerCase(),
-  );
-
-  const cantidad = claveEncontrada ? Number(empaquesSugeridos[claveEncontrada]) : 0;
-  return Number.isFinite(cantidad) ? cantidad : 0;
+  return Object.entries(empaquesSugeridos).reduce((presentaciones: Record<string, number>, [nombre, cantidad]) => {
+    const cantidadNumerica = Number(cantidad);
+    presentaciones[nombre] = Number.isFinite(cantidadNumerica) ? cantidadNumerica : 0;
+    return presentaciones;
+  }, {});
 };
+
+const formatearPresentacion = (presentacion: string) =>
+  presentacion.replace(/^Opci.n en /i, '').toUpperCase();
 
 export default function CalculadoraUnificada() { 
   const router = useRouter();
@@ -150,11 +151,7 @@ export default function CalculadoraUnificada() {
         }
         return acc;
       }, {}),
-      presentacion: {
-        bolsas1kg: obtenerCantidadEmpaque(insumos?.empaquesSugeridos, '1 Kg/L'),
-        bolsas500g: obtenerCantidadEmpaque(insumos?.empaquesSugeridos, '500 g/ml'),
-        bolsas250g: obtenerCantidadEmpaque(insumos?.empaquesSugeridos, '250 g/ml'),
-      }
+      presentacion: obtenerPresentaciones(insumos?.empaquesSugeridos),
     };
   };
 
@@ -569,29 +566,20 @@ export default function CalculadoraUnificada() {
                   Elige solo una opción de empaque, no se suman entre sí.
                 </Text>
 
-                <View style={styles.necesitasRow}> 
-                  <View style={styles.necesitasCard}>
-                    <Text style={styles.necesitasValue}>{obtenerCantidadEmpaque(datosInsumos.empaquesSugeridos, '1 Kg/L')}</Text>
-                    <Text style={styles.necesitasLabel}>EMPAQUES{"\n"}1 KG</Text>
-                  </View>
-
-                  <View style={styles.orDivider}>
-                    <View style={styles.orCircle}><Text style={styles.orText}>O</Text></View>
-                  </View>
-
-                  <View style={styles.necesitasCard}>
-                    <Text style={styles.necesitasValue}>{obtenerCantidadEmpaque(datosInsumos.empaquesSugeridos, '500 g/ml')}</Text>
-                    <Text style={styles.necesitasLabel}>EMPAQUES{"\n"}500 G/ML</Text>
-                  </View>
-
-                  <View style={styles.orDivider}>
-                    <View style={styles.orCircle}><Text style={styles.orText}>O</Text></View>
-                  </View>
-
-                  <View style={styles.necesitasCard}>
-                    <Text style={styles.necesitasValue}>{obtenerCantidadEmpaque(datosInsumos.empaquesSugeridos, '250 g/ml')}</Text>
-                    <Text style={styles.necesitasLabel}>EMPAQUES{"\n"}250 G/ML</Text>
-                  </View>
+                <View style={styles.necesitasRow}>
+                  {Object.entries(obtenerPresentaciones(datosInsumos.empaquesSugeridos)).map(([presentacion, cantidad], index) => (
+                    <React.Fragment key={presentacion}>
+                      {index > 0 && (
+                        <View style={styles.orDivider}>
+                          <View style={styles.orCircle}><Text style={styles.orText}>O</Text></View>
+                        </View>
+                      )}
+                      <View style={styles.necesitasCard}>
+                        <Text style={styles.necesitasValue}>{String(cantidad)}</Text>
+                        <Text style={styles.necesitasLabel}>{formatearPresentacion(presentacion)}</Text>
+                      </View>
+                    </React.Fragment>
+                  ))}
                 </View>
               </Animated.View>
             )}

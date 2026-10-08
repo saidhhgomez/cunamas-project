@@ -273,29 +273,20 @@ export default function DosificacionResultados() {
                   Elige solo una opción de empaque, no se suman entre sí.
                 </Text>
 
-                <View style={styles.necesitasRow}> 
-                  <View style={styles.necesitasCard}>
-                    <Text style={styles.necesitasValue}>{datosInsumos.empaquesSugeridos["Opción en empaques de 1 Kg/L"] || 0}</Text>
-                    <Text style={styles.necesitasLabel}>BOLSAS{"\n"}1 KG</Text>
-                  </View>
-
-                  <View style={styles.orDivider}>
-                    <View style={styles.orCircle}><Text style={styles.orText}>O</Text></View>
-                  </View>
-
-                  <View style={styles.necesitasCard}>
-                    <Text style={styles.necesitasValue}>{datosInsumos.empaquesSugeridos["Opción en empaques de 500 g/ml"] || 0}</Text>
-                    <Text style={styles.necesitasLabel}>BOLSAS{"\n"}1/2 KG</Text>
-                  </View>
-
-                  <View style={styles.orDivider}>
-                    <View style={styles.orCircle}><Text style={styles.orText}>O</Text></View>
-                  </View>
-
-                  <View style={styles.necesitasCard}>
-                    <Text style={styles.necesitasValue}>{datosInsumos.empaquesSugeridos["Opción en empaques de 250 g/ml"] || 0}</Text>
-                    <Text style={styles.necesitasLabel}>BOLSAS{"\n"}250 G</Text>
-                  </View>
+                <View style={styles.necesitasRow}>
+                  {Object.entries(datosInsumos.empaquesSugeridos || {}).map(([presentacion, cantidad], index) => (
+                    <React.Fragment key={presentacion}>
+                      {index > 0 && (
+                        <View style={styles.orDivider}>
+                          <View style={styles.orCircle}><Text style={styles.orText}>O</Text></View>
+                        </View>
+                      )}
+                      <View style={styles.necesitasCard}>
+                        <Text style={styles.necesitasValue}>{String(cantidad)}</Text>
+                        <Text style={styles.necesitasLabel}>{formatearPresentacion(presentacion)}</Text>
+                      </View>
+                    </React.Fragment>
+                  ))}
                 </View>
               </Animated.View>
             )}
@@ -329,6 +320,9 @@ export default function DosificacionResultados() {
   ); 
 }
 
+const formatearPresentacion = (presentacion: string) =>
+  presentacion.replace(/^Opci.n en /i, '').toUpperCase();
+
 const ResultItem = ({ label, value, color, onChangeText }: any) => ( 
   <View style={styles.resultItem}> 
     <Text style={styles.resultLabel}>{label}</Text> 
@@ -342,6 +336,8 @@ const ResultItem = ({ label, value, color, onChangeText }: any) => (
         keyboardType="number-pad" 
         returnKeyType="done"
         maxLength={4}
+        scrollEnabled={false}
+        multiline={false}
       />
     </View> 
   </View> 
@@ -367,8 +363,8 @@ const styles = StyleSheet.create({
   resultsList: { marginBottom: 20 },
   resultItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#EEEEEE', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 10, marginBottom: 10 },
   resultLabel: { fontSize: 14, color: '#333333', fontWeight: '500', flex: 1 },
-  valueContainer: { backgroundColor: '#FFFFFF', borderRadius: 5, borderWidth: 1, borderColor: '#CCCCCC', width: 65, height: 38, justifyContent: 'center', alignItems: 'center' },
-  resultInput: { width: '100%', height: '100%', textAlign: 'center', fontSize: 16, fontWeight: 'bold' },
+  valueContainer: { backgroundColor: '#FFFFFF', borderRadius: 5, borderWidth: 1, borderColor: '#CCCCCC', width: 65, height: 46, justifyContent: 'center', alignItems: 'center' },
+  resultInput: { width: '100%', height: '100%', paddingVertical: 0, textAlign: 'center', textAlignVertical: 'center', fontSize: 16, lineHeight: 22, fontWeight: 'bold', includeFontPadding: false },
   indicacionContainer: { backgroundColor: '#E6F4EA', padding: 20, borderRadius: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#A7F3D0' },
   indicacionText: { color: '#047857', textAlign: 'center', marginTop: 8, fontSize: 13, fontWeight: '500' },
   guarnicionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0E0E0', padding: 15, borderRadius: 10, marginBottom: 25 },
