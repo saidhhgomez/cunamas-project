@@ -31,7 +31,8 @@ build/
 
 
 ### VS Code ###
-.vscode/
 
 
 #### Backend ###
+config.bat
+node_modules
