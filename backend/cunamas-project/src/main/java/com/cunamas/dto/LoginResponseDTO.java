@@ -25,6 +25,8 @@ public class LoginResponseDTO {
 
     private String distrito;
 
+    private String ubigeo;
+
     private Boolean tieneDireccion;
 
 }

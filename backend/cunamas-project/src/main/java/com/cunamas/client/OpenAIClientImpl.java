@@ -4,17 +4,23 @@ import com.cunamas.client.dto.Message;
 import com.cunamas.client.dto.OpenAIRequest;
 import com.cunamas.client.dto.OpenAIResponse;
 import com.cunamas.config.OpenAIProperties;
+import com.cunamas.dto.IAAnalisisResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class OpenAIClientImpl
         implements OpenAIClient {
+
+    private final ObjectMapper objectMapper;
 
     private final OpenAIProperties properties;
 
@@ -23,27 +29,12 @@ public class OpenAIClientImpl
                     .build();
 
     @Override
-    public String analizarAlimentos(
+    public IAAnalisisResponseDTO analizarAlimentos(
             String prompt
     ) {
 
         log.info("==============================================");
-
         log.info("Inicializando cliente OpenAI...");
-
-        log.info("Modelo: {}", properties.getModel());
-
-        log.info("URL: {}", properties.getUrl());
-
-        log.info("Timeout: {} segundos", properties.getTimeout());
-
-        log.info("API KEY cargada: {}",
-                properties.getApiKey() != null
-        );
-
-        log.info("----------------------------------------------");
-
-        log.info("Enviando solicitud a OpenAI...");
 
         OpenAIRequest request =
 
@@ -51,26 +42,24 @@ public class OpenAIClientImpl
 
                         properties.getModel(),
 
-                        java.util.List.of(
+                        List.of(
 
                                 new Message(
-
                                         "system",
-
                                         """
-                                        Eres una nutricionista especializada
-                                        en alimentación infantil del Programa
-                                        Nacional Cuna Más del MIDIS Perú.
+                                        Eres una nutricionista del Programa Nacional Cuna Más.
+    
+                                        Responde SIEMPRE únicamente JSON válido.
+    
+                                        No uses markdown.
+    
+                                        No uses ```json.
                                         """
-
                                 ),
 
                                 new Message(
-
                                         "user",
-
                                         prompt
-
                                 )
 
                         )
@@ -85,9 +74,7 @@ public class OpenAIClientImpl
 
                         .uri(properties.getUrl())
 
-                        .contentType(
-                                MediaType.APPLICATION_JSON
-                        )
+                        .contentType(MediaType.APPLICATION_JSON)
 
                         .header(
                                 "Authorization",
@@ -105,16 +92,14 @@ public class OpenAIClientImpl
                 || response.getChoices().isEmpty()) {
 
             throw new RuntimeException(
-                    "OpenAI no devolvió ninguna respuesta."
+                    "OpenAI no devolvió respuesta."
             );
 
         }
 
-        String respuesta =
+        String json =
 
-                response
-
-                        .getChoices()
+                response.getChoices()
 
                         .getFirst()
 
@@ -122,13 +107,28 @@ public class OpenAIClientImpl
 
                         .getContent();
 
-        log.info("----------------------------------------------");
+        try {
 
-        log.info("Respuesta recibida correctamente.");
+            return objectMapper.readValue(
 
-        log.info("==============================================");
+                    json,
 
-        return respuesta;
+                    IAAnalisisResponseDTO.class
+
+            );
+
+        }
+
+        catch (Exception e) {
+
+            log.error(json);
+
+            throw new RuntimeException(
+                    "No fue posible convertir el JSON de OpenAI.",
+                    e
+            );
+
+        }
 
     }
 

@@ -8,4 +8,9 @@ public interface DireccionRepository
 
     boolean existsByNombreDireccionIgnoreCase(String nombreDireccion);
 
+    boolean existsByNombreDireccionIgnoreCaseAndDistrito_IdDistrito(
+            String nombreDireccion,
+            Integer idDistrito
+    );
+
 }

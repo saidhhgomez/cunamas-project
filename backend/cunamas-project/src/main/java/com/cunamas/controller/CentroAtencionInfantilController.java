@@ -33,6 +33,9 @@ public class CentroAtencionInfantilController {
             @RequestParam(required = false)
             String distrito,
 
+            @RequestParam(required = false)
+            String ubigeo,
+
             @RequestParam(defaultValue = "0")
             int page,
 
@@ -43,6 +46,7 @@ public class CentroAtencionInfantilController {
         return centroService.listar(
                 idCentroAlimentario,
                 distrito,
+                ubigeo,
                 page,
                 size
         );

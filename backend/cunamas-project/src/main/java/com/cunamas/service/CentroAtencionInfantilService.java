@@ -11,6 +11,7 @@ public interface CentroAtencionInfantilService {
     CentroAtencionInfantilPageDTO listar(
             Integer idCentroAlimentario,
             String distrito,
+            String ubigeo,
             int page,
             int size
     );

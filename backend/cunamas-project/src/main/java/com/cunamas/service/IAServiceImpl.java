@@ -26,111 +26,95 @@ public class IAServiceImpl
         prompt.append("""
 Eres una nutricionista especialista del Programa Nacional Cuna Más del Ministerio de Desarrollo e Inclusión Social (MIDIS) del Perú.
 
-Tu labor consiste en elaborar un informe técnico y objetivo sobre los alimentos recibidos, considerando que serán destinados a niñas y niños menores de 36 meses pertenecientes a poblaciones en situación de pobreza y pobreza extrema.
+IMPORTANTE:
 
-Analiza la información con un enfoque profesional, similar al de un nutricionista responsable del servicio alimentario de un Centro de Atención Infantil.
+NO respondas en texto libre.
 
-Para cada alimento considera únicamente la información nutricional conocida. Si algún dato no puede determinarse con certeza, indícalo sin inventar información.
+Debes responder EXCLUSIVAMENTE un JSON válido.
 
-Para cada alimento analiza:
+No agregues markdown.
+No agregues ```json.
+No agregues comentarios.
 
-• Valor nutricional general.
-• Principales fortalezas nutricionales.
-• Posibles deficiencias nutricionales.
-• Recomendaciones para complementar el alimento.
-• Recomendaciones de manipulación e inocuidad.
+El formato OBLIGATORIO es:
 
-Posteriormente analiza el conjunto completo de alimentos enviados y determina:
+{
+  "titulo":"Análisis Nutricional",
+  "analisisAlimentos":[
+    {
+      "nombre":"...",
+      "valorNutricional":"...",
+      "fortalezas":"...",
+      "deficiencias":"...",
+      "recomendaciones":"...",
+      "manipulacion":"..."
+    }
+  ],
+  "analisisGlobal":{
+      "equilibrioNutricional":"...",
+      "nutrientesFaltantes":"...",
+      "alimentosComplementarios":"...",
+      "preparacionesRecomendadas":"...",
+      "mejorasMenu":"..."
+  },
+  "resumenEjecutivo":{
+      "fortalezas":"...",
+      "aspectosMejorar":"...",
+      "recomendacionGeneral":"..."
+  }
+}
 
-• Si existe un equilibrio nutricional adecuado.
-• Qué nutrientes importantes faltan.
-• Qué alimentos podrían complementar mejor el menú.
-• Qué preparaciones pueden elaborarse utilizando principalmente los alimentos enviados.
-• Recomendaciones para mejorar el aporte nutricional del menú.
+Nunca devuelvas ningún otro formato.
 
-Finaliza obligatoriamente con un RESUMEN EJECUTIVO que incluya:
-
-- Fortalezas principales.
-- Aspectos por mejorar.
-- Recomendación general.
-
-No hagas preguntas.
-No invites a continuar la conversación.
-No ofrezcas más ayuda.
-No agregues saludos ni despedidas.
-
-Mantén un lenguaje técnico pero fácil de comprender para personal de programas sociales.
-
-Limita la respuesta a aproximadamente 700 palabras.
-
-A continuación se muestran los alimentos recibidos:
-
+A continuación se muestran los alimentos.
 """);
 
         for (IAAlimentoDTO alimento : request.getAlimentos()) {
 
             prompt.append("\n");
-
-            prompt.append("=================================================\n");
+            prompt.append("=====================================\n");
 
             prompt.append("ALIMENTO: ")
                     .append(alimento.getNombre())
-                    .append("\n\n");
+                    .append("\n");
 
-            prompt.append("Cantidad de beneficiarios\n");
-
-            prompt.append("- Niños de 6 a 9 meses: ")
+            prompt.append("Niños 6-9 meses: ")
                     .append(alimento.getCategoriaEtaria().getNinos6a9Meses())
                     .append("\n");
 
-            prompt.append("- Niños de 10 a 12 meses: ")
+            prompt.append("Niños 10-12 meses: ")
                     .append(alimento.getCategoriaEtaria().getNinos10a12Meses())
                     .append("\n");
 
-            prompt.append("- Niños de 13 a 23 meses: ")
+            prompt.append("Niños 13-23 meses: ")
                     .append(alimento.getCategoriaEtaria().getNinos13a23Meses())
                     .append("\n");
 
-            prompt.append("- Niños de 24 a 36 meses: ")
+            prompt.append("Niños 24-36 meses: ")
                     .append(alimento.getCategoriaEtaria().getNinos24a36Meses())
                     .append("\n");
 
-            prompt.append("- Actores comunales: ")
+            prompt.append("Actores comunales: ")
                     .append(alimento.getCategoriaEtaria().getActoresComunales())
-                    .append("\n\n");
+                    .append("\n");
 
-            prompt.append("Presentación disponible\n");
-
-            prompt.append("- Bolsas de 1 kg: ")
+            prompt.append("Bolsas 1kg: ")
                     .append(alimento.getPresentacion().getBolsas1kg())
                     .append("\n");
 
-            prompt.append("- Bolsas de 500 g: ")
+            prompt.append("Bolsas 500g: ")
                     .append(alimento.getPresentacion().getBolsas500g())
                     .append("\n");
 
-            prompt.append("- Bolsas de 250 g: ")
+            prompt.append("Bolsas 250g: ")
                     .append(alimento.getPresentacion().getBolsas250g())
                     .append("\n");
-
         }
 
-        log.info("========================================");
-        log.info("Prompt construido correctamente.");
         log.info(prompt.toString());
-        log.info("========================================");
 
-        String respuesta =
-                openAIClient.analizarAlimentos(
-                        prompt.toString()
-                );
-
-        return new IAAnalisisResponseDTO(
-
-                "Análisis Nutricional",
-
-                respuesta
-
+        return openAIClient.analizarAlimentos(
+                prompt.toString()
         );
 
     }
