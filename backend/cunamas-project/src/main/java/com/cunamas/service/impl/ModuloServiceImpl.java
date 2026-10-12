@@ -1,14 +1,19 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
+import com.cunamas.constant.ErrorMessages;
+import com.cunamas.constant.SuccessMessages;
 import com.cunamas.dto.ModuloListadoDTO;
 import com.cunamas.dto.ModuloPageDTO;
 import com.cunamas.dto.ModuloRequestDTO;
 import com.cunamas.dto.ModuloResponseDTO;
 import com.cunamas.entity.CentroAtencionInfantilEntity;
 import com.cunamas.entity.ModuloEntity;
+import com.cunamas.exception.BadRequestException;
+import com.cunamas.exception.NotFoundException;
 import com.cunamas.repository.CentroAtencionInfantilRepository;
 import com.cunamas.repository.ModuloRepository;
 import com.cunamas.security.SecurityUtils;
+import com.cunamas.service.ModuloService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,8 +43,8 @@ public class ModuloServiceImpl implements ModuloService {
 
         if (nombreModulo.isEmpty()) {
 
-            throw new RuntimeException(
-                    "El nombre del módulo no puede estar vacío"
+            throw new BadRequestException(
+                    ErrorMessages.MODULE_NAME_REQUIRED
             );
         }
 
@@ -47,8 +52,8 @@ public class ModuloServiceImpl implements ModuloService {
                 centroAtencionInfantilRepository
                         .findById(request.getIdLocal())
                         .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Centro de atención infantil no encontrado"
+                                new NotFoundException(
+                                        ErrorMessages.CIAI_NOT_FOUND
                                 )
                         );
 
@@ -66,7 +71,7 @@ public class ModuloServiceImpl implements ModuloService {
                 moduloRepository.save(modulo);
 
         return new ModuloResponseDTO(
-                "Módulo registrado correctamente",
+                SuccessMessages.MODULE_REGISTERED,
                 guardado.getIdModulo()
         );
     }
@@ -80,8 +85,8 @@ public class ModuloServiceImpl implements ModuloService {
 
         if (idLocal == null || idLocal <= 0) {
 
-            throw new RuntimeException(
-                    "El idLocal es inválido"
+            throw new BadRequestException(
+                    ErrorMessages.INVALID_LOCAL_ID
             );
         }
 

@@ -1,10 +1,15 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
+import com.cunamas.constant.ErrorMessages;
 import com.cunamas.entity.DispositivoSesionEntity;
 import com.cunamas.entity.PersonaEntity;
+import com.cunamas.exception.NotFoundException;
+import com.cunamas.exception.UnauthorizedException;
 import com.cunamas.repository.DispositivoSesionRepository;
 import com.cunamas.security.RefreshTokenGenerator;
+import com.cunamas.service.RefreshTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +22,8 @@ import java.util.Optional;
 public class RefreshTokenServiceImpl
         implements RefreshTokenService {
 
-    private static final long DIAS_EXPIRACION = 180;
+    @Value("${jwt.refresh-token.expiration-days:180}")
+    private long diasExpiracion;
 
     @Autowired
     private DispositivoSesionRepository repository;
@@ -36,7 +42,7 @@ public class RefreshTokenServiceImpl
         LocalDateTime ahora = LocalDateTime.now();
 
         LocalDateTime expiracion =
-                ahora.plusDays(DIAS_EXPIRACION);
+                ahora.plusDays(diasExpiracion);
 
         String nuevoRefreshToken =
                 RefreshTokenGenerator.generar();
@@ -105,8 +111,8 @@ public class RefreshTokenServiceImpl
 
                         .orElseThrow(() ->
 
-                                new RuntimeException(
-                                        "Refresh Token no encontrado."
+                                new NotFoundException(
+                                        ErrorMessages.REFRESH_TOKEN_NOT_FOUND
                                 )
 
                         );
@@ -150,57 +156,36 @@ public class RefreshTokenServiceImpl
         DispositivoSesionEntity sesion =
 
                 repository
-
                         .findByRefreshToken(refreshToken)
-
                         .orElseThrow(() ->
-
-                                new RuntimeException(
-
-                                        "Refresh Token inválido."
-
+                                new UnauthorizedException(
+                                        ErrorMessages.REFRESH_TOKEN_INVALID
                                 )
-
                         );
 
         if (!Boolean.TRUE.equals(sesion.getActivo())) {
-
-            throw new RuntimeException(
-
-                    "La sesión se encuentra deshabilitada."
-
+            throw new UnauthorizedException(
+                    ErrorMessages.SESSION_DISABLED
             );
-
         }
 
         if (sesion.getFechaExpiracion()
-
                 .isBefore(LocalDateTime.now())) {
-
-            throw new RuntimeException(
-
-                    "El Refresh Token ha expirado."
-
+            throw new UnauthorizedException(
+                    ErrorMessages.REFRESH_TOKEN_EXPIRED
             );
-
         }
 
         sesion.setRefreshToken(
-
                 RefreshTokenGenerator.generar()
-
         );
 
         sesion.setUltimaConexion(
-
                 LocalDateTime.now()
-
         );
 
         sesion.setFechaExpiracion(
-
-                LocalDateTime.now().plusDays(DIAS_EXPIRACION)
-
+                LocalDateTime.now().plusDays(diasExpiracion)
         );
 
         return repository.save(sesion);

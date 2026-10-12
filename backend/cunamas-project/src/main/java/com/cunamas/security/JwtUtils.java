@@ -1,5 +1,7 @@
 package com.cunamas.security;
 
+import com.cunamas.constant.ErrorMessages;
+import com.cunamas.exception.UnauthorizedException;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,7 +19,7 @@ public class JwtUtils {
         if (authorization == null ||
                 !authorization.startsWith("Bearer ")) {
 
-            throw new RuntimeException("Token no enviado.");
+            throw new UnauthorizedException(ErrorMessages.MISSING_TOKEN);
         }
 
         return authorization.substring(7);

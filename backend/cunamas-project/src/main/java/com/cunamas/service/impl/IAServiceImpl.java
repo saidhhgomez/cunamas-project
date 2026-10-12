@@ -1,11 +1,17 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
 import com.cunamas.client.OpenAIClient;
+import com.cunamas.constant.ErrorMessages;
+import com.cunamas.constant.SuccessMessages;
 import com.cunamas.dto.IAAlimentoDTO;
 import com.cunamas.dto.IAAnalisisRequestDTO;
 import com.cunamas.dto.IAAnalisisResponseDTO;
+import com.cunamas.exception.BadRequestException;
+import com.cunamas.exception.BusinessException;
+import com.cunamas.service.IAService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -20,6 +26,12 @@ public class IAServiceImpl
     public IAAnalisisResponseDTO analizar(
             IAAnalisisRequestDTO request
     ) {
+
+        if (request == null || request.getAlimentos() == null || request.getAlimentos().isEmpty()) {
+            throw new BadRequestException(
+                    ErrorMessages.FOOD_LIST_REQUIRED
+            );
+        }
 
         StringBuilder prompt = new StringBuilder();
 
@@ -71,6 +83,15 @@ A continuación se muestran los alimentos.
 
         for (IAAlimentoDTO alimento : request.getAlimentos()) {
 
+            if (alimento == null
+                    || alimento.getNombre() == null
+                    || alimento.getCategoriaEtaria() == null
+                    || alimento.getPresentacion() == null) {
+                throw new BadRequestException(
+                        ErrorMessages.INVALID_FOOD_DATA
+                );
+            }
+
             prompt.append("\n");
             prompt.append("=====================================\n");
 
@@ -113,10 +134,18 @@ A continuación se muestran los alimentos.
 
         log.info(prompt.toString());
 
-        return openAIClient.analizarAlimentos(
-                prompt.toString()
-        );
+        IAAnalisisResponseDTO respuesta =
+                openAIClient.analizarAlimentos(
+                        prompt.toString()
+                );
 
+        if (respuesta == null) {
+            throw new BusinessException(
+                    ErrorMessages.IA_PROCESSING_ERROR,
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+
+        return respuesta;
     }
-
 }

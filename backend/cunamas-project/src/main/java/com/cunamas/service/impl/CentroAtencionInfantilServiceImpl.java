@@ -1,9 +1,17 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
+import com.cunamas.constant.ErrorMessages;
+import com.cunamas.constant.SuccessMessages;
 import com.cunamas.dto.*;
+import com.cunamas.entity.*;
+import com.cunamas.exception.BadRequestException;
+import com.cunamas.exception.ConflictException;
+import com.cunamas.exception.NotFoundException;
+import com.cunamas.repository.*;
 import com.cunamas.entity.*;
 import com.cunamas.repository.*;
 import com.cunamas.security.SecurityUtils;
+import com.cunamas.service.CentroAtencionInfantilService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,20 +45,11 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
     public CentroAtencionInfantilResponseDTO registrar(
             CentroAtencionInfantilRequestDTO request
     ) {
-
-        if (request.getLocalNombre() == null
-                || request.getLocalNombre().trim().isEmpty()) {
-
-            throw new RuntimeException(
-                    "El nombre del local es obligatorio"
-            );
-        }
-
         if (request.getNombreDireccion() == null
                 || request.getNombreDireccion().trim().isEmpty()) {
 
-            throw new RuntimeException(
-                    "La dirección es obligatoria"
+            throw new NotFoundException(
+                    ErrorMessages.ADDRESS_NOT_FOUND
             );
         }
 
@@ -62,8 +61,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
 
         if (existe) {
 
-            throw new RuntimeException(
-                    "Ya existe un centro con ese nombre"
+            throw new ConflictException(
+                    ErrorMessages.CIAI_ALREADY_EXISTS
             );
         }
 
@@ -71,8 +70,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                 servicioRepository.findById(
                         request.getIdCentroAlimentario()
                 ).orElseThrow(() ->
-                        new RuntimeException(
-                                "Servicio alimentario no encontrado"
+                        new NotFoundException(
+                                ErrorMessages.FOOD_SERVICE_NOT_FOUND
                         )
                 );
 
@@ -90,8 +89,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
 
         if (existeDireccion) {
 
-            throw new RuntimeException(
-                    "Ya existe una dirección registrada"
+            throw new ConflictException(
+                    ErrorMessages.DUPLICATE_ADDRESS
             );
 
         }
@@ -118,13 +117,9 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
         CentroAtencionInfantilEntity centro =
                 new CentroAtencionInfantilEntity();
 
-        centro.setDireccion(
-                direccionGuardada
-        );
+        centro.setDireccion(direccion);
 
-        centro.setServicioAlimentario(
-                servicio
-        );
+        centro.setServicioAlimentario(servicio);
 
         centro.setLocalNombre(
                 request.getLocalNombre().trim()
@@ -139,12 +134,10 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
         centro.setFechaModificacion(ahora);
 
         CentroAtencionInfantilEntity guardado =
-                centroRepository.save(
-                        centro
-                );
+                centroRepository.save(centro);
 
         return new CentroAtencionInfantilResponseDTO(
-                "Centro de atención infantil registrado correctamente",
+                SuccessMessages.CIAI_REGISTERED,
                 guardado.getIdLocal()
         );
     }
@@ -163,8 +156,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
             distrito = distritoRepository
                     .findByUbigeo(ubigeo.trim())
                     .orElseThrow(() ->
-                            new RuntimeException(
-                                    "No existe un distrito para el ubigeo enviado."
+                            new NotFoundException(
+                                    ErrorMessages.UBIGEO_NOT_FOUND
                             )
                     )
                     .getNombreDistrito();
@@ -189,8 +182,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
 
             if (!existeServicio) {
 
-                throw new RuntimeException(
-                        "El servicio alimentario no existe"
+                throw new NotFoundException(
+                        ErrorMessages.FOOD_SERVICE_NOT_FOUND
                 );
             }
 
@@ -288,16 +281,16 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
         if (request.getLocalNombre() == null
                 || request.getLocalNombre().trim().isEmpty()) {
 
-            throw new RuntimeException(
-                    "El nombre del centro es obligatorio"
+            throw new BadRequestException(
+                    ErrorMessages.LOCAL_NAME_REQUIRED
             );
         }
 
         if (request.getModulos() == null
                 || request.getModulos().isEmpty()) {
 
-            throw new RuntimeException(
-                    "Debe enviar al menos un módulo"
+            throw new BadRequestException(
+                    ErrorMessages.MODULES_REQUIRED
             );
         }
 
@@ -305,8 +298,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                 request.getLocalNombre().trim()
         )) {
 
-            throw new RuntimeException(
-                    "Ya existe un centro con ese nombre"
+            throw new ConflictException(
+                    ErrorMessages.CIAI_ALREADY_EXISTS
             );
         }
 
@@ -314,8 +307,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                 direccionRepository.findById(
                         request.getIdDireccion()
                 ).orElseThrow(() ->
-                        new RuntimeException(
-                                "Dirección no encontrada"
+                        new NotFoundException(
+                                ErrorMessages.ADDRESS_NOT_FOUND
                         )
                 );
 
@@ -323,8 +316,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                 servicioRepository.findById(
                         request.getIdCentroAlimentario()
                 ).orElseThrow(() ->
-                        new RuntimeException(
-                                "Servicio alimentario no encontrado"
+                        new NotFoundException(
+                                ErrorMessages.FOOD_SERVICE_NOT_FOUND
                         )
                 );
 
@@ -363,8 +356,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
             if (nombreModulo == null
                     || nombreModulo.trim().isEmpty()) {
 
-                throw new RuntimeException(
-                        "Existe un módulo vacío"
+                throw new BadRequestException(
+                        ErrorMessages.EMPTY_MODULE_NAME
                 );
             }
 
@@ -390,7 +383,7 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
         }
 
         return new CentroConModulosResponseDTO(
-                "Centro de atención infantil y módulos registrados correctamente",
+                SuccessMessages.CIAI_WITH_MODULES_REGISTERED,
                 centroGuardado.getIdLocal(),
                 idsModulos
         );

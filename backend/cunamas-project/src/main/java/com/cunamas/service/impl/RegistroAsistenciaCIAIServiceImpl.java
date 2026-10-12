@@ -1,13 +1,19 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
+import com.cunamas.constant.ErrorMessages;
+import com.cunamas.constant.SuccessMessages;
 import com.cunamas.dto.*;
 import com.cunamas.entity.CategoriaDosificacionEntity;
 import com.cunamas.entity.ModuloEntity;
 import com.cunamas.entity.RegistroAsistenciaCIAIEntity;
+import com.cunamas.exception.BadRequestException;
+import com.cunamas.exception.ConflictException;
+import com.cunamas.exception.NotFoundException;
 import com.cunamas.repository.CategoriaDosificacionRepository;
 import com.cunamas.repository.ModuloRepository;
 import com.cunamas.repository.RegistroAsistenciaCIAIRepository;
 import com.cunamas.security.SecurityUtils;
+import com.cunamas.service.RegistroAsistenciaCIAIService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,16 +46,16 @@ public class RegistroAsistenciaCIAIServiceImpl
         if (request.getRegistroCorrelativo() != 1
                 && request.getRegistroCorrelativo() != 2) {
 
-            throw new RuntimeException(
-                    "El registro correlativo solo puede ser 1 o 2"
+            throw new BadRequestException(
+                    ErrorMessages.INVALID_CORRELATIVO
             );
         }
 
         if (request.getCategorias() == null
                 || request.getCategorias().isEmpty()) {
 
-            throw new RuntimeException(
-                    "Debe enviar al menos una categoría"
+            throw new BadRequestException(
+                    ErrorMessages.CATEGORIES_REQUIRED
             );
         }
 
@@ -57,8 +63,8 @@ public class RegistroAsistenciaCIAIServiceImpl
                 moduloRepository.findById(
                         request.getIdModulo()
                 ).orElseThrow(() ->
-                        new RuntimeException(
-                                "Módulo no encontrado"
+                        new NotFoundException(
+                                ErrorMessages.MODULE_NOT_FOUND
                         )
                 );
 
@@ -71,9 +77,11 @@ public class RegistroAsistenciaCIAIServiceImpl
                     categoriaRepository.findById(
                             item.getIdCategoriaGrupo()
                     ).orElseThrow(() ->
-                            new RuntimeException(
-                                    "Categoría no encontrada: "
-                                            + item.getIdCategoriaGrupo()
+                            new NotFoundException(
+                                    String.format(
+                                            ErrorMessages.CATEGORY_NOT_FOUND_ID,
+                                            item.getIdCategoriaGrupo()
+                                    )
                             )
                     );
 
@@ -88,12 +96,12 @@ public class RegistroAsistenciaCIAIServiceImpl
 
             if (existe) {
 
-                throw new RuntimeException(
-                        "Ya existe asistencia para la categoría "
-                                + categoria.getNombreCategoria()
-                                + " en el correlativo "
-                                + request.getRegistroCorrelativo()
-                                + " del día de hoy"
+                throw new ConflictException(
+                        String.format(
+                                ErrorMessages.ATTENDANCE_ALREADY_EXISTS_FORMAT,
+                                categoria.getNombreCategoria(),
+                                request.getRegistroCorrelativo()
+                        )
                 );
             }
 
@@ -104,8 +112,8 @@ public class RegistroAsistenciaCIAIServiceImpl
             }
 
             if (cantidad < 0) {
-                throw new RuntimeException(
-                        "La cantidad no puede ser negativa"
+                throw new BadRequestException(
+                        ErrorMessages.QUANTITY_CANNOT_BE_NEGATIVE
                 );
             }
 
@@ -142,7 +150,7 @@ public class RegistroAsistenciaCIAIServiceImpl
         }
 
         return new RegistroAsistenciaCIAIResponseDTO(
-                "Asistencia registrada correctamente",
+                SuccessMessages.ATTENDANCE_REGISTERED,
                 request.getCategorias().size()
         );
     }
@@ -155,8 +163,8 @@ public class RegistroAsistenciaCIAIServiceImpl
 
         if (idModulo == null || idModulo <= 0) {
 
-            throw new RuntimeException(
-                    "El idModulo es inválido"
+            throw new BadRequestException(
+                    ErrorMessages.INVALID_MODULE_ID
             );
         }
 
@@ -173,8 +181,8 @@ public class RegistroAsistenciaCIAIServiceImpl
 
             if (correlativo != 1 && correlativo != 2) {
 
-                throw new RuntimeException(
-                        "El correlativo solo puede ser 1 o 2"
+                throw new BadRequestException(
+                        ErrorMessages.INVALID_CORRELATIVO
                 );
             }
 
@@ -225,15 +233,15 @@ public class RegistroAsistenciaCIAIServiceImpl
 
         if (idModulo == null || idModulo <= 0) {
 
-            throw new RuntimeException(
-                    "El idModulo es inválido"
+            throw new BadRequestException(
+                    ErrorMessages.INVALID_MODULE_ID
             );
         }
 
         if (fecha == null) {
 
-            throw new RuntimeException(
-                    "La fecha es obligatoria"
+            throw new BadRequestException(
+                    ErrorMessages.DATE_REQUIRED
             );
         }
 
@@ -248,8 +256,8 @@ public class RegistroAsistenciaCIAIServiceImpl
 
             if (correlativo != 1 && correlativo != 2) {
 
-                throw new RuntimeException(
-                        "El correlativo solo puede ser 1 o 2"
+                throw new BadRequestException(
+                        ErrorMessages.INVALID_CORRELATIVO
                 );
             }
 

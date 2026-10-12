@@ -1,17 +1,20 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
+import com.cunamas.constant.SuccessMessages;
 import com.cunamas.dto.*;
 import com.cunamas.entity.*;
+import com.cunamas.exception.*;
 import com.cunamas.repository.*;
 import com.cunamas.security.JwtService;
-import com.cunamas.security.JwtUtils;
 import com.cunamas.security.SecurityUtils;
+import com.cunamas.service.AuthService;
+import com.cunamas.service.RefreshTokenService;
 import com.cunamas.util.PasswordGenerator;
-import io.jsonwebtoken.Claims;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.cunamas.constant.ErrorMessages;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -89,8 +92,8 @@ public class AuthServiceImpl implements AuthService {
 
         )) {
 
-            throw new RuntimeException(
-                    "El número de documento ya se encuentra registrado."
+            throw new ConflictException(
+                    ErrorMessages.DOCUMENT_ALREADY_EXISTS
             );
 
         }
@@ -101,8 +104,8 @@ public class AuthServiceImpl implements AuthService {
 
         )) {
 
-            throw new RuntimeException(
-                    "El correo electrónico ya se encuentra registrado."
+            throw new ConflictException(
+                    ErrorMessages.EMAIL_ALREADY_EXISTS
             );
 
         }
@@ -115,8 +118,8 @@ public class AuthServiceImpl implements AuthService {
 
                 ).orElseThrow(() ->
 
-                        new RuntimeException(
-                                "El género no existe."
+                        new NotFoundException(
+                                ErrorMessages.GENDER_NOT_FOUND
                         )
 
                 );
@@ -129,8 +132,8 @@ public class AuthServiceImpl implements AuthService {
 
                 ).orElseThrow(() ->
 
-                        new RuntimeException(
-                                "El tipo de documento no existe."
+                        new NotFoundException(
+                                ErrorMessages.DOCUMENT_TYPE_NOT_FOUND
                         )
 
                 );
@@ -210,8 +213,8 @@ public class AuthServiceImpl implements AuthService {
 
         if (!passwordPattern.matcher(password).matches()) {
 
-            throw new RuntimeException(
-                    "La contraseña debe tener mínimo 8 caracteres, una mayúscula, un número y un carácter especial"
+            throw new BadRequestException(
+                    ErrorMessages.INVALID_PASSWORD_FORMAT
             );
         }
 
@@ -279,9 +282,7 @@ public class AuthServiceImpl implements AuthService {
         cuentaRepository.save(cuenta);
 
         return new RegisterResponseDTO(
-
-                "Registro realizado correctamente. Su cuenta se encuentra pendiente de aprobación."
-
+                SuccessMessages.REGISTER_SUCCESS_PENDING_APPROVAL
         );
     }
 
@@ -291,35 +292,26 @@ public class AuthServiceImpl implements AuthService {
         ) {
 
             if (idDocumento == 1) {
-
                 if (!REGEX_DNI.matcher(numeroDocumento).matches()) {
-
-                    throw new RuntimeException(
-                            "El DNI debe contener exactamente 8 dígitos."
+                    throw new BadRequestException(
+                            ErrorMessages.INVALID_DNI_FORMAT
                     );
-
                 }
-
             }
 
             else if (idDocumento == 2) {
 
                 if (!REGEX_CE.matcher(numeroDocumento).matches()) {
 
-                    throw new RuntimeException(
-                            "El Carnet de Extranjería debe contener 9 caracteres alfanuméricos."
+                    throw new BadRequestException(
+                            ErrorMessages.INVALID_CE_FORMAT
                     );
-
                 }
-
             }
-
             else {
-
-                throw new RuntimeException(
-                        "Tipo de documento no válido."
+                throw new BadRequestException(
+                        ErrorMessages.INVALID_DOCUMENT_TYPE
                 );
-
             }
 
         }
@@ -329,27 +321,20 @@ public class AuthServiceImpl implements AuthService {
         ) {
 
             if (!REGEX_EMAIL.matcher(correo).matches()) {
-
-                throw new RuntimeException(
-                        "El correo electrónico no tiene un formato válido."
+                throw new BadRequestException(
+                        ErrorMessages.INVALID_EMAIL_FORMAT
                 );
-
             }
-
         }
 
         private void validarPassword(
                 String password
         ) {
-
             if (!REGEX_PASSWORD.matcher(password).matches()) {
-
-                throw new RuntimeException(
-                        "La contraseña debe tener mínimo 8 caracteres, una mayúscula, un número y un carácter especial."
+                throw new BadRequestException(
+                        ErrorMessages.INVALID_PASSWORD_FORMAT
                 );
-
             }
-
         }
 
     @Override
@@ -365,8 +350,8 @@ public class AuthServiceImpl implements AuthService {
                                 request.getNumeroDocumento().trim()
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Credenciales inválidas."
+                                new UnauthorizedException(
+                                        ErrorMessages.INVALID_CREDENTIALS
                                 )
                         );
 
@@ -377,8 +362,8 @@ public class AuthServiceImpl implements AuthService {
                                 persona.getIdPersona()
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Credenciales inválidas."
+                                new UnauthorizedException(
+                                        ErrorMessages.INVALID_CREDENTIALS
                                 )
                         );
 
@@ -386,8 +371,8 @@ public class AuthServiceImpl implements AuthService {
                 cuenta.getEstadoCuenta()
         )) {
 
-            throw new RuntimeException(
-                    "Su cuenta aún no ha sido aprobada."
+            throw new UnauthorizedException(
+                    ErrorMessages.INVALID_LOGIN
             );
 
         }
@@ -404,8 +389,8 @@ public class AuthServiceImpl implements AuthService {
 
         if (!passwordCorrecto) {
 
-            throw new RuntimeException(
-                    "Credenciales inválidas."
+            throw new UnauthorizedException(
+                    ErrorMessages.INVALID_CREDENTIALS
             );
 
         }
@@ -512,11 +497,9 @@ public class AuthServiceImpl implements AuthService {
                 securityUtils.getIdPersona();
 
         if (!securityUtils.puedeAdministrarUsuarios()) {
-
-            throw new RuntimeException(
-                    "No tiene permisos para realizar esta operación."
+            throw new ForbiddenException(
+                    ErrorMessages.ACCESS_DENIED
             );
-
         }
 
         GeneroEntity genero =
@@ -604,8 +587,8 @@ public class AuthServiceImpl implements AuthService {
 
         if (roles.size() != request.getRoles().size()) {
 
-            throw new RuntimeException(
-                    "Existe un rol inválido."
+            throw new BadRequestException(
+                    ErrorMessages.INVALID_ROLE
             );
         }
 
@@ -693,13 +676,9 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return new AdminRegisterResponseDTO(
-
-                "Usuario registrado correctamente.",
-
+                SuccessMessages.USER_REGISTERED,
                 persona.getIdPersona(),
-
                 passwordTemporal
-
         );
 
     }
@@ -770,22 +749,17 @@ public class AuthServiceImpl implements AuthService {
                 cuentaRepository
 
                         .findWithPersonaByPersona_IdPersona(idPersona)
-
                         .orElseThrow(() ->
-
-                                new RuntimeException(
-                                        "Solicitud no encontrada"
+                                new NotFoundException(
+                                        ErrorMessages.REQUEST_NOT_FOUND
                                 )
-
                         );
 
         if (Boolean.TRUE.equals(
                 cuenta.getEstadoCuenta())) {
-
-            throw new RuntimeException(
-                    "La cuenta ya fue aprobada"
+            throw new ConflictException(
+                    ErrorMessages.ACCOUNT_ALREADY_APPROVED
             );
-
         }
 
         PersonaEntity persona =
@@ -884,8 +858,8 @@ public class AuthServiceImpl implements AuthService {
 
         if (!securityUtils.puedeAdministrarUsuarios()) {
 
-            throw new RuntimeException(
-                    "No tiene permisos para realizar esta operación."
+            throw new ForbiddenException(
+                    ErrorMessages.ACCESS_DENIED
             );
 
         }
@@ -900,8 +874,8 @@ public class AuthServiceImpl implements AuthService {
 
                         .orElseThrow(() ->
 
-                                new RuntimeException(
-                                        "Solicitud no encontrada."
+                                new ConflictException(
+                                        ErrorMessages.ACCOUNT_ALREADY_APPROVED
                                 )
 
                         );
@@ -918,8 +892,8 @@ public class AuthServiceImpl implements AuthService {
         if (personaRolRepository.existsByPersona_IdPersona(
                 request.getIdPersona())) {
 
-            throw new RuntimeException(
-                    "La persona ya posee roles asignados."
+            throw new ConflictException(
+                    ErrorMessages.ROLES_ALREADY_ASSIGNED
             );
 
         }
@@ -934,8 +908,8 @@ public class AuthServiceImpl implements AuthService {
 
                             .orElseThrow(() ->
 
-                                    new RuntimeException(
-                                            "Rol inexistente."
+                                    new NotFoundException(
+                                            ErrorMessages.ROLE_NOT_FOUND
                                     )
 
                             );
@@ -983,9 +957,7 @@ public class AuthServiceImpl implements AuthService {
         personaRepository.save(persona);
 
         return new AprobarUsuarioResponseDTO(
-
-                "Usuario aprobado correctamente."
-
+                SuccessMessages.USER_APPROVED
         );
     }
 
@@ -996,40 +968,32 @@ public class AuthServiceImpl implements AuthService {
     ) {
 
         DispositivoSesionEntity sesion =
-
                 refreshTokenService.renovarSesion(
-
                         request.getRefreshToken()
-
                 );
 
         PersonaEntity persona =
                 sesion.getPersona();
 
         CuentaAccesoEntity cuenta =
-
                 cuentaRepository
 
                         .findByPersona_IdPersona(
-
                                 persona.getIdPersona()
-
                         )
 
                         .orElseThrow(() ->
-
-                                new RuntimeException(
-                                        "La cuenta no existe."
+                                new NotFoundException(
+                                        ErrorMessages.ACCOUNT_NOT_FOUND
                                 )
-
                         );
 
         if (!Boolean.TRUE.equals(
                 cuenta.getEstadoCuenta()
         )) {
 
-            throw new RuntimeException(
-                    "La cuenta se encuentra inactiva."
+            throw new UnauthorizedException(
+                    ErrorMessages.ACCOUNT_INACTIVE
             );
 
         }
@@ -1133,6 +1097,4 @@ public class AuthServiceImpl implements AuthService {
         );
 
     }
-
-
 }

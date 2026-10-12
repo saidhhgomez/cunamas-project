@@ -1,15 +1,16 @@
 package com.cunamas.config;
 
+import com.cunamas.security.CustomAccessDeniedHandler;
+import com.cunamas.security.CustomAuthenticationEntryPoint;
+import com.cunamas.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import com.cunamas.security.JwtAuthenticationFilter;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -17,6 +18,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -31,53 +34,36 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
-
                 .csrf(csrf -> csrf.disable())
-
                 .sessionManagement(session ->
-
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
-
                 )
-
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDeniedHandler)
+                )
                 .authorizeHttpRequests(auth -> auth
-
                         .requestMatchers(
-
                                 "/auth/**",
-
                                 "/swagger-ui/**",
-
                                 "/swagger-ui.html",
-
                                 "/v3/api-docs/**"
-
                         ).permitAll()
-
                         .requestMatchers(
                                 "/admin/**"
                         )
-
                         .authenticated()
-
                         .anyRequest()
-
                         .authenticated()
-
                 )
 
                 .formLogin(form -> form.disable())
-
                 .httpBasic(httpBasic -> httpBasic.disable())
-
                 .addFilterBefore(
-
                         jwtAuthenticationFilter,
-
                         UsernamePasswordAuthenticationFilter.class
-
                 );
 
         return http.build();

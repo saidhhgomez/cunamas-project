@@ -1,14 +1,20 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
+import com.cunamas.constant.ErrorMessages;
+import com.cunamas.constant.SuccessMessages;
 import com.cunamas.dto.ServicioAlimentarioListadoDTO;
 import com.cunamas.dto.ServicioAlimentarioPageDTO;
 import com.cunamas.dto.ServicioAlimentarioRequestDTO;
 import com.cunamas.dto.ServicioAlimentarioResponseDTO;
 import com.cunamas.entity.DireccionEntity;
 import com.cunamas.entity.ServicioAlimentarioEntity;
+import com.cunamas.exception.BadRequestException;
+import com.cunamas.exception.ConflictException;
+import com.cunamas.exception.NotFoundException;
 import com.cunamas.repository.DireccionRepository;
 import com.cunamas.repository.ServicioAlimentarioRepository;
 import com.cunamas.security.SecurityUtils;
+import com.cunamas.service.ServicioAlimentarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
@@ -38,8 +44,8 @@ public class ServicioAlimentarioServiceImpl
         if (request.getNombreCentro() == null
                 || request.getNombreCentro().trim().isEmpty()) {
 
-            throw new RuntimeException(
-                    "El nombre del centro es obligatorio"
+            throw new BadRequestException(
+                    ErrorMessages.FOOD_SERVICE_NAME_REQUIRED
             );
         }
 
@@ -50,8 +56,8 @@ public class ServicioAlimentarioServiceImpl
 
         if (existe) {
 
-            throw new RuntimeException(
-                    "Ya existe un servicio alimentario con ese nombre"
+            throw new ConflictException(
+                    ErrorMessages.FOOD_SERVICE_ALREADY_EXISTS
             );
         }
 
@@ -60,8 +66,8 @@ public class ServicioAlimentarioServiceImpl
                                 request.getIdDireccion()
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
-                                        "La dirección no existe"
+                                new NotFoundException(
+                                        ErrorMessages.ADDRESS_NOT_FOUND
                                 )
                         );
 
@@ -91,7 +97,7 @@ public class ServicioAlimentarioServiceImpl
                 servicioRepository.save(servicio);
 
         return new ServicioAlimentarioResponseDTO(
-                "Servicio alimentario registrado correctamente",
+                SuccessMessages.FOOD_SERVICE_REGISTERED,
                 guardado.getIdCentroAlimentario()
         );
     }

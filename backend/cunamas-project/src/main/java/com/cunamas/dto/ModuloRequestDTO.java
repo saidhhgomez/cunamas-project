@@ -1,5 +1,6 @@
 package com.cunamas.dto;
 
+import com.cunamas.constant.ErrorMessages;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -7,9 +8,9 @@ import lombok.Data;
 @Data
 public class ModuloRequestDTO {
 
-    @NotBlank(message = "El nombre del módulo es obligatorio")
+    @NotBlank(message = ErrorMessages.MODULE_NAME_REQUIRED)
     private String nombreModulo;
 
-    @NotNull(message = "El idLocal es obligatorio")
+    @NotNull(message = ErrorMessages.INVALID_LOCAL_ID)
     private Integer idLocal;
 }

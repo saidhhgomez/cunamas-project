@@ -1,8 +1,11 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
+import com.cunamas.constant.ErrorMessages;
 import com.cunamas.dto.DistritoResponseDTO;
 import com.cunamas.entity.DistritoEntity;
+import com.cunamas.exception.BadRequestException;
 import com.cunamas.repository.DistritoRepository;
+import com.cunamas.service.DistritoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +19,12 @@ public class DistritoServiceImpl implements DistritoService {
 
     @Override
     public List<DistritoResponseDTO> buscarDistritos(String nombreDistrito) {
+
+        if (nombreDistrito == null || nombreDistrito.trim().isEmpty()) {
+            throw new BadRequestException(
+                    ErrorMessages.SEARCH_TERM_REQUIRED
+            );
+        }
 
         List<DistritoEntity> distritos =
                 distritoRepository

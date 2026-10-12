@@ -1,5 +1,7 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
+import com.cunamas.constant.ErrorMessages;
+import com.cunamas.constant.SuccessMessages;
 import com.cunamas.dto.DireccionRequestDTO;
 import com.cunamas.dto.DireccionResponseDTO;
 import com.cunamas.dto.PerfilDireccionRequestDTO;
@@ -7,10 +9,14 @@ import com.cunamas.dto.PerfilDireccionResponseDTO;
 import com.cunamas.entity.DireccionEntity;
 import com.cunamas.entity.DistritoEntity;
 import com.cunamas.entity.PersonaEntity;
+import com.cunamas.exception.BadRequestException;
+import com.cunamas.exception.ConflictException;
+import com.cunamas.exception.NotFoundException;
 import com.cunamas.repository.DireccionRepository;
 import com.cunamas.repository.DistritoRepository;
 import com.cunamas.repository.PersonaRepository;
 import com.cunamas.security.SecurityUtils;
+import com.cunamas.service.DireccionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,8 +44,8 @@ public class DireccionServiceImpl
         if(request.getNombreDireccion() == null
                 || request.getNombreDireccion().trim().isEmpty()) {
 
-            throw new RuntimeException(
-                    "Nombre dirección vacío"
+            throw new BadRequestException(
+                    ErrorMessages.EMPTY_ADDRESS_NAME
             );
         }
 
@@ -49,16 +55,16 @@ public class DireccionServiceImpl
                 );
 
         if(existe) {
-            throw new RuntimeException(
-                    "Dirección duplicada"
+            throw new ConflictException(
+                    ErrorMessages.DUPLICATE_ADDRESS
             );
         }
 
         DistritoEntity distrito = distritoRepository
                 .findById(request.getIdDistrito())
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Distrito no encontrado"
+                        new NotFoundException(
+                                ErrorMessages.DISTRICT_NOT_FOUND
                         )
                 );
 
@@ -86,7 +92,7 @@ public class DireccionServiceImpl
         );
 
         response.setMensaje(
-                "Dirección creada correctamente"
+                SuccessMessages.ADDRESS_CREATED
         );
 
         return response;
@@ -107,26 +113,20 @@ public class DireccionServiceImpl
 
                 personaRepository
                         .findById(idPersona)
-
                         .orElseThrow(() ->
-
-                                new RuntimeException(
-                                        "Persona no encontrada."
+                                new NotFoundException(
+                                        ErrorMessages.PERSON_NOT_FOUND
                                 )
-
                         );
 
         DistritoEntity distrito =
 
                 distritoRepository
                         .findById(request.getIdDistrito())
-
                         .orElseThrow(() ->
-
-                                new RuntimeException(
-                                        "Distrito no encontrado."
+                                new NotFoundException(
+                                        ErrorMessages.DISTRICT_NOT_FOUND
                                 )
-
                         );
 
         DireccionEntity direccion =
@@ -165,11 +165,8 @@ public class DireccionServiceImpl
         );
 
         return new PerfilDireccionResponseDTO(
-
-                "Dirección registrada correctamente.",
-
+                SuccessMessages.PROFILE_ADDRESS_REGISTERED,
                 direccion.getIdDireccion()
-
         );
     }
 }

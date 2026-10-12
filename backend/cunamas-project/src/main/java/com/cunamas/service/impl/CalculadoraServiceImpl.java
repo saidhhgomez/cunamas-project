@@ -1,8 +1,12 @@
-package com.cunamas.service;
+package com.cunamas.service.impl;
 
+import com.cunamas.constant.ErrorMessages;
 import com.cunamas.dto.*;
 import com.cunamas.entity.*;
+import com.cunamas.exception.NotFoundException;
+import com.cunamas.exception.NotFoundException;
 import com.cunamas.repository.*;
+import com.cunamas.service.CalculadoraService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -59,6 +63,10 @@ public class CalculadoraServiceImpl implements CalculadoraService {
             Integer idCategoria
     ) {
 
+        if (!categoriaRepository.existsById(idCategoria)) {
+            throw new NotFoundException(ErrorMessages.CATEGORY_NOT_FOUND);
+        }
+
         List<TipoPreparacionDTO> lista =
                 new ArrayList<>();
 
@@ -93,13 +101,13 @@ public class CalculadoraServiceImpl implements CalculadoraService {
 
 
     @Override
-    public List<DosisCategoriaDTO>
-    listarDosificacion(
-            Integer idPreparacion
-    ) {
+    public List<DosisCategoriaDTO> listarDosificacion(Integer idPreparacion) {
 
-        List<DosisCategoriaDTO> lista =
-                new ArrayList<>();
+        if (!tipoPreparacionRepository.existsById(idPreparacion)) {
+            throw new NotFoundException(ErrorMessages.PREPARATION_NOT_FOUND);
+        }
+
+        List<DosisCategoriaDTO> lista = new ArrayList<>();
 
         List<RacionDosificacionEntity> raciones =
                 racionRepository
@@ -112,7 +120,7 @@ public class CalculadoraServiceImpl implements CalculadoraService {
             DosisCategoriaDTO dto =
                     new DosisCategoriaDTO();
 
-            if (r.getCategoriaGrupo() != null) {
+            if(r.getCategoriaGrupo() != null){
 
                 dto.setIdCatNino(
                         r.getCategoriaGrupo()
@@ -141,7 +149,6 @@ public class CalculadoraServiceImpl implements CalculadoraService {
         return lista;
     }
 
-
     @Override
     public CalculadoraRespuestaDTO calcularTotal(
             Integer idPreparacion,
@@ -159,21 +166,30 @@ public class CalculadoraServiceImpl implements CalculadoraService {
                                 idPreparacion
                         );
 
+        int ninosCat1 = 10;
+        int ninosCat2 = 15;
+        int ninosCat3 = 20;
+        int ninosCat4 = 12;
 
         double total = 0;
 
-        for (RacionDosificacionEntity racion : raciones) {
+        for (RacionDosificacionEntity r : raciones) {
 
-            for (DetalleAsistenciaDTO categoria : request.getCategorias()) {
+            Integer grupo =
+                    r.getCategoriaGrupo()
+                            .getIdCategoriaGrupo();
 
-                if (racion.getCategoriaGrupo().getIdCategoriaGrupo()
-                        .equals(categoria.getIdCategoriaGrupo())) {
+            if (grupo == 1)
+                total += ninosCat1 * r.getGrMl();
 
-                    total += categoria.getCantidad() * racion.getGrMl();
+            if (grupo == 2)
+                total += ninosCat2 * r.getGrMl();
 
-                    break;
-                }
-            }
+            if (grupo == 3)
+                total += ninosCat3 * r.getGrMl();
+
+            if (grupo == 4)
+                total += ninosCat4 * r.getGrMl();
         }
 
         System.out.println("TOTAL = " + total);
@@ -189,22 +205,22 @@ public class CalculadoraServiceImpl implements CalculadoraService {
 
         dto.setUnidad("g/ml");
 
-        LinkedHashMap<String, Integer> empaques =
+        LinkedHashMap<String,Integer> empaques =
                 new LinkedHashMap<>();
 
         empaques.put(
                 "Opción en empaques de 1 Kg/L",
-                (int) Math.ceil(total / 1000)
+                (int)Math.ceil(total/1000)
         );
 
         empaques.put(
                 "Opción en empaques de 500 g/ml",
-                (int) Math.ceil(total / 500)
+                (int)Math.ceil(total/500)
         );
 
         empaques.put(
                 "Opción en empaques de 250 g/ml",
-                (int) Math.ceil(total / 250)
+                (int)Math.ceil(total/250)
         );
 
         dto.setEmpaquesSugeridos(empaques);
