@@ -124,9 +124,11 @@ public class RegistroAsistenciaCIAIServiceImpl
 
             registro.setCantidad(cantidad);
 
-            registro.setFechaCreacion(ahora);
+            registro.setObservacion(
+                    request.getObservacion()
+            );
 
-            registro.setFechaModificacion(ahora);
+            registro.setFechaCreacion(ahora);
 
             registro.setIdUsuarioCreacion(
                     securityUtils.getIdPersona()

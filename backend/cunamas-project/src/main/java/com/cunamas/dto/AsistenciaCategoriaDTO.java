@@ -1,10 +1,10 @@
 package com.cunamas.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
+@NoArgsConstructor
 public class AsistenciaCategoriaDTO {
 
     private Integer idCategoriaGrupo;
@@ -12,4 +12,24 @@ public class AsistenciaCategoriaDTO {
     private String categoria;
 
     private Integer cantidad;
+
+    public AsistenciaCategoriaDTO(
+            Integer idCategoriaGrupo,
+            String categoria,
+            Integer cantidad
+    ) {
+        this.idCategoriaGrupo = idCategoriaGrupo;
+        this.categoria = categoria;
+        this.cantidad = cantidad;
+    }
+
+    public AsistenciaCategoriaDTO(
+            Integer idCategoriaGrupo,
+            String categoria,
+            Long cantidad
+    ) {
+        this.idCategoriaGrupo = idCategoriaGrupo;
+        this.categoria = categoria;
+        this.cantidad = cantidad == null ? 0 : cantidad.intValue();
+    }
 }

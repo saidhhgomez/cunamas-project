@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/perfil")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class PerfilController {
 
