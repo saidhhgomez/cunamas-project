@@ -1,6 +1,6 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.DistritoResponseDTO;
+import com.cunamas.dto.response.DistritoResponseDTO;
 import com.cunamas.service.DistritoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

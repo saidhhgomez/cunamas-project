@@ -1,15 +1,14 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.AsistenciaCIAIConsultaDTO;
-import com.cunamas.dto.RegistroAsistenciaCIAIRequestDTO;
-import com.cunamas.dto.RegistroAsistenciaCIAIResponseDTO;
+import com.cunamas.dto.query.AsistenciaCIAIConsultaDTO;
+import com.cunamas.dto.request.RegistroAsistenciaCIAIRequestDTO;
+import com.cunamas.dto.response.RegistroAsistenciaCIAIResponseDTO;
 import com.cunamas.service.RegistroAsistenciaCIAIService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("asistencia-ciai")

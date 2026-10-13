@@ -1,8 +1,8 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.ModuloPageDTO;
-import com.cunamas.dto.ModuloRequestDTO;
-import com.cunamas.dto.ModuloResponseDTO;
+import com.cunamas.dto.list.ModuloPageDTO;
+import com.cunamas.dto.request.ModuloRequestDTO;
+import com.cunamas.dto.response.ModuloResponseDTO;
 import com.cunamas.service.ModuloService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

@@ -2,10 +2,10 @@ package com.cunamas.service.impl;
 
 import com.cunamas.constant.ErrorMessages;
 import com.cunamas.constant.SuccessMessages;
-import com.cunamas.dto.DireccionRequestDTO;
-import com.cunamas.dto.DireccionResponseDTO;
-import com.cunamas.dto.PerfilDireccionRequestDTO;
-import com.cunamas.dto.PerfilDireccionResponseDTO;
+import com.cunamas.dto.request.DireccionRequestDTO;
+import com.cunamas.dto.response.DireccionResponseDTO;
+import com.cunamas.dto.request.PerfilDireccionRequestDTO;
+import com.cunamas.dto.response.PerfilDireccionResponseDTO;
 import com.cunamas.entity.DireccionEntity;
 import com.cunamas.entity.DistritoEntity;
 import com.cunamas.entity.PersonaEntity;
@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 @Service
@@ -35,6 +36,8 @@ public class DireccionServiceImpl
     private final SecurityUtils securityUtils;
 
     private final PersonaRepository personaRepository;
+
+    private final Clock clock;
 
     @Override
     public DireccionResponseDTO crearDireccion(
@@ -76,7 +79,7 @@ public class DireccionServiceImpl
         );
 
         direccion.setFechaCreacion(
-                java.time.LocalDateTime.now()
+                LocalDateTime.now(clock)
         );
 
         direccion.setDistrito(distrito);
@@ -138,8 +141,7 @@ public class DireccionServiceImpl
 
         direccion.setDistrito(distrito);
 
-        LocalDateTime ahora =
-                LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now(clock);
 
         direccion.setFechaCreacion(ahora);
 

@@ -1,6 +1,10 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.*;
+import com.cunamas.dto.list.CentroAtencionInfantilPageDTO;
+import com.cunamas.dto.request.CentroAtencionInfantilRequestDTO;
+import com.cunamas.dto.request.CentroConModulosRequestDTO;
+import com.cunamas.dto.response.CentroAtencionInfantilResponseDTO;
+import com.cunamas.dto.response.CentroConModulosResponseDTO;
 import com.cunamas.service.CentroAtencionInfantilService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

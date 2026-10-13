@@ -2,7 +2,11 @@ package com.cunamas.service.impl;
 
 import com.cunamas.constant.ErrorMessages;
 import com.cunamas.constant.SuccessMessages;
-import com.cunamas.dto.*;
+import com.cunamas.dto.query.AsistenciaCIAIConsultaDTO;
+import com.cunamas.dto.request.RegistroAsistenciaCIAIRequestDTO;
+import com.cunamas.dto.response.AsistenciaCategoriaDTO;
+import com.cunamas.dto.response.DetalleAsistenciaDTO;
+import com.cunamas.dto.response.RegistroAsistenciaCIAIResponseDTO;
 import com.cunamas.entity.CategoriaDosificacionEntity;
 import com.cunamas.entity.ModuloEntity;
 import com.cunamas.entity.RegistroAsistenciaCIAIEntity;
@@ -18,6 +22,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,13 +40,16 @@ public class RegistroAsistenciaCIAIServiceImpl
 
     private final SecurityUtils securityUtils;
 
+    private final Clock clock;
+
     @Override
     @Transactional
     public RegistroAsistenciaCIAIResponseDTO registrarAsistencia(
             RegistroAsistenciaCIAIRequestDTO request
     ) {
 
-        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now(clock);
+        LocalDate hoy = LocalDate.now(clock);
 
         if (request.getRegistroCorrelativo() != 1
                 && request.getRegistroCorrelativo() != 2) {
@@ -67,8 +75,6 @@ public class RegistroAsistenciaCIAIServiceImpl
                                 ErrorMessages.MODULE_NOT_FOUND
                         )
                 );
-
-        LocalDate hoy = LocalDate.now();
 
         for (DetalleAsistenciaDTO item :
                 request.getCategorias()) {
@@ -168,7 +174,7 @@ public class RegistroAsistenciaCIAIServiceImpl
             );
         }
 
-        LocalDate hoy = LocalDate.now();
+        LocalDate hoy = LocalDate.now(clock);
 
         AsistenciaCIAIConsultaDTO response =
                 new AsistenciaCIAIConsultaDTO();

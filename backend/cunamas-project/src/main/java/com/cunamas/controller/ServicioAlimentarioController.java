@@ -1,8 +1,8 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.ServicioAlimentarioPageDTO;
-import com.cunamas.dto.ServicioAlimentarioRequestDTO;
-import com.cunamas.dto.ServicioAlimentarioResponseDTO;
+import com.cunamas.dto.list.ServicioAlimentarioPageDTO;
+import com.cunamas.dto.request.ServicioAlimentarioRequestDTO;
+import com.cunamas.dto.response.ServicioAlimentarioResponseDTO;
 import com.cunamas.service.ServicioAlimentarioService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

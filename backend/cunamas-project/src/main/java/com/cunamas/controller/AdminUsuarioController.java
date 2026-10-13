@@ -1,6 +1,11 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.*;
+import com.cunamas.dto.query.UsuarioPendienteDetalleDTO;
+import com.cunamas.dto.query.UsuarioPendienteListadoDTO;
+import com.cunamas.dto.request.AdminRegisterRequestDTO;
+import com.cunamas.dto.request.AprobarUsuarioRequestDTO;
+import com.cunamas.dto.response.AdminRegisterResponseDTO;
+import com.cunamas.dto.response.AprobarUsuarioResponseDTO;
 import com.cunamas.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

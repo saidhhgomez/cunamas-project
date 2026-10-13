@@ -1,13 +1,16 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.*;
+import com.cunamas.dto.request.LoginRequestDTO;
+import com.cunamas.dto.request.RefreshTokenRequestDTO;
+import com.cunamas.dto.request.RegisterRequestDTO;
+import com.cunamas.dto.response.LoginResponseDTO;
+import com.cunamas.dto.response.RefreshTokenResponseDTO;
+import com.cunamas.dto.response.RegisterResponseDTO;
 import com.cunamas.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/auth")

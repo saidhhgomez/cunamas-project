@@ -1,8 +1,8 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.AsistenciaCIAIConsultaDTO;
-import com.cunamas.dto.RegistroAsistenciaCIAIRequestDTO;
-import com.cunamas.dto.RegistroAsistenciaCIAIResponseDTO;
+import com.cunamas.dto.query.AsistenciaCIAIConsultaDTO;
+import com.cunamas.dto.request.RegistroAsistenciaCIAIRequestDTO;
+import com.cunamas.dto.response.RegistroAsistenciaCIAIResponseDTO;
 
 import java.time.LocalDate;
 

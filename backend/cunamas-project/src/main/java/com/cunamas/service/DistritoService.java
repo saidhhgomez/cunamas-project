@@ -1,6 +1,6 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.DistritoResponseDTO;
+import com.cunamas.dto.response.DistritoResponseDTO;
 
 import java.util.List;
 

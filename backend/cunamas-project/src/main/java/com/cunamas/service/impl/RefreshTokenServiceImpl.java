@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +29,9 @@ public class RefreshTokenServiceImpl
     @Autowired
     private DispositivoSesionRepository repository;
 
+    @Autowired
+    private Clock clock;
+
     @Override
     public DispositivoSesionEntity crearSesion(
 
@@ -39,7 +43,7 @@ public class RefreshTokenServiceImpl
 
     ) {
 
-        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now(clock);
 
         LocalDateTime expiracion =
                 ahora.plusDays(diasExpiracion);
@@ -170,7 +174,7 @@ public class RefreshTokenServiceImpl
         }
 
         if (sesion.getFechaExpiracion()
-                .isBefore(LocalDateTime.now())) {
+                .isBefore(LocalDateTime.now(clock))) {
             throw new UnauthorizedException(
                     ErrorMessages.REFRESH_TOKEN_EXPIRED
             );
@@ -180,12 +184,12 @@ public class RefreshTokenServiceImpl
                 RefreshTokenGenerator.generar()
         );
 
-        sesion.setUltimaConexion(
-                LocalDateTime.now()
-        );
+        LocalDateTime ahora = LocalDateTime.now(clock);
+
+        sesion.setUltimaConexion(ahora);
 
         sesion.setFechaExpiracion(
-                LocalDateTime.now().plusDays(diasExpiracion)
+                ahora.plusDays(diasExpiracion)
         );
 
         return repository.save(sesion);

@@ -1,6 +1,7 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.*;
+import com.cunamas.dto.request.CalculadoraRequestDTO;
+import com.cunamas.dto.response.*;
 
 import java.time.LocalDate;
 import java.util.List;

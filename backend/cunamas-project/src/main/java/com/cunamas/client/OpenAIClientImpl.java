@@ -1,10 +1,10 @@
 package com.cunamas.client;
 
-import com.cunamas.client.dto.Message;
-import com.cunamas.client.dto.OpenAIRequest;
-import com.cunamas.client.dto.OpenAIResponse;
+import com.cunamas.client.dto.response.Message;
+import com.cunamas.client.dto.request.OpenAIRequest;
+import com.cunamas.client.dto.response.OpenAIResponse;
 import com.cunamas.config.OpenAIProperties;
-import com.cunamas.dto.IAAnalisisResponseDTO;
+import com.cunamas.dto.response.IAAnalisisResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;

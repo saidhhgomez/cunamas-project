@@ -1,7 +1,7 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.PerfilDireccionRequestDTO;
-import com.cunamas.dto.PerfilDireccionResponseDTO;
+import com.cunamas.dto.request.PerfilDireccionRequestDTO;
+import com.cunamas.dto.response.PerfilDireccionResponseDTO;
 import com.cunamas.service.DireccionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

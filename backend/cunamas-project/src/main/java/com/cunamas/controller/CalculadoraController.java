@@ -1,6 +1,7 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.*;
+import com.cunamas.dto.request.CalculadoraRequestDTO;
+import com.cunamas.dto.response.*;
 import com.cunamas.service.CalculadoraService;
 import com.cunamas.service.ReportePdfService;
 import jakarta.validation.Valid;

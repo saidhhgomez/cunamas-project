@@ -1,7 +1,7 @@
 package com.cunamas.service.impl;
 
 import com.cunamas.constant.ErrorMessages;
-import com.cunamas.dto.DistritoResponseDTO;
+import com.cunamas.dto.response.DistritoResponseDTO;
 import com.cunamas.entity.DistritoEntity;
 import com.cunamas.exception.BadRequestException;
 import com.cunamas.repository.DistritoRepository;

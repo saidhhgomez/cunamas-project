@@ -1,6 +1,6 @@
 package com.cunamas.repository;
 
-import com.cunamas.dto.AsistenciaCategoriaDTO;
+import com.cunamas.dto.response.AsistenciaCategoriaDTO;
 import com.cunamas.entity.RegistroAsistenciaCIAIEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,7 +19,7 @@ public interface RegistroAsistenciaCIAIRepository
     );
 
     @Query("""
-    SELECT new com.cunamas.dto.AsistenciaCategoriaDTO(
+    SELECT new com.cunamas.dto.response.AsistenciaCategoriaDTO(
 
         c.idCategoriaGrupo,
 
@@ -46,7 +46,7 @@ public interface RegistroAsistenciaCIAIRepository
     );
 
     @Query("""
-    SELECT new com.cunamas.dto.AsistenciaCategoriaDTO(
+    SELECT new com.cunamas.dto.response.AsistenciaCategoriaDTO(
 
         c.idCategoriaGrupo,
 

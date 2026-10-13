@@ -2,10 +2,10 @@ package com.cunamas.service.impl;
 
 import com.cunamas.constant.ErrorMessages;
 import com.cunamas.constant.SuccessMessages;
-import com.cunamas.dto.ModuloListadoDTO;
-import com.cunamas.dto.ModuloPageDTO;
-import com.cunamas.dto.ModuloRequestDTO;
-import com.cunamas.dto.ModuloResponseDTO;
+import com.cunamas.dto.query.ModuloListadoDTO;
+import com.cunamas.dto.list.ModuloPageDTO;
+import com.cunamas.dto.request.ModuloRequestDTO;
+import com.cunamas.dto.response.ModuloResponseDTO;
 import com.cunamas.entity.CentroAtencionInfantilEntity;
 import com.cunamas.entity.ModuloEntity;
 import com.cunamas.exception.BadRequestException;

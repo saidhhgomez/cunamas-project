@@ -1,6 +1,6 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.ReporteAsistenciaDTO;
+import com.cunamas.dto.response.ReporteAsistenciaDTO;
 
 public interface ReportePdfService {
 

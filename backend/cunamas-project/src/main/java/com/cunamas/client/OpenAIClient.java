@@ -1,6 +1,6 @@
 package com.cunamas.client;
 
-import com.cunamas.dto.IAAnalisisResponseDTO;
+import com.cunamas.dto.response.IAAnalisisResponseDTO;
 
 public interface OpenAIClient {
 

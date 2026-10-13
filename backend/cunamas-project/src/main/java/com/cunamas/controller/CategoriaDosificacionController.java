@@ -1,6 +1,6 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.CategoriaDosificacionDTO;
+import com.cunamas.dto.response.CategoriaDosificacionDTO;
 import com.cunamas.service.CategoriaDosificacionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

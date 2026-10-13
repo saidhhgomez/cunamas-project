@@ -1,6 +1,9 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.*;
+import com.cunamas.dto.query.UsuarioPendienteDetalleDTO;
+import com.cunamas.dto.query.UsuarioPendienteListadoDTO;
+import com.cunamas.dto.request.*;
+import com.cunamas.dto.response.*;
 
 import java.util.List;
 

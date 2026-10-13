@@ -2,10 +2,10 @@ package com.cunamas.service.impl;
 
 import com.cunamas.constant.ErrorMessages;
 import com.cunamas.constant.SuccessMessages;
-import com.cunamas.dto.ServicioAlimentarioListadoDTO;
-import com.cunamas.dto.ServicioAlimentarioPageDTO;
-import com.cunamas.dto.ServicioAlimentarioRequestDTO;
-import com.cunamas.dto.ServicioAlimentarioResponseDTO;
+import com.cunamas.dto.query.ServicioAlimentarioListadoDTO;
+import com.cunamas.dto.list.ServicioAlimentarioPageDTO;
+import com.cunamas.dto.request.ServicioAlimentarioRequestDTO;
+import com.cunamas.dto.response.ServicioAlimentarioResponseDTO;
 import com.cunamas.entity.DireccionEntity;
 import com.cunamas.entity.ServicioAlimentarioEntity;
 import com.cunamas.exception.BadRequestException;
@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -35,6 +36,8 @@ public class ServicioAlimentarioServiceImpl
     private final DireccionRepository direccionRepository;
 
     private final SecurityUtils securityUtils;
+
+    private final Clock clock;
 
     @Override
     public ServicioAlimentarioResponseDTO registrarServicioAlimentario(
@@ -71,7 +74,7 @@ public class ServicioAlimentarioServiceImpl
                                 )
                         );
 
-        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now(clock);
 
         ServicioAlimentarioEntity servicio =
                 new ServicioAlimentarioEntity();

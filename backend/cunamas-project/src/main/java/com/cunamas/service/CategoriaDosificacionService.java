@@ -1,6 +1,6 @@
 package com.cunamas.service;
 
-import com.cunamas.dto.CategoriaDosificacionDTO;
+import com.cunamas.dto.response.CategoriaDosificacionDTO;
 
 import java.util.List;
 

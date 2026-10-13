@@ -1,6 +1,6 @@
 package com.cunamas.repository;
 
-import com.cunamas.dto.CategoriaDosificacionDTO;
+import com.cunamas.dto.response.CategoriaDosificacionDTO;
 import com.cunamas.entity.CategoriaDosificacionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,7 +11,7 @@ public interface CategoriaDosificacionRepository
         extends JpaRepository<CategoriaDosificacionEntity, Integer> {
 
     @Query("""
-    SELECT new com.cunamas.dto.CategoriaDosificacionDTO(
+    SELECT new com.cunamas.dto.response.CategoriaDosificacionDTO(
         c.idCategoriaGrupo,
         c.nombreCategoria
     )

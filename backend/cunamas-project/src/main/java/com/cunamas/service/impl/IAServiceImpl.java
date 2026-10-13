@@ -2,10 +2,9 @@ package com.cunamas.service.impl;
 
 import com.cunamas.client.OpenAIClient;
 import com.cunamas.constant.ErrorMessages;
-import com.cunamas.constant.SuccessMessages;
-import com.cunamas.dto.IAAlimentoDTO;
-import com.cunamas.dto.IAAnalisisRequestDTO;
-import com.cunamas.dto.IAAnalisisResponseDTO;
+import com.cunamas.dto.response.IAAlimentoDTO;
+import com.cunamas.dto.request.IAAnalisisRequestDTO;
+import com.cunamas.dto.response.IAAnalisisResponseDTO;
 import com.cunamas.exception.BadRequestException;
 import com.cunamas.exception.BusinessException;
 import com.cunamas.service.IAService;

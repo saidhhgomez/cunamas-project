@@ -1,7 +1,10 @@
 package com.cunamas.service.impl;
 
 import com.cunamas.constant.SuccessMessages;
-import com.cunamas.dto.*;
+import com.cunamas.dto.query.UsuarioPendienteDetalleDTO;
+import com.cunamas.dto.query.UsuarioPendienteListadoDTO;
+import com.cunamas.dto.request.*;
+import com.cunamas.dto.response.*;
 import com.cunamas.entity.*;
 import com.cunamas.exception.*;
 import com.cunamas.repository.*;
@@ -16,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.cunamas.constant.ErrorMessages;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -43,6 +47,8 @@ public class AuthServiceImpl implements AuthService {
     private final RolRepository rolRepository;
 
     private final RefreshTokenService refreshTokenService;
+
+    private final Clock clock;
 
     private static final Pattern REGEX_DNI =
             Pattern.compile("^[0-9]{8}$");
@@ -220,11 +226,9 @@ public class AuthServiceImpl implements AuthService {
 
         // Crear Persona
 
-        LocalDateTime ahora =
-                LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now(clock);
 
-        PersonaEntity persona =
-                new PersonaEntity();
+        PersonaEntity persona = new PersonaEntity();
 
         persona.setDocumento(documento);
 
@@ -622,17 +626,9 @@ public class AuthServiceImpl implements AuthService {
                 request.getPersona().getApMaterno()
         );
 
-        persona.setFechaCreacion(
-                LocalDateTime.now()
-        );
-
-        persona.setFechaModificacion(
-                LocalDateTime.now()
-        );
-
-        persona.setIdUsuarioModificacion(
-                idAdministrador
-        );
+        persona.setFechaCreacion(LocalDateTime.now(clock));
+        persona.setFechaModificacion(LocalDateTime.now(clock));
+        persona.setIdUsuarioModificacion(idAdministrador);
 
         personaRepository.save(persona);
 
@@ -648,17 +644,9 @@ public class AuthServiceImpl implements AuthService {
 
         cuenta.setEstadoCuenta(true);
 
-        cuenta.setFechaCreacion(
-                LocalDateTime.now()
-        );
-
-        cuenta.setFechaModificacion(
-                LocalDateTime.now()
-        );
-
-        cuenta.setIdUsuarioModificacion(
-                idAdministrador
-        );
+        cuenta.setFechaCreacion(LocalDateTime.now(clock));
+        cuenta.setFechaModificacion(LocalDateTime.now(clock));
+        cuenta.setIdUsuarioModificacion(idAdministrador);
 
         cuentaRepository.save(cuenta);
 
@@ -937,9 +925,7 @@ public class AuthServiceImpl implements AuthService {
                 idAdministrador
         );
 
-        cuenta.setFechaModificacion(
-                LocalDateTime.now()
-        );
+        cuenta.setFechaModificacion(LocalDateTime.now(clock));
 
         cuentaRepository.save(cuenta);
 
@@ -950,9 +936,7 @@ public class AuthServiceImpl implements AuthService {
                 idAdministrador
         );
 
-        persona.setFechaModificacion(
-                LocalDateTime.now()
-        );
+        persona.setFechaModificacion(LocalDateTime.now(clock));
 
         personaRepository.save(persona);
 

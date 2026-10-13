@@ -1,7 +1,7 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.DireccionRequestDTO;
-import com.cunamas.dto.DireccionResponseDTO;
+import com.cunamas.dto.request.DireccionRequestDTO;
+import com.cunamas.dto.response.DireccionResponseDTO;
 import com.cunamas.service.DireccionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

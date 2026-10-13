@@ -2,13 +2,16 @@ package com.cunamas.service.impl;
 
 import com.cunamas.constant.ErrorMessages;
 import com.cunamas.constant.SuccessMessages;
-import com.cunamas.dto.*;
+import com.cunamas.dto.list.CentroAtencionInfantilPageDTO;
+import com.cunamas.dto.query.CentroAtencionInfantilListadoDTO;
+import com.cunamas.dto.request.CentroAtencionInfantilRequestDTO;
+import com.cunamas.dto.request.CentroConModulosRequestDTO;
+import com.cunamas.dto.response.CentroAtencionInfantilResponseDTO;
+import com.cunamas.dto.response.CentroConModulosResponseDTO;
 import com.cunamas.entity.*;
 import com.cunamas.exception.BadRequestException;
 import com.cunamas.exception.ConflictException;
 import com.cunamas.exception.NotFoundException;
-import com.cunamas.repository.*;
-import com.cunamas.entity.*;
 import com.cunamas.repository.*;
 import com.cunamas.security.SecurityUtils;
 import com.cunamas.service.CentroAtencionInfantilService;
@@ -20,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +43,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
     private final ModuloRepository moduloRepository;
 
     private final SecurityUtils securityUtils;
+
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -102,8 +108,7 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
                 request.getNombreDireccion().trim()
         );
 
-        LocalDateTime ahora =
-                LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now(clock);
 
         direccion.setFechaCreacion(ahora);
 
@@ -337,13 +342,8 @@ public class CentroAtencionInfantilServiceImpl implements  CentroAtencionInfanti
 
         centro.setIdUsuarioModificacion(idUsuario);
 
-        centro.setFechaCreacion(
-                LocalDateTime.now()
-        );
-
-        centro.setFechaModificacion(
-                LocalDateTime.now()
-        );
+        centro.setFechaCreacion(LocalDateTime.now(clock));
+        centro.setFechaModificacion(LocalDateTime.now(clock));
 
         CentroAtencionInfantilEntity centroGuardado =
                 centroRepository.save(centro);

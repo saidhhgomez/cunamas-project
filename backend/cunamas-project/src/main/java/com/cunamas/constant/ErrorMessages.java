@@ -203,4 +203,11 @@ public final class ErrorMessages {
 
     public static final String UBIGEO_NOT_FOUND =
             "No existe un distrito para el ubigeo enviado.";
+
+    // Generación de Reportes PDF
+    public static final String REPORT_DATA_REQUIRED =
+            "No hay información disponible para generar el reporte PDF.";
+
+    public static final String PDF_GENERATION_ERROR =
+            "Ocurrió un error al generar el archivo PDF del reporte.";
 }

@@ -1,7 +1,7 @@
 package com.cunamas.controller;
 
-import com.cunamas.dto.IAAnalisisRequestDTO;
-import com.cunamas.dto.IAAnalisisResponseDTO;
+import com.cunamas.dto.request.IAAnalisisRequestDTO;
+import com.cunamas.dto.response.IAAnalisisResponseDTO;
 import com.cunamas.service.IAService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

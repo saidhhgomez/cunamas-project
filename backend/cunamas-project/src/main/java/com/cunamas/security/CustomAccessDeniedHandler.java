@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -19,6 +20,11 @@ import java.util.Map;
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Clock clock;
+
+    public CustomAccessDeniedHandler(Clock clock) {
+        this.clock = clock;
+    }
 
     @Override
     public void handle(
@@ -34,7 +40,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
         body.put("status", HttpStatus.FORBIDDEN.value());
         body.put("error", "Forbidden");
         body.put("message", ErrorMessages.ACCESS_DENIED_RESOURCE);
-        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("timestamp", LocalDateTime.now(clock).toString());
 
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }

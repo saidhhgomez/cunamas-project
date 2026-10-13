@@ -7,6 +7,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -41,11 +42,12 @@ public class DataInitializer
 
     private final PasswordEncoder passwordEncoder;
 
+    private final Clock clock;
+
     @Override
     public void run(String... args) {
 
-        LocalDateTime ahora =
-                LocalDateTime.now();
+        LocalDateTime ahora = LocalDateTime.now(clock);
 
         // 1. CREAR ADMINISTRADOR INICIAL (Intacto)
         if (!personaRepository.existsByNumeroDocumento("00000000") &&

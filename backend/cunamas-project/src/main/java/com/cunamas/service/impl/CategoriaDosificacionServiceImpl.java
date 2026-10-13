@@ -1,7 +1,7 @@
 package com.cunamas.service.impl;
 
 import com.cunamas.constant.ErrorMessages;
-import com.cunamas.dto.CategoriaDosificacionDTO;
+import com.cunamas.dto.response.CategoriaDosificacionDTO;
 import com.cunamas.exception.NotFoundException;
 import com.cunamas.repository.CategoriaDosificacionRepository;
 import com.cunamas.service.CategoriaDosificacionService;

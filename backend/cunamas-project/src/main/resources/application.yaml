@@ -37,6 +37,9 @@ openai:
 
   timeout: 60
 
+app:
+  time-zone: America/Lima
+
 server:
   port: 8080
   servlet:
