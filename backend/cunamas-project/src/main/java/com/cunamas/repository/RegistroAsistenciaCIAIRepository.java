@@ -2,8 +2,11 @@ package com.cunamas.repository;
 
 import com.cunamas.dto.response.AsistenciaCategoriaDTO;
 import com.cunamas.entity.RegistroAsistenciaCIAIEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -99,5 +102,20 @@ c.idCategoriaGrupo
             Integer idServicio,
             LocalDate fecha,
             Integer correlativo
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT r
+    FROM RegistroAsistenciaCIAIEntity r
+    WHERE r.modulo.idModulo = :idModulo
+      AND r.fecha = :fecha
+      AND r.registroCorrelativo = :correlativo
+    ORDER BY r.categoria.idCategoriaGrupo
+    """)
+    List<RegistroAsistenciaCIAIEntity> buscarRegistrosParaEdicion(
+            @Param("idModulo") Integer idModulo,
+            @Param("fecha") LocalDate fecha,
+            @Param("correlativo") Integer correlativo
     );
 }

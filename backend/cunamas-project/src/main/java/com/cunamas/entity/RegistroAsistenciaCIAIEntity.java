@@ -53,6 +53,12 @@ public class RegistroAsistenciaCIAIEntity {
     @Column(name = "observacion", length = 255)
     private String observacion;
 
+    @Column(
+            name = "cantidad_modificaciones",
+            nullable = false
+    )
+    private Integer cantidadModificaciones = 0;
+
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 

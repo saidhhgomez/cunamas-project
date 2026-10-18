@@ -1,7 +1,9 @@
 package com.cunamas.service;
 
 import com.cunamas.dto.query.AsistenciaCIAIConsultaDTO;
+import com.cunamas.dto.request.ActualizarAsistenciaCIAIRequestDTO;
 import com.cunamas.dto.request.RegistroAsistenciaCIAIRequestDTO;
+import com.cunamas.dto.response.ActualizarAsistenciaCIAIResponseDTO;
 import com.cunamas.dto.response.RegistroAsistenciaCIAIResponseDTO;
 
 import java.time.LocalDate;
@@ -21,5 +23,9 @@ public interface RegistroAsistenciaCIAIService {
             Integer idModulo,
             LocalDate fecha,
             Integer correlativo
+    );
+
+    ActualizarAsistenciaCIAIResponseDTO actualizarAsistencia(
+            ActualizarAsistenciaCIAIRequestDTO request
     );
 }

@@ -7,6 +7,11 @@ import com.cunamas.service.RegistroAsistenciaCIAIService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import com.cunamas.dto.request.ActualizarAsistenciaCIAIRequestDTO;
+import com.cunamas.dto.response.ActualizarAsistenciaCIAIResponseDTO;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDate;
 
@@ -50,5 +55,12 @@ public class RegistroAsistenciaCIAIController {
                 fecha,
                 correlativo
         );
+    }
+
+    @PutMapping
+    public ActualizarAsistenciaCIAIResponseDTO actualizarAsistencia(
+            @Valid @RequestBody ActualizarAsistenciaCIAIRequestDTO request
+    ) {
+        return service.actualizarAsistencia(request);
     }
 }

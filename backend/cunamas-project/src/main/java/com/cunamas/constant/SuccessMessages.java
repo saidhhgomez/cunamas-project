@@ -51,4 +51,7 @@ public final class SuccessMessages {
 
     public static final String FOOD_SERVICE_REGISTERED =
             "Servicio alimentario registrado correctamente.";
+
+    public static final String ATTENDANCE_UPDATED =
+            "La asistencia fue actualizada correctamente.";
 }

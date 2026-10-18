@@ -210,4 +210,22 @@ public final class ErrorMessages {
 
     public static final String PDF_GENERATION_ERROR =
             "Ocurrió un error al generar el archivo PDF del reporte.";
+
+    public static final String ATTENDANCE_NOT_FOUND_FOR_UPDATE =
+            "No existe una asistencia registrada para este módulo y la fecha actual.";
+
+    public static final String ATTENDANCE_UPDATE_LIMIT_EXCEEDED =
+            "La asistencia ya alcanzó el límite máximo de 3 modificaciones.";
+
+    public static final String ATTENDANCE_UPDATE_DATE_EXPIRED =
+            "No se puede editar una asistencia de una fecha anterior.";
+
+    public static final String ATTENDANCE_UPDATE_CATEGORIES_REQUIRED =
+            "Debe enviar las 5 categorías de la asistencia.";
+
+    public static final String ATTENDANCE_UPDATE_CATEGORIES_INVALID =
+            "Las categorías deben ser los grupos 1, 2, 3, 4 y 5, sin duplicados.";
+
+    public static final String ATTENDANCE_UPDATE_INCONSISTENT_COUNTER =
+            "Los registros de asistencia tienen contadores de modificación inconsistentes.";
 }
