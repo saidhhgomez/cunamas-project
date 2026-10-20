@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface RegistroAsistenciaCIAIRepository
         extends JpaRepository<RegistroAsistenciaCIAIEntity, Integer> {
@@ -19,6 +20,15 @@ public interface RegistroAsistenciaCIAIRepository
             Integer idModulo,
             Integer idCategoriaNino,
             Integer registroCorrelativo
+    );
+
+    /**
+     * Obtiene el primer registro guardado de asistencia para un módulo y fecha,
+     * ordenado por la fecha de creación descendente para extraer la observación.
+     */
+    Optional<RegistroAsistenciaCIAIEntity> findFirstByFechaAndModulo_IdModuloOrderByFechaCreacionDesc(
+            LocalDate fecha,
+            Integer idModulo
     );
 
     @Query("""
