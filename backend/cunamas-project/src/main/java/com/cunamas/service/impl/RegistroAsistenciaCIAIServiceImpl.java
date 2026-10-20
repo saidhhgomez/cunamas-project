@@ -190,6 +190,13 @@ public class RegistroAsistenciaCIAIServiceImpl
 
         response.setFecha(hoy);
 
+        String observacion = repository
+                .findFirstByFechaAndModulo_IdModuloOrderByFechaCreacionDesc(hoy, idModulo)
+                .map(RegistroAsistenciaCIAIEntity::getObservacion)
+                .orElse(null);
+
+          response.setObservacion(observacion);
+
         if (correlativo != null) {
 
             if (correlativo != 1 && correlativo != 2) {
@@ -264,6 +271,14 @@ public class RegistroAsistenciaCIAIServiceImpl
         response.setIdModulo(idModulo);
 
         response.setFecha(fecha);
+
+
+        String observacion = repository
+                .findFirstByFechaAndModulo_IdModuloOrderByFechaCreacionDesc(fecha, idModulo)
+                .map(RegistroAsistenciaCIAIEntity::getObservacion)
+                .orElse(null);
+
+        response.setObservacion(observacion);
 
         if (correlativo != null) {
 

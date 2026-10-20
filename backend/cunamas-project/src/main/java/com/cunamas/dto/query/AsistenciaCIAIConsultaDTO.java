@@ -13,6 +13,8 @@ public class AsistenciaCIAIConsultaDTO {
 
     private LocalDate fecha;
 
+    private String observacion;
+
     private List<AsistenciaCategoriaDTO> registroManana;
 
     private List<AsistenciaCategoriaDTO> registroTarde;
