@@ -229,6 +229,11 @@ public class CalculadoraServiceImpl implements CalculadoraService {
                 modulo.setIdModulo(registro.getModulo().getIdModulo());
                 modulo.setNombreModulo(registro.getModulo().getNombreModulo());
                 modulo.setAsistencia(new ArrayList<>());
+
+                if (registro.getObservacion() != null && !registro.getObservacion().isBlank()) {
+                    modulo.setObservacion(registro.getObservacion());
+                }
+
                 local.getModulos().add(modulo);
             }
 
